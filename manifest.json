@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Aleteia",
+  "version": "1.0",
+  "description": "Inteligência Artificial de detecção de fake news",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "permissions": ["storage"]
+}
