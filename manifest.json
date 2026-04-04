@@ -4,13 +4,11 @@
   "version": "1.0",
   "description": "Inteligência Artificial de detecção de fake news",
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": "logo.png"
-  },
+    "default_popup": "public/index/popup.html",
+    "default_icon": "images/test.png"
+},
   "icons": {
-    "16": "logo.png",
-    "48": "logo.png",
-    "128": "logo.png"
-  },
+      "128": "images/test.png"
+},
   "permissions": ["storage"]
 }
