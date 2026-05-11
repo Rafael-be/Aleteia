@@ -112,6 +112,7 @@ class UserController:
 
         except Exception as e:
             return jsonify({"error": "Erro interno no servidor.", "details": str(e)}), 500
+            
 
     # ------------------------------------------------------------------
     # Geração de Token JWT

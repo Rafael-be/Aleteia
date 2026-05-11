@@ -1,24 +1,32 @@
 from flask import Flask, render_template
 from pymongo import MongoClient
 from src.routes.userRoutes import user_routes
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__, template_folder="public")
 
-client = MongoClient("mongodb://localhost:27017/Aleteia")
-db = client["Cadastro"]
+client = MongoClient(os.getenv("MONGO_URI"))
+db = client[os.getenv("MONGO_DB_NAME")]
 
 app.register_blueprint(user_routes(db))
 
 @app.route("/cadastro")
 def cadastro():
-    return render_template("cadastroTeste/cadstrotemplate.html")
+    return render_template("cadastroTeste/cadastro.html")
 
 @app.route("/")
 def index():
     return render_template("main/main.html")
 
+@app.route("/logado")
+def logado():
+    return render_template("main/mainLogado.html")
+
 @app.route("/login")
-def login():
+def login_page():
     return render_template("login/login.html")
 
 if __name__ == "__main__":
