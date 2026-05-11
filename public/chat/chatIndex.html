@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AleteIA - Chat</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background-color: #4b4b4b;
+      color: #e0e0e0;
+      font-family: 'Montserrat', sans-serif;
+      margin: 0;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background-color: #303030;
+      width: 260px;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid #222;
+    }
+    .sidebar::-webkit-scrollbar { width: 8px; }
+    .sidebar::-webkit-scrollbar-thumb { background-color: #666; border-radius: 4px; }
+
+    /* ── Main ── */
+    .main-content {
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    /* ── Botão de conta ── */
+    #btnConta {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #666;
+      overflow: hidden;
+      background-color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s, border-color 0.2s;
+      padding: 0;
+    }
+    #btnConta:hover { opacity: 0.8; border-color: #aaa; }
+    #fotoConta { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+    /* ── Centro ── */
+    .center-wrap {
+      max-width: 650px;
+      width: 100%;
+    }
+
+    /* ── Input box ── */
+    .input-box {
+      width: 100%;
+      background-color: #5a5a5a;
+      border-radius: 14px;
+      padding: 1.25rem 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .input-box textarea {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e0e0e0;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1rem;
+      resize: none;
+      width: 100%;
+      min-height: 56px;
+      max-height: 180px;
+      line-height: 1.6;
+      overflow-y: auto;
+    }
+    .input-box textarea::placeholder { color: #bbb; }
+    .input-box textarea::-webkit-scrollbar { width: 6px; }
+    .input-box textarea::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-attach {
+      background: none;
+      border: none;
+      color: #bbb;
+      font-size: 1.5rem;
+      padding: 0;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .btn-attach:hover { color: #fff; }
+
+    .input-right-btns {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn-mic {
+      background: none;
+      border: none;
+      color: #bbb;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-mic:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
+
+    .btn-send {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background-color: #555;
+      border: none;
+      color: #bbb;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s, color 0.2s, transform 0.15s;
+    }
+    .btn-send.active {
+      background-color: #28a745;
+      color: #fff;
+    }
+    .btn-send.active:hover { background-color: #218838; transform: scale(1.07); }
+    .btn-send svg { width: 18px; height: 18px; }
+
+    /* ── Aviso ── */
+    .aviso {
+      margin-top: 1.5rem;
+      text-align: center;
+      color: #e0e0e0;
+      opacity: 0.45;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+
+    /* ── Overlay + Popup ── */
+    .popup-overlay {
+      position: fixed; inset: 0;
+      background-color: rgba(0,0,0,0.55);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .popup-overlay.active { opacity: 1; pointer-events: all; }
+
+    .popup-card {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -48%) scale(0.96);
+      z-index: 101;
+      background-color: #2a2a2a;
+      border-radius: 12px;
+      padding: 2rem 2.5rem 1.75rem;
+      width: 100%; max-width: 320px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .popup-card.active { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+
+    .popup-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #555; background-color: #444; }
+    .popup-username { font-size: 1rem; font-weight: 500; color: #e0e0e0; margin-top: 0.5rem; }
+    .btn-voltar { background: none; border: none; color: #aaa; font-size: 0.85rem; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-bottom: 1.25rem; transition: color 0.15s; }
+    .btn-voltar:hover { color: #fff; }
+    .popup-menu-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.7rem 0; border: none; background: none; width: 100%; text-align: left; color: #d0d0d0; font-size: 0.95rem; font-family: 'Montserrat', sans-serif; cursor: pointer; border-radius: 6px; transition: background-color 0.15s, color 0.15s; }
+    .popup-menu-item:hover { background-color: rgba(255,255,255,0.07); color: #fff; }
+    .popup-menu-item.sair { color: #e05555; }
+    .popup-menu-item.sair:hover { background-color: rgba(224,85,85,0.1); color: #ff6b6b; }
+    .popup-divider { border-color: #3a3a3a; margin: 0.25rem 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+    }
+  </style>
+  <style>body { visibility: hidden; }</style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.body.style.visibility = "visible";
+    });
+  </script>
+</head>
+<body>
+
+<div class="d-flex vh-100">
+
+  <!-- Sidebar -->
+  <aside class="sidebar p-3 d-flex flex-column d-none d-md-flex">
+    <div class="mb-4">
+      <img alt="configurações" src="{{ url_for('static', filename='images/engrenagem.png') }}" style="width: 10%; height: auto;">
+    </div>
+
+    <nav class="nav flex-column mb-4 fs-6">
+      <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <img alt="nova_conversa" src="{{ url_for('static', filename='images/novaconversa.png') }}" style="width: 10%; height: auto; margin-right: 5%;"> Nova conversa
+      </a>
+      <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <img alt="pesquisar_conversa" src="{{ url_for('static', filename='images/lupa.png') }}" style="width: 10%; height: auto; margin-right: 5%;">Pesquisar conversas
+      </a>
+      <a href="/" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <img alt="home" src="{{ url_for('static', filename='images/home.png') }}" style="width: 8%; height: auto; margin-right: 6%;"> Página inicial
+      </a>
+    </nav>
+
+    <p class="text-light fw-bold mb-3" style="font-size: 0.9rem;">Conversas anteriores:</p>
+
+    <div class="flex-grow-1">
+      <div class="d-flex align-items-center mb-3">
+        <img alt="dislike" src="{{ url_for('static', filename='images/dislike.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
+        <span class="small text-light" style="line-height: 1.2;">Chat sobre uma fake news</span>
+      </div>
+      <div class="d-flex align-items-center mb-3">
+        <img alt="like" src="{{ url_for('static', filename='images/like.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
+        <span class="small text-light" style="line-height: 1.2;">Chat sobre uma verdade</span>
+      </div>
+      <div class="d-flex align-items-center mb-3">
+        <img alt="neutro" src="{{ url_for('static', filename='images/neutro.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
+        <span class="small text-light" style="line-height: 1.2;">Chat sobre algo questionável</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4">
+
+    <!-- Botão de conta (canto superior direito) -->
+    <div class="position-absolute top-0 end-0 m-4">
+      <button id="btnConta">
+        <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" id="fotoConta">
+      </button>
+    </div>
+
+    <div class="center-wrap">
+
+      <!-- Logo + nome (igual ao index) -->
+      <div class="d-flex align-items-center justify-content-center mb-5">
+        <div class="text-start">
+          <h1 class="mb-0" style="font-size: 3.5rem; letter-spacing: 2px; font-family: 'Lora', sans-serif; font-weight: 100;">
+            ALETE<span class="text-success fw-bold">IA</span>
+          </h1>
+        </div>
+        <div>
+          <div class="d-flex justify-content-center" style="margin-bottom: 5%;">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width: 50%; height: auto;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Heading -->
+      <p class="fw-bold mb-4" style="font-size: 1.6rem;">Por onde começar?</p>
+
+      <!-- Input box -->
+      <div class="input-box">
+        <textarea
+          id="promptInput"
+          placeholder="Digite o que você quer descobrir a veracidade..."
+          rows="2"
+        ></textarea>
+        <div class="input-actions">
+          <!-- Botão anexar -->
+          <button class="btn-attach" title="Anexar arquivo">+</button>
+
+          <div class="input-right-btns">
+            <!-- Microfone -->
+            <button class="btn-mic" title="Falar">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+              </svg>
+            </button>
+
+            <!-- Enviar -->
+            <button class="btn-send" id="btnEnviar" title="Enviar" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"/>
+                <polyline points="5 12 12 5 19 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="aviso">
+        Aviso: a Aleteia pode cometer erros.<br>
+        Considere verificar informações importantes
+      </p>
+
+    </div>
+  </main>
+</div>
+
+<!-- Overlay -->
+<div class="popup-overlay" id="popupOverlay"></div>
+
+<!-- Popup conta -->
+<div class="popup-card" id="popupConta">
+  <button class="btn-voltar" id="btnVoltar">&#8592; Voltar</button>
+  <div class="d-flex flex-column align-items-center mb-3">
+    <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" class="popup-avatar">
+    <p class="popup-username">Olá, ContaTeste123</p>
+  </div>
+  <hr class="popup-divider">
+  <button class="popup-menu-item" onclick="window.location.href='/login'">
+    <img src="{{ url_for('static', filename='images/trocarConta.png') }}" alt="" style="width:22px;height:22px;object-fit:contain;">
+    Trocar de conta
+  </button>
+  <button class="popup-menu-item sair" onclick="localStorage.removeItem('token'); window.location.href='/login';">
+    <img src="{{ url_for('static', filename='images/deslogar.png') }}" alt="" style="width:22px;height:22px;object-fit:contain;">
+    Sair
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  /* ── Conta ── */
+  const btnConta  = document.getElementById("btnConta");
+  const fotoConta = document.getElementById("fotoConta");
+  const overlay   = document.getElementById("popupOverlay");
+  const popup     = document.getElementById("popupConta");
+  const btnVoltar = document.getElementById("btnVoltar");
+
+  const estaLogado = !!localStorage.getItem("token");
+  if (estaLogado) {
+    fotoConta.style.display = "block";
+    btnConta.addEventListener("click", () => {
+      overlay.classList.add("active");
+      popup.classList.add("active");
+    });
+  } else {
+    btnConta.addEventListener("click", () => window.location.href = "/cadastro");
+  }
+
+  function fecharPopup() {
+    overlay.classList.remove("active");
+    popup.classList.remove("active");
+  }
+  overlay.addEventListener("click", fecharPopup);
+  btnVoltar.addEventListener("click", fecharPopup);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") fecharPopup(); });
+
+  /* ── Input / Envio ── */
+  const textarea  = document.getElementById("promptInput");
+  const btnEnviar = document.getElementById("btnEnviar");
+
+  // Auto-resize textarea
+  textarea.addEventListener("input", () => {
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+
+    const hasText = textarea.value.trim().length > 0;
+    btnEnviar.disabled = !hasText;
+    btnEnviar.classList.toggle("active", hasText);
+  });
+
+  // Ctrl+Enter ou Enter (sem Shift) envia
+  textarea.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!btnEnviar.disabled) enviarMensagem();
+    }
+  });
+
+  btnEnviar.addEventListener("click", () => {
+    if (!btnEnviar.disabled) enviarMensagem();
+  });
+
+  function enviarMensagem() {
+    const prompt = textarea.value.trim();
+    if (!prompt) return;
+
+    // Salva o prompt e redireciona para a página de conversa
+    // A página de destino pode ler via sessionStorage ou query param
+    sessionStorage.setItem("promptInicial", prompt);
+
+    // Redireciona para /conversa com o prompt como query string (ambas as opções disponíveis)
+    const params = new URLSearchParams({ q: prompt });
+    window.location.href = "/conversa?" + params.toString();
+  }
+</script>
+</body>
+</html>

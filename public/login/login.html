@@ -149,7 +149,7 @@
       border-radius: 8px;
       width: 100%;
       padding: 0.75rem 1rem;
-      font-size: 0.95rem;
+      font-size: 1rem;
       color: #444;
       display: flex;
       align-items: center;
@@ -179,6 +179,12 @@
     /* ── Espaçamentos entre campos ── */
     .field-gap { margin-bottom: 1rem; }
   </style>
+  <style>body { visibility: hidden; }</style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.body.style.visibility = "visible";
+    });
+  </script>
 </head>
 <body>
 
@@ -227,7 +233,7 @@
     <!-- Botão Google -->
     <div class="field-gap">
       <button class="btn-social">
-        <span class="social-icon-placeholder">G</span>
+        <img src="{{ url_for('static', filename='images/google.png') }}" alt="google" style="height: auto; width: 10%">
         Continuar com Google
       </button>
     </div>
@@ -235,7 +241,7 @@
     <!-- Botão Microsoft -->
     <div class="field-gap mb-0">
       <button class="btn-social">
-        <span class="social-icon-placeholder">M</span>
+        <img src="{{ url_for('static', filename='images/microsoft.png') }}" alt="microsoft" style="height: auto; width: 10%;">
         Continuar com Microsoft
       </button>
     </div>
@@ -280,7 +286,7 @@
       if (response.ok) {
         // Armazena o token e redireciona
         localStorage.setItem("token", data.token);
-        window.location.href = "/logado";          // ajuste a rota de destino
+        window.location.href = "/";          // ajuste a rota de destino
       } else {
         feedback.textContent   = data.error || "Erro ao fazer login.";
         feedback.style.color   = "#e05555";

@@ -21,13 +21,15 @@ def cadastro():
 def index():
     return render_template("main/main.html")
 
-@app.route("/logado")
+@app.route("/chat")
 def logado():
-    return render_template("main/mainLogado.html")
+    return render_template("chat/chatIndex.html")
 
 @app.route("/login")
 def login_page():
     return render_template("login/login.html")
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -8,27 +8,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
   
   <style>
-    /* Cores personalizadas baseadas no seu layout do Figma */
     body {
-      background-color: #4b4b4b; /* Fundo principal mais claro */
-      color: #e0e0e0; /* Texto claro */
+      background-color: #4b4b4b;
+      color: #e0e0e0;
       font-family: 'Montserrat', sans-serif;
     }
     
     .sidebar {
-      background-color: #303030; /* Fundo da barra lateral escuro */
+      background-color: #303030;
       width: 260px;
       height: 100vh;
       overflow-y: auto;
       border-right: 1px solid #222;
     }
 
-    /* Scrollbar customizada para a barra lateral ficar igual ao print */
     .sidebar::-webkit-scrollbar { width: 8px; }
     .sidebar::-webkit-scrollbar-thumb { background-color: #666; border-radius: 4px; }
     
@@ -42,33 +38,94 @@
       border-color: #28a745;
       color: white;
     }
-    
-    .btn-custom-green:hover {
-      background-color: #218838;
-    }
+    .btn-custom-green:hover { background-color: #218838; }
 
-    /* ===== CLASSES DOS ESPAÇOS RESERVADOS PARA OS ÍCONES ===== */
     .icon-placeholder {
       display: inline-block;
       flex-shrink: 0;
-      border: 1px dashed #999; /* Borda temporária para você ver onde está */
+      border: 1px dashed #999;
       background-color: rgba(255,255,255,0.05);
     }
-    
-    .icon-sm { width: 24px; height: 24px; margin-right: 12px; } /* Ícones do menu */
-    .icon-md { width: 30px; height: 30px; } /* Ícone de configurações */
-    .icon-lg { width: 40px; height: 40px; border-radius: 50%; } /* Foto de perfil */
-    .icon-logo { width: 110px; height: 140px; margin-left: 20px;} /* Logo da mulher */
+    .icon-sm { width: 24px; height: 24px; margin-right: 12px; }
+    .icon-md { width: 30px; height: 30px; }
+    .icon-lg { width: 40px; height: 40px; border-radius: 50%; }
+    .icon-logo { width: 110px; height: 140px; margin-left: 20px; }
+
+    /* ── Botão de conta ── */
+    #btnConta {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #666;
+      overflow: hidden;
+      background-color: #666; /* círculo cinza quando deslogado */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s, border-color 0.2s;
+      padding: 0;
+    }
+    #btnConta:hover { opacity: 0.8; border-color: #aaa; }
+
+    /* Foto dentro do botão — escondida por padrão, JS exibe se logado */
+    #fotoConta {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    /* ── Overlay ── */
+    .popup-overlay {
+      position: fixed; inset: 0;
+      background-color: rgba(0,0,0,0.55);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .popup-overlay.active { opacity: 1; pointer-events: all; }
+
+    /* ── Popup card ── */
+    .popup-card {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -48%) scale(0.96);
+      z-index: 101;
+      background-color: #2a2a2a;
+      border-radius: 12px;
+      padding: 2rem 2.5rem 1.75rem;
+      width: 100%; max-width: 320px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .popup-card.active { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+
+    .popup-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #555; background-color: #444; }
+    .popup-username { font-size: 1rem; font-weight: 500; color: #e0e0e0; margin-top: 0.5rem; }
+    .btn-voltar { background: none; border: none; color: #aaa; font-size: 0.85rem; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-bottom: 1.25rem; transition: color 0.15s; }
+    .btn-voltar:hover { color: #fff; }
+    .popup-menu-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.7rem 0; border: none; background: none; width: 100%; text-align: left; color: #d0d0d0; font-size: 0.95rem; font-family: 'Montserrat', sans-serif; cursor: pointer; border-radius: 6px; transition: background-color 0.15s, color 0.15s; }
+    .popup-menu-item:hover { background-color: rgba(255,255,255,0.07); color: #fff; }
+    .popup-menu-item.sair { color: #e05555; }
+    .popup-menu-item.sair:hover { background-color: rgba(224,85,85,0.1); color: #ff6b6b; }
+    .popup-divider { border-color: #3a3a3a; margin: 0.25rem 0; }
   </style>
+  <style>body { visibility: hidden; }</style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.body.style.visibility = "visible";
+    });
+  </script>
 </head>
 <body>
 
   <div class="d-flex vh-100">
     
     <aside class="sidebar p-3 d-flex flex-column d-none d-md-flex">
-      
       <div class="mb-4">
-         <img alt="configurações" src="{{ url_for('static', filename='images/engrenagem.png') }}" style="width: 10%; height: auto;">
+        <img alt="configurações" src="{{ url_for('static', filename='images/engrenagem.png') }}" style="width: 10%; height: auto;">
       </div>
       
       <nav class="nav flex-column mb-4 fs-6">
@@ -86,29 +143,35 @@
       <p class="text-light fw-bold mb-3" style="font-size: 0.9rem;">Conversas anteriores:</p>
       
       <div class="flex-grow-1">
-        <div class="d-flex align-items-center mb-3" v>
+        <div class="d-flex align-items-center mb-3">
           <img alt="dislike" src="{{ url_for('static', filename='images/dislike.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
-          <span class="small text-light" style="line-height: 1.2;">Aquele cara adora carregar livros?</span>
+          <span class="small text-light" style="line-height: 1.2;">Chat sobre uma fake news</span>
         </div>
         <div class="d-flex align-items-center mb-3">
           <img alt="like" src="{{ url_for('static', filename='images/like.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
-          <span class="small text-light" style="line-height: 1.2;">Eu adoro carregar livros?</span>
+          <span class="small text-light" style="line-height: 1.2;">Chat sobre uma verdade</span>
         </div>
         <div class="d-flex align-items-center mb-3">
           <img alt="neutro" src="{{ url_for('static', filename='images/neutro.png') }}" style="width: 10%; height: auto; margin-right: 5%;">
-          <span class="small text-light" style="line-height: 1.2;">Pessoas gostam de carregar livros?</span>
+          <span class="small text-light" style="line-height: 1.2;">Chat sobre algo questionável</span>
         </div>
       </div>
     </aside>
 
     <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4">
       
+      <!-- Botão de conta (canto superior direito) -->
       <div class="position-absolute top-0 end-0 m-4">
-         <span class="icon-placeholder icon-lg"></span>
+        <button id="btnConta">
+          <img
+            src="{{ url_for('static', filename='images/contaimagem.png') }}"
+            alt="foto de perfil"
+            id="fotoConta"
+          >
+        </button>
       </div>
 
       <div style="max-width: 650px; width: 100%;">
-        
         <div class="d-flex align-items-center justify-content-center mb-5">
           <div class="text-start">
             <h2 class="fw-light mb-1 fs-3">Bem vindo à</h2>
@@ -117,7 +180,9 @@
             </h1>
           </div>
           <div>
-            <div class="d-flex justify-content-center" style="margin-bottom: 5%;"><img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width: 50%; height: auto;"></div>
+            <div class="d-flex justify-content-center" style="margin-bottom: 5%;">
+              <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width: 50%; height: auto;">
+            </div>
           </div>
         </div>
 
@@ -136,13 +201,13 @@
             <span class="fs-6 text-light opacity-75">Fazer perguntas sobre acontecimentos no Brasil</span>
           </div>
           <div class="d-flex align-items-center mb-3">
-             <img src="{{ url_for('static', filename='images/x.png') }}" alt="x" style="margin-right: 2%;">
+            <img src="{{ url_for('static', filename='images/x.png') }}" alt="x" style="margin-right: 2%;">
             <span class="fs-6 text-light opacity-75">Desmentir <i>fake news</i> e mentiras espalhadas na web</span>
           </div>
         </div>
 
         <div class="text-center mb-5">
-          <button class="btn btn-custom-green btn-lg px-5 py-2 fw-bold" style="border-radius: 4px;">
+          <button class="btn btn-custom-green btn-lg px-5 py-2 fw-bold" style="border-radius: 4px;" onclick="window.location.href='/chat'">
             COMECE AGORA!
           </button>
         </div>
@@ -151,11 +216,65 @@
           <p class="mb-0">Aviso: a Aleteia pode cometer erros.</p>
           <p>Considere verificar informações importantes</p>
         </div>
-        
       </div>
     </main>
   </div>
 
+  <!-- Overlay -->
+  <div class="popup-overlay" id="popupOverlay"></div>
+
+  <!-- Popup de conta (só abre se logado) -->
+  <div class="popup-card" id="popupConta">
+    <button class="btn-voltar" id="btnVoltar">
+      <span>&#8592;</span> Voltar
+    </button>
+    <div class="d-flex flex-column align-items-center mb-3">
+      <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" class="popup-avatar">
+      <p class="popup-username">Olá, ContaTeste123</p>
+    </div>
+    <hr class="popup-divider">
+    <button class="popup-menu-item" onclick="window.location.href='/login'">
+      <img src="{{ url_for('static', filename='images/trocarConta.png') }}" alt="trocarConta" style="height: auto; width: 9%; margin-left: 3%;">
+      Trocar de conta
+    </button>
+    <button class="popup-menu-item sair" onclick="localStorage.removeItem('token'); window.location.href='/login';">
+      <img src="{{ url_for('static', filename='images/deslogar.png') }}" alt="logout" style="height: auto; width: 9%; margin-left: 3%;">
+      Sair
+    </button>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const btnConta  = document.getElementById("btnConta");
+    const fotoConta = document.getElementById("fotoConta");
+    const overlay   = document.getElementById("popupOverlay");
+    const popup     = document.getElementById("popupConta");
+    const btnVoltar = document.getElementById("btnVoltar");
+
+    const estaLogado = !!localStorage.getItem("token");
+
+    if (estaLogado) {
+      // Logado: mostra a foto e abre o popup ao clicar
+      fotoConta.style.display = "block";
+      btnConta.addEventListener("click", () => {
+        overlay.classList.add("active");
+        popup.classList.add("active");
+      });
+    } else {
+      // Não logado: círculo cinza, clique vai para cadastro
+      btnConta.addEventListener("click", () => {
+        window.location.href = "/cadastro";
+      });
+    }
+
+    function fecharPopup() {
+      overlay.classList.remove("active");
+      popup.classList.remove("active");
+    }
+
+    overlay.addEventListener("click", fecharPopup);
+    btnVoltar.addEventListener("click", fecharPopup);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPopup(); });
+  </script>
 </body>
 </html>
