@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AleteIA - Página Inicial</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <style>
+    /* Cores personalizadas baseadas no seu layout do Figma */
+    body {
+      background-color: #4b4b4b; /* Fundo principal mais claro */
+      color: #e0e0e0; /* Texto claro */
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    .sidebar {
+      background-color: #303030; /* Fundo da barra lateral escuro */
+      width: 260px;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid #222;
+    }
+
+    /* Scrollbar customizada para a barra lateral ficar igual ao print */
+    .sidebar::-webkit-scrollbar { width: 8px; }
+    .sidebar::-webkit-scrollbar-thumb { background-color: #666; border-radius: 4px; }
+    
+    .main-content {
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .btn-custom-green {
+      background-color: #28a745;
+      border-color: #28a745;
+      color: white;
+    }
+    
+    .btn-custom-green:hover {
+      background-color: #218838;
+    }
+
+    /* ===== CLASSES DOS ESPAÇOS RESERVADOS PARA OS ÍCONES ===== */
+    .icon-placeholder {
+      display: inline-block;
+      flex-shrink: 0;
+      border: 1px dashed #999; /* Borda temporária para você ver onde está */
+      background-color: rgba(255,255,255,0.05);
+    }
+    
+    .icon-sm { width: 24px; height: 24px; margin-right: 12px; } /* Ícones do menu */
+    .icon-md { width: 30px; height: 30px; } /* Ícone de configurações */
+    .icon-lg { width: 40px; height: 40px; border-radius: 50%; } /* Foto de perfil */
+    .icon-logo { width: 110px; height: 140px; margin-left: 20px;} /* Logo da mulher */
+  </style>
+</head>
+<body>
+
+  <div class="d-flex vh-100">
+    
+    <aside class="sidebar p-3 d-flex flex-column d-none d-md-flex">
+      
+      <div class="mb-4">
+         <span class="icon-placeholder icon-md"></span>
+      </div>
+      
+      <nav class="nav flex-column mb-4 fs-6">
+        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+          <span class="icon-placeholder icon-sm"></span> Nova conversa
+        </a>
+        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+          <span class="icon-placeholder icon-sm"></span> Pesquisar conversas
+        </a>
+        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+          <span class="icon-placeholder icon-sm"></span> Página inicial
+        </a>
+      </nav>
+
+      <p class="text-light fw-bold mb-3" style="font-size: 0.9rem;">Conversas anteriores:</p>
+      
+      <div class="flex-grow-1">
+        <div class="d-flex align-items-start mb-3">
+          <span class="icon-placeholder icon-sm border-danger"></span>
+          <span class="small text-light" style="line-height: 1.2;">Aquele cara adora carregar livros?</span>
+        </div>
+        <div class="d-flex align-items-start mb-3">
+          <span class="icon-placeholder icon-sm border-success"></span>
+          <span class="small text-light" style="line-height: 1.2;">Eu adoro carregar livros?</span>
+        </div>
+        <div class="d-flex align-items-start mb-3">
+          <span class="icon-placeholder icon-sm border-warning"></span>
+          <span class="small text-light" style="line-height: 1.2;">Pessoas gostam de carregar livros?</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4">
+      
+      <div class="position-absolute top-0 end-0 m-4">
+         <span class="icon-placeholder icon-lg"></span>
+      </div>
+
+      <div style="max-width: 650px; width: 100%;">
+        
+        <div class="d-flex align-items-center justify-content-center mb-5">
+          <div class="text-end">
+            <h2 class="fw-light mb-1 fs-3">Bem vindo à</h2>
+            <h1 class="mb-0" style="font-size: 3.5rem; letter-spacing: 2px;">
+              ALETE<span class="text-success fw-bold">IA</span>
+            </h1>
+          </div>
+          <div>
+            <span class="icon-placeholder icon-logo"></span>
+          </div>
+        </div>
+
+        <p class="fs-5 mb-4 text-center text-light opacity-75">
+          Este é o site oficial da inteligência artificial Aleteia.
+        </p>
+        <p class="fs-5 mb-4 text-light">Aqui você pode:</p>
+
+        <div class="d-flex flex-column mb-5 px-md-3">
+          <div class="d-flex align-items-center mb-3">
+            <span class="icon-placeholder icon-sm"></span>
+            <span class="fs-6 text-light opacity-75">Verificar a veracidade de notícias da política, economia e saúde</span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <span class="icon-placeholder icon-sm"></span>
+            <span class="fs-6 text-light opacity-75">Fazer perguntas sobre acontecimentos no Brasil</span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <span class="icon-placeholder icon-sm"></span>
+            <span class="fs-6 text-light opacity-75">Desmentir <i>fake news</i> e mentiras espalhadas na web</span>
+          </div>
+        </div>
+
+        <div class="text-center mb-5">
+          <button class="btn btn-custom-green btn-lg px-5 py-2 fw-bold" style="border-radius: 4px;">
+            COMECE AGORA!
+          </button>
+        </div>
+
+        <div class="text-center text-light opacity-50" style="font-size: 0.85rem;">
+          <p class="mb-0">Aviso: a Aleteia pode cometer erros.</p>
+          <p>Considere verificar informações importantes</p>
+        </div>
+        
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
