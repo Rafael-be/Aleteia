@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ALETEIA — Login</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+  <style>   
+    /* ── Variáveis de tema ── */
+    :root {
+      --bg:           #4a4a4a;
+      --card-bg:      #4a4a4a;
+      --input-bg:     #d4d4d4;
+      --input-text:   #555;
+      --input-border: transparent;
+      --btn-green:    #3a9c4e;
+      --btn-green-hover: #2e8040;
+      --text-white:   #ffffff;
+      --text-light:   #e0e0e0;
+      --text-muted:   #c0c0c0;
+      --link-green:   #3a9c4e;
+      --social-bg:    #d4d4d4;
+      --social-border:transparent;
+    }
+
+    /* ── Reset / Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+    }
+
+    /* ── Card central ── */
+    .login-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 3rem 3.5rem 3.5rem;
+      background-color: var(--card-bg);
+      border-radius: 0;          /* sem borda arredondada, igual ao Figma */
+    }
+
+    /* ── Ícone / Logo ── */
+    .logo-icon {
+        max-width: 120px;   /* tamanho máximo — ajuste como quiser */
+        width: 100%;        /* encolhe em telas menores */
+        margin: 0 auto 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* Cole sua imagem assim:
+       <div class="logo-icon">
+         <img src="seu-icone.png" alt="ALETEIA" style="width:100%;height:100%;object-fit:contain;">
+       </div>
+    */
+
+    /* ── Título ── */
+    .brand-name {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text-white);
+      text-align: center;
+      margin-bottom: 0.1rem;
+    }
+    .brand-name span {
+      color: var(--btn-green);   /* "IA" em verde */
+    }
+
+    .brand-subtitle {
+      font-size: 1.5rem;
+      font-weight: 300;
+      color: var(--text-light);
+      /* text-align: center; */
+      margin-bottom: 1rem;
+    }
+
+    /* ── Inputs ── */
+    .form-control-custom {
+      background-color: var(--input-bg);
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem 1.1rem;
+      font-size: 1rem;
+      color: var(--input-text);
+      width: 100%;
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+    .form-control-custom::placeholder { color: var(--input-text); }
+    .form-control-custom:focus {
+      box-shadow: 0 0 0 3px rgba(58,156,78,0.4);
+      background-color: var(--input-bg);
+    }
+
+    /* ── Botão principal ── */
+    .btn-entrar {
+      background-color: var(--btn-green);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn-entrar:hover  { background-color: var(--btn-green-hover); }
+    .btn-entrar:active { transform: scale(0.99); }
+
+    /* ── Link de cadastro ── */
+    .signup-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .signup-text a {
+      color: var(--link-green);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .signup-text a:hover { text-decoration: underline; }
+
+    /* ── Botões sociais ── */
+    .btn-social {
+      background-color: var(--social-bg);
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      color: #444;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn-social:hover { background-color: #bebebe; }
+
+    /* Placeholder para os ícones sociais */
+    .social-icon-placeholder {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1.5px dashed #888;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      color: #888;
+      flex-shrink: 0;
+    }
+    /* Quando for inserir o ícone real, substitua .social-icon-placeholder por:
+       <img src="google-icon.svg" alt="Google" width="24" height="24">
+    */
+
+    /* ── Espaçamentos entre campos ── */
+    .field-gap { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+
+    <!-- Logo (ícone) -->
+    <div class="logo-icon">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width: 80%; height: auto;">
+    </div>
+
+    <!-- Nome da marca -->
+    <p class="brand-name">ALETE<span>IA</span></p>
+    <p class="brand-subtitle">Entre na sua conta</p>
+
+    <!-- Formulário -->
+    <div class="field-gap">
+      <input
+        type="email"
+        id="inputEmail"
+        class="form-control-custom"
+        placeholder="Endereço de e-mail"
+        autocomplete="email"
+      />
+    </div>
+
+    <div class="field-gap">
+      <input
+        type="password"
+        id="inputSenha"
+        class="form-control-custom"
+        placeholder="Senha"
+        autocomplete="current-password"
+      />
+    </div>
+
+    <div class="field-gap mt-2">
+      <button class="btn-entrar" id="btnEntrar">Entrar</button>
+      <div id="loginFeedback" class="signup-text mt-2" style="display:none;"></div>
+    </div>
+
+    <!-- Link cadastro -->
+    <p class="signup-text mb-3">
+      Não possui conta? <a href="/cadastro">Cadastro</a>
+    </p>
+
+    <!-- Botão Google -->
+    <div class="field-gap">
+      <button class="btn-social">
+        <span class="social-icon-placeholder">G</span>
+        Continuar com Google
+      </button>
+    </div>
+
+    <!-- Botão Microsoft -->
+    <div class="field-gap mb-0">
+      <button class="btn-social">
+        <span class="social-icon-placeholder">M</span>
+        Continuar com Microsoft
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Bootstrap JS (opcional para este template) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  document.getElementById("btnEntrar").addEventListener("click", async () => {
+    const email    = document.getElementById("inputEmail").value.trim();
+    const password = document.getElementById("inputSenha").value;
+    const feedback = document.getElementById("loginFeedback");
+    const btn      = document.getElementById("btnEntrar");
+
+    // Limpa feedback anterior
+    feedback.style.display = "none";
+    feedback.style.color   = "";
+    feedback.textContent   = "";
+
+    // Validação básica no front
+    if (!email || !password) {
+      feedback.textContent   = "Preencha e-mail e senha.";
+      feedback.style.color   = "#e05555";
+      feedback.style.display = "block";
+      return;
+    }
+
+    // Bloqueia botão durante a requisição
+    btn.disabled     = true;
+    btn.textContent  = "Entrando…";
+
+    try {
+      const response = await fetch("/api/users/login", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Armazena o token e redireciona
+        localStorage.setItem("token", data.token);
+        window.location.href = "/";          // ajuste a rota de destino
+      } else {
+        feedback.textContent   = data.error || "Erro ao fazer login.";
+        feedback.style.color   = "#e05555";
+        feedback.style.display = "block";
+      }
+
+    } catch (err) {
+      feedback.textContent   = "Não foi possível conectar ao servidor.";
+      feedback.style.color   = "#e05555";
+      feedback.style.display = "block";
+
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = "Entrar";
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,164 +1,248 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aleteia - Cadastro</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <style>
-        body {
-            font-family: 'Open Sans', sans-serif;
-            background-color: #363636;
-            color: #ffffff;
-        }
-        .text-aleteia-green {
-            color: #15a04a;
-        }
-        .form-control-custom {
-            background-color: #d9d9d9;
-            color: #363636;
-            border: none;
-            border-radius: 5px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-        }
-        .form-control-custom::placeholder {
-            color: #6c757d;
-        }
-        .btn-aleteia-green {
-            background-color: #15a04a;
-            color: #ffffff;
-            border: none;
-            border-radius: 5px;
-            padding: 12px;
-            width: 100%;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        .btn-aleteia-green:hover {
-            background-color: #117d3a;
-        }
-        .login-link {
-            text-decoration: none;
-            color: #ffffff;
-        }
-        .login-link a {
-            color: #0d6efd;
-            text-decoration: none;
-        }
-        .login-link a:hover {
-            text-decoration: underline;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ALETEIA — Cadastro</title>
 
-        /* Feedback de erro/sucesso */
-        .alert-custom {
-            border-radius: 5px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-            display: none;
-        }
-        .alert-error {
-            background-color: #f8d7da;
-            color: #842029;
-        }
-        .alert-success {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-    </style>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ── Variáveis de tema ── */
+    :root {
+      --bg:              #4a4a4a;
+      --card-bg:         #4a4a4a;
+      --input-bg:        #d4d4d4;
+      --input-text:      #555;
+      --input-border:    transparent;
+      --btn-green:       #3a9c4e;
+      --btn-green-hover: #2e8040;
+      --text-white:      #ffffff;
+      --text-light:      #e0e0e0;
+      --text-muted:      #c0c0c0;
+      --link-green:      #3a9c4e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+    }
+
+    /* ── Card central ── */
+    .login-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 3rem 3.5rem 3.5rem;
+      background-color: var(--card-bg);
+      border-radius: 0;
+    }
+
+    /* ── Logo ── */
+    .logo-icon {
+      max-width: 120px;
+      width: 100%;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Títulos ── */
+    .brand-name {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text-white);
+      text-align: center;
+      margin-bottom: 0.1rem;
+    }
+    .brand-name span { color: var(--btn-green); }
+
+    .brand-subtitle {
+      font-size: 1.5rem;
+      font-weight: 300;
+      color: var(--text-light);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Inputs ── */
+    .form-control-custom {
+      background-color: var(--input-bg);
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem 1.1rem;
+      font-size: 1rem;
+      color: var(--input-text);
+      width: 100%;
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+    .form-control-custom::placeholder { color: var(--input-text); }
+    .form-control-custom:focus {
+      box-shadow: 0 0 0 3px rgba(58,156,78,0.4);
+      background-color: var(--input-bg);
+    }
+
+    /* ── Botão principal ── */
+    .btn-entrar {
+      background-color: var(--btn-green);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn-entrar:hover    { background-color: var(--btn-green-hover); }
+    .btn-entrar:active   { transform: scale(0.99); }
+    .btn-entrar:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    /* ── Links e textos secundários ── */
+    .signup-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .signup-text a {
+      color: var(--link-green);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .signup-text a:hover { text-decoration: underline; }
+
+    /* ── Espaçamentos ── */
+    .field-gap { margin-bottom: 1rem; }
+  </style>
 </head>
-<body class="d-flex vh-100 justify-content-center align-items-center">
+<body>
 
-    <div class="container d-flex flex-column align-items-center p-3 m-auto w-100" style="max-width: 400px;">
+  <div class="login-card">
 
-        <div class="text-center mb-4">
-            <img src="https://via.placeholder.com/150x150.png?text=Aleteia+IA+Logo" alt="Aleteia Logo" class="img-fluid" style="width: 100px;">
-        </div>
-
-        <h2 class="text-white text-center mb-2" style="font-size: 2.5rem; font-weight: bold;">ALETE<span class="text-aleteia-green">IA</span></h2>
-
-        <h1 class="text-white text-center mb-4" style="font-size: 2.2rem; font-weight: normal;">Crie sua conta</h1>
-
-        <!-- Mensagens de feedback -->
-        <div id="feedback" class="alert-custom w-100"></div>
-
-        <form id="registerForm" class="w-100 p-0 m-0">
-            <div class="mb-3">
-                <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="Endereço de e-mail" required>
-            </div>
-            <div class="mb-3">
-                <input type="password" class="form-control form-control-custom" id="password" name="password" placeholder="Senha" required>
-            </div>
-            <div class="mb-4">
-                <input type="password" class="form-control form-control-custom" id="confirm_password" name="confirm_password" placeholder="Confirmar Senha" required>
-            </div>
-            <div class="text-center">
-                <button type="submit" class="btn btn-aleteia-green" id="submitBtn">CRIAR CONTA</button>
-            </div>
-        </form>
-
-        <p class="login-link text-center mt-3 fs-6">Já possui conta? <a href="#">Login</a></p>
-
+    <!-- Logo -->
+    <div class="logo-icon">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width: 80%; height: auto;">
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Nome da marca -->
+    <p class="brand-name">ALETE<span>IA</span></p>
+    <p class="brand-subtitle">Crie sua conta</p>
 
-    <script>
-        const form = document.getElementById('registerForm');
-        const feedback = document.getElementById('feedback');
-        const submitBtn = document.getElementById('submitBtn');
+    <!-- Formulário -->
+    <div class="field-gap">
+      <input
+        type="email"
+        id="email"
+        class="form-control-custom"
+        placeholder="Endereço de e-mail"
+        autocomplete="email"
+      />
+    </div>
 
-        form.addEventListener('submit', async function (e) {
-            e.preventDefault(); // Impede o envio tradicional do formulário
+    <div class="field-gap">
+      <input
+        type="password"
+        id="password"
+        class="form-control-custom"
+        placeholder="Senha"
+        autocomplete="new-password"
+      />
+    </div>
 
-            // Reseta feedback
-            feedback.style.display = 'none';
-            feedback.className = 'alert-custom w-100';
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Cadastrando...';
+    <div class="field-gap">
+      <input
+        type="password"
+        id="confirm_password"
+        class="form-control-custom"
+        placeholder="Confirmar senha"
+        autocomplete="new-password"
+      />
+    </div>
 
-            const payload = {
-                email: document.getElementById('email').value.trim(),
-                password: document.getElementById('password').value,
-                confirm_password: document.getElementById('confirm_password').value
-            };
+    <div class="field-gap mt-2">
+      <button id="btnCadastrar" class="btn-entrar">Criar Conta</button>
+      <div id="cadastroFeedback" class="signup-text mt-2" style="display:none;"></div>
+    </div>
 
-            try {
-                const response = await fetch('/api/users/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+    <!-- Link login -->
+    <p class="signup-text mb-0">
+      Já possui conta? <a href="/login">Login</a>
+    </p>
 
-                const data = await response.json();
+  </div>
 
-                if (response.ok) {
-                    // Sucesso
-                    feedback.classList.add('alert-success');
-                    feedback.textContent = data.message || 'Cadastro realizado com sucesso!';
-                    feedback.style.display = 'block';
-                    form.reset();
-                } else {
-                    // Erro vindo da API (validação, e-mail duplicado, etc.)
-                    feedback.classList.add('alert-error');
-                    feedback.textContent = data.error || 'Erro ao realizar cadastro.';
-                    feedback.style.display = 'block';
-                }
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-            } catch (error) {
-                // Erro de conexão com o servidor
-                feedback.classList.add('alert-error');
-                feedback.textContent = 'Não foi possível conectar ao servidor. Tente novamente.';
-                feedback.style.display = 'block';
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'CRIAR CONTA';
-            }
+  <script>
+    const feedback     = document.getElementById('cadastroFeedback');
+    const btnCadastrar = document.getElementById('btnCadastrar');
+
+    function showFeedback(message, color) {
+      feedback.textContent   = message;
+      feedback.style.color   = color;
+      feedback.style.display = 'block';
+    }
+
+    btnCadastrar.addEventListener('click', async () => {
+      const email            = document.getElementById('email').value.trim();
+      const password         = document.getElementById('password').value;
+      const confirm_password = document.getElementById('confirm_password').value;
+
+      // Reseta feedback
+      feedback.style.display = 'none';
+      feedback.textContent   = '';
+
+      if (!email || !password || !confirm_password) {
+        showFeedback('Preencha todos os campos.', '#e05555');
+        return;
+      }
+
+      btnCadastrar.disabled    = true;
+      btnCadastrar.textContent = 'Cadastrando…';
+
+      try {
+        const response = await fetch('/api/users/register', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email, password, confirm_password }),
         });
-    </script>
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showFeedback(data.message || 'Cadastro realizado com sucesso!', '#3a9c4e');
+          document.getElementById('email').value            = '';
+          document.getElementById('password').value         = '';
+          document.getElementById('confirm_password').value = '';
+        } else {
+          showFeedback(data.error || 'Erro ao realizar cadastro.', '#e05555');
+        }
+
+      } catch (err) {
+        showFeedback('Não foi possível conectar ao servidor.', '#e05555');
+
+      } finally {
+        btnCadastrar.disabled    = false;
+        btnCadastrar.textContent = 'Criar Conta';
+      }
+    });
+  </script>
 
 </body>
 </html>
