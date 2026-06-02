@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-app = Flask(__name__, template_folder="public")
+app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
 
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("MONGO_DB_NAME")]
@@ -19,7 +19,7 @@ def cadastro():
 
 @app.route("/")
 def index():
-    return render_template("main/main.html")
+    return render_template("main/main-desktop.html")
 
 @app.route("/chat")
 def logado():
