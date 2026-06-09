@@ -1,0 +1,102 @@
+/* =====================================================
+   auth.css — Estilos de login e cadastro
+   Usado por: login/login.html, cadastroTeste/cadastro.html
+   ===================================================== */
+
+body.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 3rem 3.5rem 3.5rem;
+  background-color: var(--bg);
+  border-radius: 0;
+}
+
+.logo-icon {
+  max-width: 120px;
+  width: 100%;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-name {
+  font-family: 'Lora', serif;
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+  color: var(--text-white);
+  text-align: center;
+  margin-bottom: 0.1rem;
+}
+.brand-name span { color: var(--btn-green-alt); }
+
+.brand-subtitle {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--text-light);
+  margin-bottom: 1rem;
+}
+
+.form-control-custom {
+  background-color: var(--input-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  font-size: 1rem;
+  color: var(--input-text);
+  width: 100%;
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+.form-control-custom::placeholder { color: var(--input-text); }
+.form-control-custom:focus {
+  box-shadow: 0 0 0 3px rgba(58, 156, 78, 0.4);
+  background-color: var(--input-bg);
+}
+
+.btn-entrar {
+  background-color: var(--btn-green-alt);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 100%;
+  padding: 0.9rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+.btn-entrar:hover    { background-color: var(--btn-green-alt-hover); }
+.btn-entrar:active   { transform: scale(0.99); }
+.btn-entrar:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.btn-social {
+  background-color: var(--input-bg);
+  border: none;
+  border-radius: 8px;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-social:hover { background-color: #bebebe; }
+
+.signup-text { font-size: 0.9rem; color: var(--text-muted); }
+.signup-text a { color: var(--btn-green-alt); text-decoration: none; font-weight: 500; }
+.signup-text a:hover { text-decoration: underline; }
+
+.field-gap { margin-bottom: 1rem; }

@@ -2,6 +2,7 @@ from flask import Flask, render_template
 from pymongo import MongoClient
 from src.routes.userRoutes import user_routes
 from dotenv import load_dotenv
+from src.routes.chatRoutes import chat_routes
 import os
 
 load_dotenv()
@@ -12,6 +13,8 @@ client = MongoClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("MONGO_DB_NAME")]
 
 app.register_blueprint(user_routes(db))
+
+app.register_blueprint(chat_routes(db)) 
 
 @app.route("/cadastro")
 def cadastro():
