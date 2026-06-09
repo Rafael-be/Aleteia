@@ -19,6 +19,8 @@ class UserController:
     # ------------------------------------------------------------------
 
     def register(self):
+        print("REGISTER CHAMADO")
+
         """
         Endpoint de cadastro de usuário.
 
