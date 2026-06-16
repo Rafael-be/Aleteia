@@ -1,17 +1,43 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect, url_for, jsonify
 from pymongo import MongoClient
 from src.routes.userRoutes import user_routes
 from dotenv import load_dotenv
+from functools import wraps
 import os
 
 load_dotenv()
 
 app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
 
+# SECRET_KEY é obrigatório para sessões Flask funcionarem
+app.secret_key = os.getenv("SECRET_KEY", "criptografia123")
+
+# Configurações de segurança do cookie de sessão
+app.config["SESSION_COOKIE_HTTPONLY"] = True   # JS não consegue ler o cookie
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Proteção contra CSRF básica
+# app.config["SESSION_COOKIE_SECURE"] = True   # Descomente em produção (HTTPS)
+
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("MONGO_DB_NAME")]
 
 app.register_blueprint(user_routes(db))
+
+
+# ------------------------------------------------------------------
+# Decorator: protege rotas que exigem login
+# ------------------------------------------------------------------
+def login_required(f):
+    """
+    Use @login_required em qualquer rota que precise de autenticação.
+    Redireciona para /login se o usuário não estiver logado.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login_page"))
+        return f(*args, **kwargs)
+    return decorated
+
 
 @app.route("/cadastro")
 def cadastro():
@@ -22,6 +48,7 @@ def index():
     return render_template("main/main-desktop.html")
 
 @app.route("/chat")
+@login_required          # ← protege a rota /chat
 def logado():
     return render_template("chat/chatIndex.html")
 
@@ -29,6 +56,22 @@ def logado():
 def login_page():
     return render_template("login/login.html")
 
+@app.route("/logout", methods=["POST"])
+def logout():
+    """Encerra a sessão do servidor e redireciona para a página inicial."""
+    session.clear()
+    return redirect(url_for("index"))
+
+@app.route("/api/session-status")
+def session_status():
+    """Retorna se o usuário está logado e seus dados básicos (usado pelo JS)."""
+    if "user_id" in session:
+        return jsonify({
+            "logado": True,
+            "email": session.get("email"),
+            "user_id": session.get("user_id")
+        })
+    return jsonify({"logado": False})
 
 
 if __name__ == "__main__":

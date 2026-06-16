@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, session
 from src.models.userModel import UserModel
 from datetime import datetime, timezone
 import jwt
@@ -45,6 +45,10 @@ class UserController:
 
             # Delega criação ao modelo (validações + hash + insert)
             result = self.user_model.create_user(email, password, confirm_password)
+
+            # Inicia sessão server-side após cadastro
+            session["user_id"] = result["id"]
+            session["email"]   = email
 
             return jsonify({
                 "message": "Usuário cadastrado com sucesso.",
@@ -102,6 +106,10 @@ class UserController:
             # Gera o JWT token
             token = self._generate_token(str(user["_id"]), user["email"])
 
+            # Inicia sessão server-side
+            session["user_id"] = str(user["_id"])
+            session["email"]   = user["email"]
+
             return jsonify({
                 "message": "Login realizado com sucesso.",
                 "token": token
@@ -126,7 +134,7 @@ class UserController:
         :param email: E-mail do usuário.
         :return: Token JWT assinado.
         """
-        secret_key = os.getenv("JWT_SECRET_KEY", "troque-essa-chave-no-env")
+        secret_key = os.getenv("JWT_SECRET_KEY", "criptografia123")
 
         payload = {
             "sub": user_id,
