@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         const data = await res.json();
         // 2. Somente após salvar, adiciona no aside
-        adicionarItemNoAside(data.chat);
+        window.adicionarItemNoAside(data.chat);
       }
     } catch (err) {
       console.error("Falha na requisição de salvar prompt:", err);
@@ -69,36 +69,5 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "/conversa?" + params.toString();
   }
 
-  /* ── Adiciona item na lista do aside ── */
-  function adicionarItemNoAside(chat) {
-    const lista = document.getElementById("listaConversas");
-    if (!lista) return;
-
-    const item = document.createElement("li");
-    item.textContent  = chat.prompt.substring(0, 40) + (chat.prompt.length > 40 ? "…" : "");
-    item.dataset.id   = chat._id;
-    item.style.cursor = "pointer";
-    lista.prepend(item);
-  }
-
-  /* ── Carrega histórico do banco ao abrir a página ── */
-  async function carregarHistorico() {
-    if (!token) return;
-
-    try {
-      const res = await fetch("/api/chat/prompts", {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-
-      if (!res.ok) return;
-
-      const data = await res.json();
-      data.prompts.forEach((chat) => adicionarItemNoAside(chat));
-    } catch (err) {
-      console.error("Erro ao carregar histórico:", err);
-    }
-  }
-
-  carregarHistorico();
 
 });

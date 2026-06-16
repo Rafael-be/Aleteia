@@ -89,19 +89,3 @@
   font-size: 0.85rem;
   line-height: 1.7;
 }
-
-/* ── Lista de conversas no aside ── */
-#listaConversas li {
-  padding: 0.4rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: var(--text-light);
-  transition: background-color 0.15s;
-  margin-bottom: 0.25rem;
-}
-#listaConversas li:hover { background-color: rgba(255,255,255,0.07); }
-
-/* ── Responsivo: esconde sidebar em mobile ── */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-}
