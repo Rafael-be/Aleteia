@@ -62,29 +62,30 @@ Por padrão, o Flask inicia em `http://127.0.0.1:5000`.
 
 ```text
 Aleteia/
-├── app.py
-├── README.md
-├── requirements.txt
-├── Exemplo.env
-├── css/
-│   ├── style.css
-│   ├── auth.css
-│   └── chat.css
-├── images/
-├── js/
-│   ├── main.js
-│   ├── auth.js
-│   └── chat.js
-├── public/
-│   ├── main/
-│   ├── login/
-│   ├── cadastroTeste/
-│   ├── chat/
-│   └── index/
-└── src/
-    ├── controller/
-    ├── models/
-    └── routes/
+├── app.py                  # Arquivo principal: inicia o Flask, conecta ao MongoDB e registra as rotas.
+├── README.md               # Documentação central do projeto.
+├── requirements.txt        # Lista de bibliotecas Python necessárias para rodar o projeto.
+├── Exemplo.env             # Modelo das variáveis de ambiente usadas pela aplicação.
+├── manifest.json           # Configuração inicial da extensão, ainda em fase de protótipo.
+├── css/                    # Arquivos de estilo das páginas.
+│   ├── style.css           # Estilos globais compartilhados entre as telas.
+│   ├── auth.css            # Estilos específicos das telas de login e cadastro.
+│   └── chat.css            # Estilos específicos da tela de chat.
+├── images/                 # Imagens, ícones e logos usados na interface.
+├── js/                     # Scripts responsáveis pelas interações do frontend.
+│   ├── main.js             # Controla popup de conta, menu mobile e logout.
+│   ├── auth.js             # Controla login, cadastro e armazenamento do token JWT.
+│   └── chat.js             # Controla envio de prompts e carregamento do histórico.
+├── public/                 # Páginas HTML renderizadas pelo Flask.
+│   ├── main/               # Página inicial do site.
+│   ├── login/              # Página de login.
+│   ├── cadastroTeste/      # Página de cadastro.
+│   ├── chat/               # Página principal do chat.
+│   └── index/              # Popup da extensão em protótipo.
+└── src/                    # Código backend organizado por responsabilidade.
+    ├── controller/         # Recebe requisições, valida dados e chama os models.
+    ├── models/             # Regras de dados e comunicação com o MongoDB.
+    └── routes/             # Define os endpoints da API e liga URLs aos controllers.
 ```
 
 ## Páginas
