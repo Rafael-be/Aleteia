@@ -1,30 +1,32 @@
+"""
+Módulo de Rotas de Usuário.
+
+Este módulo registra as rotas da API relacionadas à autenticação e ao
+gerenciamento de usuários. As URLs são agrupadas pelo prefixo /api/users
+e encaminhadas para os métodos do UserController.
+"""
+
 from flask import Blueprint
+
 from src.controller.userController import UserController
 
 
-def user_routes(db):
+def user_routes(db) -> Blueprint:
     """
-    Registra as rotas de usuário em um Blueprint Flask.
+    Cria e configura o Blueprint de rotas para usuários.
 
-    :param db: Instância do banco de dados MongoDB.
-    :return: Blueprint com as rotas configuradas.
+    Endpoints registrados:
+    - POST /api/users/register: cadastra um novo usuário.
+    - POST /api/users/login: autentica um usuário e retorna um token JWT.
+
+    :param db: Instância do banco de dados MongoDB (pymongo.database.Database).
+               Ela é injetada no UserController para manipulação dos dados.
+    :return: Blueprint configurado para registro na aplicação Flask principal.
     """
     user_bp = Blueprint("user", __name__, url_prefix="/api/users")
-
     controller = UserController(db)
 
-    # POST /api/users/register
-    user_bp.add_url_rule(
-        "/register",
-        view_func=controller.register,
-        methods=["POST"]
-    )
-
-    # POST /api/users/login
-    user_bp.add_url_rule(
-        "/login",
-        view_func=controller.login,
-        methods=["POST"]
-    )
+    user_bp.add_url_rule("/register", view_func=controller.register, methods=["POST"])
+    user_bp.add_url_rule("/login", view_func=controller.login, methods=["POST"])
 
     return user_bp

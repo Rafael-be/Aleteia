@@ -1,7 +1,14 @@
+"""
+Módulo de Gerenciamento de Usuários.
+
+Este módulo contém a classe UserModel, responsável por interagir com o MongoDB,
+realizar validações de e-mail e senha, e aplicar criptografia (bcrypt) 
+para o armazenamento seguro das credenciais.
+"""
+
 import bcrypt
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
-
 
 class UserModel:
     """
