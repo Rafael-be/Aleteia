@@ -8,6 +8,8 @@ do ChatController.
 
 from flask import Blueprint
 
+from src.controller.gemini_controller import responder_controller
+
 from src.controller.chatController import ChatController
 
 
@@ -31,5 +33,12 @@ def chat_routes(db) -> Blueprint:
 
     chat_bp.add_url_rule("/prompt", view_func=controller.save_prompt, methods=["POST"])
     chat_bp.add_url_rule("/prompts", view_func=controller.get_prompts, methods=["GET"])
-
+    
     return chat_bp
+
+# Ajuste o nome do Blueprint e o url_prefix se necessário
+gemini_bp = Blueprint("gemini", __name__, url_prefix="/api")
+
+@gemini_bp.route("/chat/responder", methods=["POST"])
+def responder():
+    return responder_controller()

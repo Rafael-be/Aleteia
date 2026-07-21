@@ -36,38 +36,62 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* ── Enviar prompt ── */
-  async function enviarMensagem() {
+// Gera ID de sessão único por aba do navegador
+const sessaoId = crypto.randomUUID();
+
+async function enviarMensagem() {
     const prompt = textarea.value.trim();
     if (!prompt) return;
 
-    // 1. Salva no banco antes de qualquer outra coisa
-    try {
-      const res = await fetch("/api/chat/prompt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ prompt })
-      });
+    // Desabilita input enquanto processa
+    textarea.disabled = true;
+    btnEnviar.disabled = true;
+    btnEnviar.classList.remove("active");
 
-      if (!res.ok) {
-        console.error("Erro ao salvar prompt no banco.");
-        // Continua mesmo assim para não travar o usuário
-      } else {
-        const data = await res.json();
-        // 2. Somente após salvar, adiciona no aside
-        window.adicionarItemNoAside(data.chat);
-      }
+    // 1. Salva no banco (igual ao que você já fazia)
+    try {
+        const res = await fetch("/api/chat/prompt", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ prompt })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            window.adicionarItemNoAside(data.chat);
+        }
     } catch (err) {
-      console.error("Falha na requisição de salvar prompt:", err);
+        console.error("Erro ao salvar prompt:", err);
     }
 
-    // 3. Fluxo original: sessionStorage + redirect
-    sessionStorage.setItem("promptInicial", prompt);
-    const params = new URLSearchParams({ q: prompt });
-    window.location.href = "/conversa?" + params.toString();
-  }
+    // 2. Chama a Aleteia (NOVO)
+    try {
+        const res = await fetch("/api/chat/responder", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ mensagem: prompt, sessaoId })
+        });
+
+        const data = await res.json();
+
+        // 3. Leva a resposta para a página /conversa via sessionStorage
+        sessionStorage.setItem("promptInicial", prompt);
+        sessionStorage.setItem("respostaIA", data.resposta || data.erro || "Sem resposta.");
+        window.location.href = "/conversa?" + new URLSearchParams({ q: prompt });
+
+    } catch (err) {
+        console.error("Erro ao obter resposta da IA:", err);
+        sessionStorage.setItem("promptInicial", prompt);
+        sessionStorage.setItem("respostaIA", "Não foi possível obter resposta. Tente novamente.");
+        window.location.href = "/conversa?" + new URLSearchParams({ q: prompt });
+    }
+}
 
 
 });

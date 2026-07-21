@@ -18,9 +18,13 @@ from dotenv import load_dotenv
 from functools import wraps
 import os
 
+from src.routes.chatRoutes import gemini_bp
+
 load_dotenv()
 
 app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
+
+app.register_blueprint(gemini_bp)
 
 # SECRET_KEY é obrigatório para sessões Flask funcionarem
 app.secret_key = os.getenv("SECRET_KEY", "criptografia123")
