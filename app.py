@@ -7,20 +7,26 @@ blueprints da API e define as rotas que renderizam as páginas HTML.
 """
 
 import os
+import sys
+from pathlib import Path
+from functools import wraps
 
 from dotenv import load_dotenv
 from flask import Flask, render_template
 from pymongo import MongoClient
 
-from src.routes.chatRoutes import chat_routes
+BASE_DIR = Path(__file__).resolve().parent
+VENV_PYTHON = BASE_DIR / ".venv-1" / "bin" / "python"
+
+if os.environ.get("VIRTUAL_ENV") is None and VENV_PYTHON.exists() and sys.executable != str(VENV_PYTHON):
+    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), *sys.argv])
+
+load_dotenv(BASE_DIR / ".env")
+if not os.getenv("MONGO_URI") and (BASE_DIR / "Exemplo.env").exists():
+    load_dotenv(BASE_DIR / "Exemplo.env")
+
+from src.routes.chatRoutes import chat_routes, gemini_bp
 from src.routes.userRoutes import user_routes
-from dotenv import load_dotenv
-from functools import wraps
-import os
-
-from src.routes.chatRoutes import gemini_bp
-
-load_dotenv()
 
 app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
 
@@ -33,10 +39,18 @@ app.secret_key = os.getenv("SECRET_KEY", "criptografia123")
 app.config["SESSION_COOKIE_HTTPONLY"] = True   # JS não consegue ler o cookie
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Proteção contra CSRF básica
 # app.config["SESSION_COOKIE_SECURE"] = True   # Descomente em produção (HTTPS)
-app = Flask(__name__, template_folder="public", static_folder=".", static_url_path="")
 
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("MONGO_DB_NAME")]
+mongo_uri = os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+mongo_db_name = os.getenv("MONGO_DB_NAME") or "aleteia"
+
+try:
+    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+    client.admin.command("ping")
+    db = client[mongo_db_name]
+    print(f"MongoDB conectado em {mongo_uri}")
+except Exception as exc:
+    print(f"MongoDB indisponível: {exc}")
+    db = None
 
 # Rotas de API:
 # - /api/users/register
@@ -83,6 +97,12 @@ def logado():
     return render_template("chat/chatIndex.html")
 
 
+@app.route("/conversa")
+def conversa():
+    """Renderiza a página de conversa após o envio da mensagem."""
+    return render_template("chat/chatIndex.html")
+
+
 @app.route("/login")
 def login_page():
     """Renderiza a página de login."""
@@ -107,5 +127,7 @@ def session_status():
 
 
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    host = os.getenv("HOST", "127.0.0.1")
     print(app.url_map)
-    app.run(debug=True)
+    app.run(host=host, port=port, debug=False)

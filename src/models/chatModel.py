@@ -21,7 +21,19 @@ class ChatModel:
 
         :param db: Instância do banco de dados MongoDB (pymongo.database.Database).
         """
-        self.collection = db[self.COLLECTION_NAME]
+        self.collection = None
+        self.db_available = False
+        self.db_error = None
+
+        if db is None:
+            self.db_error = "Banco de dados indisponível"
+            return
+
+        try:
+            self.collection = db[self.COLLECTION_NAME]
+            self.db_available = True
+        except Exception as exc:
+            self.db_error = str(exc)
 
     def save_prompt(self, user_id: str, prompt: str) -> dict:
         """
@@ -32,6 +44,9 @@ class ChatModel:
         :return: Dicionário representando o documento salvo (com _id em string 
                  e data formatada em ISO).
         """
+        if not self.db_available:
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+
         doc = {
             "user_id": user_id,
             "prompt": prompt,
@@ -51,6 +66,9 @@ class ChatModel:
         :param user_id: ID único do usuário para busca.
         :return: Lista de dicionários contendo os prompts e metadados do usuário.
         """
+        if not self.db_available:
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+
         cursor = self.collection.find(
             {"user_id": user_id},
             {"_id": 1, "prompt": 1, "created_at": 1}

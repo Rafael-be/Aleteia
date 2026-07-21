@@ -10,8 +10,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const token     = localStorage.getItem("token");
   const textarea  = document.getElementById("promptInput");
   const btnEnviar = document.getElementById("btnEnviar");
+  const areaConversa = document.getElementById("conversationArea");
 
   if (!textarea || !btnEnviar) return;
+
+  function mostrarMensagem(texto, remetente = "Você") {
+    if (!areaConversa) return;
+
+    const bloco = document.createElement("div");
+    bloco.className = "mt-3 p-3 rounded-3 border border-success-subtle bg-dark text-light";
+
+    const cabecalho = document.createElement("div");
+    cabecalho.className = "fw-bold mb-2";
+    cabecalho.textContent = remetente;
+    bloco.appendChild(cabecalho);
+
+    const corpo = document.createElement("div");
+    const linhas = String(texto ?? "").split("\n");
+    linhas.forEach((linha, index) => {
+      if (index > 0) {
+        corpo.appendChild(document.createElement("br"));
+      }
+      corpo.appendChild(document.createTextNode(linha));
+    });
+    bloco.appendChild(corpo);
+
+    areaConversa.appendChild(bloco);
+  }
+
+  const promptSalvo = sessionStorage.getItem("promptInicial");
+  const respostaSalva = sessionStorage.getItem("respostaIA");
+  if (promptSalvo || respostaSalva) {
+    if (promptSalvo) mostrarMensagem(promptSalvo, "Você");
+    if (respostaSalva) mostrarMensagem(respostaSalva, "Aleteia");
+    sessionStorage.removeItem("promptInicial");
+    sessionStorage.removeItem("respostaIA");
+  }
 
   /* ── Auto-resize textarea ── */
   textarea.addEventListener("input", () => {
@@ -80,16 +114,16 @@ async function enviarMensagem() {
 
         const data = await res.json();
 
-        // 3. Leva a resposta para a página /conversa via sessionStorage
+        // 3. Mostra a resposta na própria página e guarda o estado para a rota /conversa
         sessionStorage.setItem("promptInicial", prompt);
         sessionStorage.setItem("respostaIA", data.resposta || data.erro || "Sem resposta.");
-        window.location.href = "/conversa?" + new URLSearchParams({ q: prompt });
+        window.location.href = "/conversa";
 
     } catch (err) {
         console.error("Erro ao obter resposta da IA:", err);
         sessionStorage.setItem("promptInicial", prompt);
         sessionStorage.setItem("respostaIA", "Não foi possível obter resposta. Tente novamente.");
-        window.location.href = "/conversa?" + new URLSearchParams({ q: prompt });
+        window.location.href = "/conversa";
     }
 }
 

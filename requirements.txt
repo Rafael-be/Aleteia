@@ -25,6 +25,8 @@ eyed3==0.9.7
 filelock==3.13.1
 filetype==1.2.0
 Flask==3.0.2
+google-genai==1.0.0
+google-generativeai==0.8.5
 gyp==0.1
 html2text==2024.2.26
 httplib2==0.20.4

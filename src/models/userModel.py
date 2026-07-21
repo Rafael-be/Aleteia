@@ -10,6 +10,36 @@ import bcrypt
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
 
+
+class InMemoryUserStore:
+    """Fallback store used when MongoDB is unavailable."""
+
+    def __init__(self):
+        self.users = {}
+
+    def create_user(self, email: str, password: str, confirm_password: str) -> dict:
+        normalized_email = UserModel.validate_email_format(email)
+        UserModel.validate_password(password, confirm_password)
+
+        if normalized_email in self.users:
+            raise ValueError("Este e-mail já está cadastrado.")
+
+        hashed_password = UserModel.hash_password(password)
+        self.users[normalized_email] = {
+            "email": normalized_email,
+            "password": hashed_password,
+            "is_active": True,
+            "_id": str(len(self.users) + 1),
+        }
+        return {"id": self.users[normalized_email]["_id"]}
+
+    def find_by_email(self, email: str):
+        normalized_email = email.strip().lower()
+        return self.users.get(normalized_email)
+
+
+_MEMORY_STORE = InMemoryUserStore()
+
 class UserModel:
     """
     Modelo de usuário para MongoDB.
@@ -24,9 +54,21 @@ class UserModel:
 
         :param db: Instância do banco de dados MongoDB (pymongo.database.Database)
         """
-        self.collection = db[self.COLLECTION_NAME]
-        # Garante índice único no campo email
-        self.collection.create_index("email", unique=True)
+        self.collection = None
+        self.db_available = False
+        self.db_error = None
+        self._fallback_store = _MEMORY_STORE
+
+        if db is None:
+            self.db_error = "Banco de dados indisponível"
+            return
+
+        try:
+            self.collection = db[self.COLLECTION_NAME]
+            self.collection.create_index("email", unique=True)
+            self.db_available = True
+        except Exception as exc:
+            self.db_error = str(exc)
 
     # ------------------------------------------------------------------
     # Validações
@@ -140,6 +182,9 @@ class UserModel:
         :raises ValueError: Se alguma validação falhar.
         :raises Exception: Se o e-mail já estiver cadastrado.
         """
+        if not self.db_available:
+            return self._fallback_store.create_user(email, password, confirm_password)
+
         # 1. Validações
         normalized_email = self.validate_email_format(email)
         self.validate_password(password, confirm_password)
@@ -164,5 +209,8 @@ class UserModel:
         :param email: E-mail a ser pesquisado.
         :return: Documento do usuário ou None se não encontrado.
         """
+        if not self.db_available:
+            return self._fallback_store.find_by_email(email)
+
         normalized_email = email.strip().lower()
         return self.collection.find_one({"email": normalized_email})

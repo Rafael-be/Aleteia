@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timezone
 
 import jwt
-from flask import jsonify, request
+from flask import jsonify, request, session
 
 from src.models.userModel import UserModel
 
