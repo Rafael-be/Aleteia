@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
     if env_path.exists():
-        load_dotenv(env_path, override=False)
+        load_dotenv(env_path, override=True)
 
 #o que tava no modelo.py mas deu erro de importacao, entao movi pra cá
 SYSTEM_PROMPT = """Você é a Aleteia, uma inteligência artificial brasileira especializada em
@@ -42,6 +42,7 @@ Formato obrigatório da resposta:
 PARAMETROS = {
     "temperature": 0.5,
     "max_output_tokens": 5000,
+    
 }
 
 

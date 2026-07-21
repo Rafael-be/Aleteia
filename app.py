@@ -21,9 +21,9 @@ VENV_PYTHON = BASE_DIR / ".venv-1" / "bin" / "python"
 if os.environ.get("VIRTUAL_ENV") is None and VENV_PYTHON.exists() and sys.executable != str(VENV_PYTHON):
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), *sys.argv])
 
-load_dotenv(BASE_DIR / ".env")
-if not os.getenv("MONGO_URI") and (BASE_DIR / "Exemplo.env").exists():
-    load_dotenv(BASE_DIR / "Exemplo.env")
+for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
 
 from src.routes.chatRoutes import chat_routes, gemini_bp
 from src.routes.userRoutes import user_routes
