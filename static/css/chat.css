@@ -90,11 +90,38 @@
 #mainContent.chat-ativo .conversation-area {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 2rem;
+  padding: 1rem 2rem 1.25rem;
 }
 
 #mainContent.chat-ativo .chat-input-wrap {
   flex-shrink: 0;
+  max-width: 600px;
+  padding-bottom: 0.75rem;
+}
+
+#mainContent.chat-ativo .input-box {
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem 0.65rem;
+  gap: 0.45rem;
+}
+
+#mainContent.chat-ativo .input-box textarea {
+  min-height: 34px;
+  max-height: 120px;
+  line-height: 1.4;
+}
+
+#mainContent.chat-ativo .btn-send {
+  width: 34px;
+  height: 34px;
+}
+
+#mainContent.chat-ativo .btn-mic {
+  padding: 6px;
+}
+
+#mainContent.chat-ativo .aviso {
+  display: none;
 }
 
 .conversation-area::-webkit-scrollbar { width: 6px; }
