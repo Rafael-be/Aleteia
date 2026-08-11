@@ -72,7 +72,6 @@ class UserModel:
         self.collection = None
         self.db_available = False
         self.db_error = None
-        self._fallback_store = _MEMORY_STORE
 
         if db is None:
             self.db_error = "Banco de dados indisponível"
@@ -201,7 +200,7 @@ class UserModel:
         :raises Exception: Se o e-mail já estiver cadastrado.
         """
         if not self.db_available or self.collection is None:
-            return self._fallback_store.create_user(email, password, confirm_password)
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         normalized_email = self.validate_email_format(email)
         self.validate_password(password, confirm_password)
@@ -223,7 +222,7 @@ class UserModel:
         :return: Documento do usuário ou None se não encontrado.
         """
         if not self.db_available or self.collection is None:
-            return self._fallback_store.find_by_email(email)
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         normalized_email = email.strip().lower()
         return self.collection.find_one({"email": normalized_email})
@@ -237,7 +236,7 @@ class UserModel:
         :return: Documento do usuário ou None se não encontrado / id inválido.
         """
         if not self.db_available or self.collection is None:
-            return self._fallback_store.find_by_id(user_id)
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         try:
             object_id = ObjectId(user_id)
@@ -253,8 +252,7 @@ class UserModel:
         :param campos: Dicionário com os campos e valores a atualizar.
         """
         if not self.db_available or self.collection is None:
-            self._fallback_store.update_by_id(user_id, campos)
-            return
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         try:
             object_id = ObjectId(user_id)

@@ -21,9 +21,13 @@ VENV_PYTHON = BASE_DIR / ".venv-1" / "bin" / "python"
 if os.environ.get("VIRTUAL_ENV") is None and VENV_PYTHON.exists() and sys.executable != str(VENV_PYTHON):
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), *sys.argv])
 
-for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
+example_env = BASE_DIR / "Exemplo.env"
+if example_env.exists():
+    load_dotenv(example_env, override=False)
+
+project_env = BASE_DIR / ".env"
+if project_env.exists():
+    load_dotenv(project_env, override=True)
 
 # NOVO: não importamos mais "gemini_bp" aqui — o Blueprint continua existindo
 # em src/routes/chatRoutes.py, só deixamos de registrá-lo.

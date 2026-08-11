@@ -50,29 +50,30 @@
   </aside>
 
   <!-- Main -->
-  <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4">
+  <main class="main-content flex-grow-1 position-relative d-flex flex-column" id="mainContent">
 
-    <div class="position-absolute top-0 end-0 m-4">
+    <div class="position-absolute top-0 end-0 m-4" style="z-index: 20;">
       <button id="btnConta">
         <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" id="fotoConta">
       </button>
     </div>
 
-    <div class="center-wrap">
-
-      <div class="d-flex align-items-center justify-content-center mb-5">
-        <div class="text-start">
-          <h1 class="mb-0" style="font-size:3.5rem;letter-spacing:2px;font-family:'Lora',serif;font-weight:100;">
-            ALETE<span class="text-success fw-bold">IA</span>
-          </h1>
-        </div>
-        <div>
-          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" style="width:50%;height:auto;">
-        </div>
+    <!-- Cabeçalho da marca: fica no topo, sempre visível -->
+    <header class="chat-header">
+      <div class="d-flex align-items-center justify-content-center">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="chat-header-logo">
+        <h1 class="chat-header-title">
+          ALETE<span class="text-success fw-bold">IA</span>
+        </h1>
       </div>
+      <p class="chat-header-subtitle" id="chatSubtitle">Por onde começar?</p>
+    </header>
 
-      <p class="fw-bold mb-4" style="font-size:1.6rem;">Por onde começar?</p>
+    <!-- Área de mensagens: cresce, com scroll interno -->
+    <div id="conversationArea" class="conversation-area"></div>
 
+    <!-- Input: sempre fixo na parte inferior da área principal -->
+    <div class="chat-input-wrap">
       <div class="input-box">
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
         <div class="input-actions">
@@ -95,14 +96,12 @@
         </div>
       </div>
 
-      <div id="conversationArea" class="mt-4 w-100" style="max-width: 780px;"></div>
-
       <p class="aviso">
         Aviso: a Aleteia pode cometer erros.<br>
         Considere verificar informações importantes
       </p>
-
     </div>
+
   </main>
 </div>
 
