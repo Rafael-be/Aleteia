@@ -17,10 +17,14 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
+BASE_DIR = Path(__file__).resolve().parents[2]
+example_env = BASE_DIR / "Exemplo.env"
+if example_env.exists():
+    load_dotenv(example_env, override=False)
+
+project_env = BASE_DIR / ".env"
+if project_env.exists():
+    load_dotenv(project_env, override=True)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")

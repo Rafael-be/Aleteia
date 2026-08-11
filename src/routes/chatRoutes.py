@@ -12,7 +12,6 @@ só está inativo e não interfere no fluxo atual baseado em OpenAI.
 
 from flask import Blueprint
 
-from src.controller.gemini_controller import responder_controller
 from src.controller.chatController import ChatController
 
 
@@ -51,9 +50,3 @@ def chat_routes(db) -> Blueprint:
 # registrada em app.py (ver Passo 8). Não é chamada por nenhum lugar
 # do frontend atualmente.
 # ------------------------------------------------------------------
-gemini_bp = Blueprint("gemini", __name__, url_prefix="/api")
-
-
-@gemini_bp.route("/chat/responder", methods=["POST"])
-def responder():
-    return responder_controller()

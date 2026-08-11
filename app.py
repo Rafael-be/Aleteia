@@ -1,4 +1,3 @@
-from flask import Flask, render_template, session, redirect, url_for, jsonify
 """
 Ponto de entrada da aplicação Flask da AleteIA.
 
@@ -7,20 +6,14 @@ blueprints da API e define as rotas que renderizam as páginas HTML.
 """
 
 import os
-import sys
 from pathlib import Path
 from functools import wraps
 
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect, url_for, jsonify
 from pymongo import MongoClient
 
 BASE_DIR = Path(__file__).resolve().parent
-VENV_PYTHON = BASE_DIR / ".venv-1" / "bin" / "python"
-
-if os.environ.get("VIRTUAL_ENV") is None and VENV_PYTHON.exists() and sys.executable != str(VENV_PYTHON):
-    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), *sys.argv])
-
 example_env = BASE_DIR / "Exemplo.env"
 if example_env.exists():
     load_dotenv(example_env, override=False)
@@ -34,7 +27,7 @@ if project_env.exists():
 from src.routes.chatRoutes import chat_routes
 from src.routes.userRoutes import user_routes
 
-app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
+app = Flask(__name__, template_folder="public", static_folder="static", static_url_path="/static")
 
 # REMOVIDO: app.register_blueprint(gemini_bp)
 # O Gemini continua no código-fonte, mas nenhuma rota do Flask aponta pra ele.
