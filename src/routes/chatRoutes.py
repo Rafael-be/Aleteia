@@ -1,43 +1,58 @@
 """
 Módulo de Rotas de Chat.
 
-Este módulo registra as rotas da API relacionadas ao histórico de prompts.
-As URLs são agrupadas pelo prefixo /api/chat e encaminhadas para os métodos
-do ChatController.
+Registra as rotas da API relacionadas à conversa com a Aleteia (Blueprint
+"chat"), encaminhadas para os métodos do ChatController.
+
+O Blueprint "gemini" (rota antiga /api/chat/responder, baseada no Gemini)
+continua definido neste arquivo por referência/histórico, mas NÃO é mais
+registrado em app.py — ou seja, o código continua existindo no projeto,
+só está inativo e não interfere no fluxo atual baseado em OpenAI.
 """
 
 from flask import Blueprint
 
 from src.controller.gemini_controller import responder_controller
-
 from src.controller.chatController import ChatController
 
 
 def chat_routes(db) -> Blueprint:
     """
-    Cria e configura o Blueprint de rotas para chat.
+    Cria e configura o Blueprint de rotas para o chat com a Aleteia (OpenAI).
 
     Endpoints registrados:
-    - POST /api/chat/prompt: salva um novo prompt no histórico do usuário logado.
-    - GET /api/chat/prompts: retorna os prompts salvos pelo usuário logado.
+    - POST /api/chat/mensagem: envia um prompt, obtém a resposta da IA e
+      salva os dois juntos no histórico da conversa.
+    - GET /api/chat/conversas: lista as conversas do usuário logado (sidebar).
+    - GET /api/chat/conversas/<conversa_id>: retorna todas as mensagens de
+      uma conversa específica.
 
-    As duas rotas exigem token JWT no header:
-    Authorization: Bearer <token>
+    Todas exigem token JWT no header: Authorization: Bearer <token>
 
     :param db: Instância do banco de dados MongoDB (pymongo.database.Database).
-               Ela é injetada no ChatController para acesso à coleção de chats.
     :return: Blueprint configurado para registro na aplicação Flask principal.
     """
     chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
     controller = ChatController(db)
 
-    chat_bp.add_url_rule("/prompt", view_func=controller.save_prompt, methods=["POST"])
-    chat_bp.add_url_rule("/prompts", view_func=controller.get_prompts, methods=["GET"])
-    
+    chat_bp.add_url_rule("/mensagem", view_func=controller.enviar_mensagem, methods=["POST"])
+    chat_bp.add_url_rule("/conversas", view_func=controller.get_conversas, methods=["GET"])
+    chat_bp.add_url_rule(
+        "/conversas/<conversa_id>",
+        view_func=controller.get_mensagens_por_conversa,
+        methods=["GET"]
+    )
+
     return chat_bp
 
-# Ajuste o nome do Blueprint e o url_prefix se necessário
+
+# ------------------------------------------------------------------
+# Rota antiga do Gemini — mantida no código por referência, mas NÃO é
+# registrada em app.py (ver Passo 8). Não é chamada por nenhum lugar
+# do frontend atualmente.
+# ------------------------------------------------------------------
 gemini_bp = Blueprint("gemini", __name__, url_prefix="/api")
+
 
 @gemini_bp.route("/chat/responder", methods=["POST"])
 def responder():

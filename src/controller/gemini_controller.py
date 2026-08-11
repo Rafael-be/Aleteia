@@ -1,6 +1,6 @@
 # src/controller/gemini_controller.py
 from flask import request, jsonify
-from services.gemini_services import obter_resposta
+from src.services.gemini_services import obter_resposta
 
 def responder_controller():
     dados = request.get_json(silent=True)

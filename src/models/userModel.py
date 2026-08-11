@@ -2,13 +2,14 @@
 Módulo de Gerenciamento de Usuários.
 
 Este módulo contém a classe UserModel, responsável por interagir com o MongoDB,
-realizar validações de e-mail e senha, e aplicar criptografia (bcrypt) 
+realizar validações de e-mail e senha, e aplicar criptografia (bcrypt)
 para o armazenamento seguro das credenciais.
 """
 
 import bcrypt
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
+from bson import ObjectId  # NOVO: usado para buscar/atualizar por _id
 
 
 class InMemoryUserStore:
@@ -29,6 +30,9 @@ class InMemoryUserStore:
             "email": normalized_email,
             "password": hashed_password,
             "is_active": True,
+            "role": "user",                # NOVO
+            "tokens_usados_hoje": 0,        # NOVO
+            "data_ultimo_reset": None,      # NOVO
             "_id": str(len(self.users) + 1),
         }
         return {"id": self.users[normalized_email]["_id"]}
@@ -36,6 +40,17 @@ class InMemoryUserStore:
     def find_by_email(self, email: str):
         normalized_email = email.strip().lower()
         return self.users.get(normalized_email)
+
+    def find_by_id(self, user_id: str):  # NOVO
+        for user in self.users.values():
+            if user.get("_id") == user_id:
+                return user
+        return None
+
+    def update_by_id(self, user_id: str, campos: dict) -> None:  # NOVO
+        user = self.find_by_id(user_id)
+        if user:
+            user.update(campos)
 
 
 _MEMORY_STORE = InMemoryUserStore()
@@ -85,7 +100,7 @@ class UserModel:
         """
         try:
             valid = validate_email(email, check_deliverability=False)
-            return valid.normalized  # retorna e-mail normalizado
+            return valid.normalized
         except EmailNotValidError as e:
             raise ValueError(f"E-mail inválido: {str(e)}")
 
@@ -163,6 +178,9 @@ class UserModel:
             "email": email,
             "password": hashed_password,
             "is_active": True,
+            "role": "user",                # NOVO: todo cadastro novo nasce como "user"
+            "tokens_usados_hoje": 0,        # NOVO
+            "data_ultimo_reset": None,      # NOVO
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
         }
@@ -182,21 +200,16 @@ class UserModel:
         :raises ValueError: Se alguma validação falhar.
         :raises Exception: Se o e-mail já estiver cadastrado.
         """
-        if not self.db_available:
+        if not self.db_available or self.collection is None:
             return self._fallback_store.create_user(email, password, confirm_password)
 
-        # 1. Validações
         normalized_email = self.validate_email_format(email)
         self.validate_password(password, confirm_password)
 
-        # 2. Verifica duplicidade
         if self.collection.find_one({"email": normalized_email}):
             raise ValueError("Este e-mail já está cadastrado.")
 
-        # 3. Criptografa a senha
         hashed_password = self.hash_password(password)
-
-        # 4. Monta e insere o documento
         user_document = self.build_user_document(normalized_email, hashed_password)
         result = self.collection.insert_one(user_document)
 
@@ -209,8 +222,45 @@ class UserModel:
         :param email: E-mail a ser pesquisado.
         :return: Documento do usuário ou None se não encontrado.
         """
-        if not self.db_available:
+        if not self.db_available or self.collection is None:
             return self._fallback_store.find_by_email(email)
 
         normalized_email = email.strip().lower()
         return self.collection.find_one({"email": normalized_email})
+
+    def find_by_id(self, user_id: str) -> dict | None:  # NOVO
+        """
+        Busca um usuário pelo _id.
+
+        :param user_id: ID do usuário (string do ObjectId do Mongo, ou o id
+                         interno do fallback em memória).
+        :return: Documento do usuário ou None se não encontrado / id inválido.
+        """
+        if not self.db_available or self.collection is None:
+            return self._fallback_store.find_by_id(user_id)
+
+        try:
+            object_id = ObjectId(user_id)
+        except Exception:
+            return None
+        return self.collection.find_one({"_id": object_id})
+
+    def update_user(self, user_id: str, campos: dict) -> None:  # NOVO
+        """
+        Atualiza campos específicos do documento do usuário.
+
+        :param user_id: ID do usuário a ser atualizado.
+        :param campos: Dicionário com os campos e valores a atualizar.
+        """
+        if not self.db_available or self.collection is None:
+            self._fallback_store.update_by_id(user_id, campos)
+            return
+
+        try:
+            object_id = ObjectId(user_id)
+        except Exception:
+            return
+
+        campos = dict(campos)
+        campos["updated_at"] = datetime.utcnow()
+        self.collection.update_one({"_id": object_id}, {"$set": campos})

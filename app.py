@@ -25,12 +25,15 @@ for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
     if env_path.exists():
         load_dotenv(env_path, override=True)
 
-from src.routes.chatRoutes import chat_routes, gemini_bp
+# NOVO: não importamos mais "gemini_bp" aqui — o Blueprint continua existindo
+# em src/routes/chatRoutes.py, só deixamos de registrá-lo.
+from src.routes.chatRoutes import chat_routes
 from src.routes.userRoutes import user_routes
 
 app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
 
-app.register_blueprint(gemini_bp)
+# REMOVIDO: app.register_blueprint(gemini_bp)
+# O Gemini continua no código-fonte, mas nenhuma rota do Flask aponta pra ele.
 
 # SECRET_KEY é obrigatório para sessões Flask funcionarem
 app.secret_key = os.getenv("SECRET_KEY", "criptografia123")
@@ -55,8 +58,9 @@ except Exception as exc:
 # Rotas de API:
 # - /api/users/register
 # - /api/users/login
-# - /api/chat/prompt
-# - /api/chat/prompts
+# - /api/chat/mensagem
+# - /api/chat/conversas
+# - /api/chat/conversas/<conversa_id>
 app.register_blueprint(user_routes(db))
 
 
@@ -99,7 +103,10 @@ def logado():
 
 @app.route("/conversa")
 def conversa():
-    """Renderiza a página de conversa após o envio da mensagem."""
+    """
+    Renderiza a mesma página de chat. Mantida por compatibilidade, mas não é
+    mais usada pelo fluxo atual (o chat.js não faz mais redirect pra cá).
+    """
     return render_template("chat/chatIndex.html")
 
 

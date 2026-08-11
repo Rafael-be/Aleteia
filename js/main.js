@@ -97,6 +97,12 @@ document.addEventListener("DOMContentLoaded", () => {
     item.textContent  = chat.prompt.substring(0, 40) + (chat.prompt.length > 40 ? "…" : "");
     item.dataset.id   = chat._id;
     item.style.cursor = "pointer";
+
+    // NOVO: clicar numa conversa antiga reabre ela no chat.js
+    item.addEventListener("click", () => {
+      if (window.carregarConversa) window.carregarConversa(chat._id);
+    });
+
     lista.prepend(item);
   }
 
@@ -104,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!token) return;
 
     try {
-      const res = await fetch("/api/chat/prompts", {
+      const res = await fetch("/api/chat/conversas", {  // NOVO: era /api/chat/prompts
         headers: { "Authorization": `Bearer ${token}` }
       });
 
