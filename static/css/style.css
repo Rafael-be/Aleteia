@@ -224,9 +224,10 @@ body {
 /* ── Brand block ── */
 .brand-block {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 .brand-logo-img { width: 110px; height: auto; }
 
@@ -239,23 +240,27 @@ body {
   }
 
   .brand-block {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    text-align: center;
+    justify-content: center;
+    text-align: left;
     margin-top: 1rem;
+    gap: 0.5rem;
   }
-  .brand-block .text-start {
-    width: 100%;
-  }
+
   .brand-logo-wrap {
     align-self: center;
+    flex-shrink: 0;
   }
+
   .brand-logo-img {
     width: 70px;
   }
+
   .brand-block h1 {
     font-size: 2.4rem;
   }
+
   .brand-block h2 {
     font-size: 1.2rem;
   }

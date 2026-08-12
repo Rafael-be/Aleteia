@@ -64,7 +64,7 @@
       flex: 1;
       padding: 28px 18px 24px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
     }
 
     /* BRAND */
@@ -75,11 +75,16 @@
       color: var(--white);
       opacity: 0.9;
       margin-bottom: 2px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
+    /* Título e logo lado a lado (row), sem quebrar para
+       a linha de baixo — antes estava em column, o que
+       empilhava a logo abaixo do texto. */
     .brand-row {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: center;
       gap: 10px;
@@ -89,21 +94,21 @@
 
     .brand-name {
       font-family: 'Lora', serif;
-      font-size: 42px;
+      font-size: 34px;
       font-weight: 700;
       letter-spacing: 1.5px;
       line-height: 1.05;
+      white-space: nowrap;
     }
 
     .brand-name .white { color: var(--white); }
     .brand-name .green { color: var(--green); }
 
     .brand-logo {
-      width: 90px;
+      width: 64px;
       height: auto;
       opacity: 0.9;
       flex-shrink: 0;
-      margin-top: 8px;
     }
 
     /* DESCRIPTION */
@@ -113,6 +118,7 @@
       color: rgba(255,255,255,0.88);
       line-height: 1.6;
       margin-bottom: 6px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
     .welcome-desc-bold {
@@ -120,6 +126,7 @@
       font-weight: 500;
       color: rgba(255,255,255,0.88);
       margin-bottom: 22px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
     /* FEATURE LIST */
@@ -138,6 +145,7 @@
       font-size: 14px;
       color: rgba(255,255,255,0.88);
       line-height: 1.5;
+      text-align: left; /* mantém o texto ao lado do ícone alinhado à esquerda, mesmo que o pai fique centralizado */
     }
 
     .feature-list li svg {
