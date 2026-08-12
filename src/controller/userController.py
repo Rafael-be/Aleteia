@@ -85,6 +85,9 @@ class UserController:
         except ValueError as e:
             return jsonify({"error": str(e)}), 422
 
+        except RuntimeError as e:
+            return jsonify({"error": "Serviço temporariamente indisponível. Tente novamente mais tarde.", "details": str(e)}), 503
+
         except Exception as e:
             return jsonify({"error": "Erro interno no servidor.", "details": str(e)}), 500
 
@@ -150,6 +153,9 @@ class UserController:
 
         except ValueError as e:
             return jsonify({"error": str(e)}), 422
+
+        except RuntimeError as e:
+            return jsonify({"error": "Serviço temporariamente indisponível. Tente novamente mais tarde.", "details": str(e)}), 503
 
         except Exception as e:
             return jsonify({"error": "Erro interno no servidor.", "details": str(e)}), 500

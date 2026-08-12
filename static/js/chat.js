@@ -214,6 +214,8 @@ document.addEventListener("DOMContentLoaded", () => {
     textarea.disabled = true;
     btnEnviar.disabled = true;
     btnEnviar.classList.remove("active");
+    // mostra feedback temporário enquanto a IA responde
+    const loadingBubble = adicionarBolha("Gerando resposta...", "sistema");
 
     try {
       const res = await fetch("/api/chat/mensagem", {
@@ -226,6 +228,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await res.json();
+
+      // remove a mensagem de carregamento (se ainda existir)
+      if (loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
 
       if (res.status === 429) {
         adicionarBolha("Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã.", "sistema");
@@ -245,6 +250,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (err) {
       console.error("Erro ao obter resposta da IA:", err);
+      // remove loading e exibe erro
+      if (typeof loadingBubble !== 'undefined' && loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
       adicionarBolha("Não foi possível obter resposta. Tente novamente.", "sistema");
     } finally {
       textarea.disabled = false;
