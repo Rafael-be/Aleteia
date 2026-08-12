@@ -63,7 +63,12 @@ body {
 }
 .btn-custom-green:hover { background-color: var(--btn-green-dark); }
 
-/* ── Botão de conta (desktop) ── */
+/* ── Botão de conta (desktop) ──
+   Visível por padrão (>=768px). Escondido em telas <=767px
+   pelo bloco "@media (max-width: 767px)" mais abaixo, onde
+   quem assume a exibição da conta é o #btnContaMobileInner
+   (dentro do .mobile-header, controlado via classes do
+   Bootstrap d-flex/d-md-none). */
 #btnConta {
   width: 44px;
   height: 44px;
@@ -203,9 +208,17 @@ body {
 }
 .drawer-overlay.active { display: block; }
 
-/* ── Offset do header mobile no main ── */
+/* ── Offset do header mobile no main / visibilidade do btnConta ── */
 @media (max-width: 767px) {
   .main-content { padding-top: 68px !important; }
+
+  /* Abaixo de 768px quem representa a conta é o
+     #btnContaMobileInner (dentro do .mobile-header, que já
+     aparece aqui via as classes Bootstrap d-flex/d-md-none).
+     O #btnConta "de mesa" some para não duplicar o ícone. */
+  #btnConta {
+    display: none;
+  }
 }
 
 /* ── Brand block ── */

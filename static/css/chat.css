@@ -31,7 +31,7 @@
 
 .chat-header {
   text-align: center;
-  padding: 3rem 1rem 1rem;
+  padding: 1.5rem 1rem 0.5rem;
   transition: padding 0.2s ease;
 }
 
@@ -76,7 +76,7 @@
 /* Quando a conversa está ativa: header compacto no topo, mensagens
    crescendo no meio com scroll, e input grudado embaixo. */
 #mainContent.chat-ativo .chat-header {
-  padding: 1.25rem 1rem 0.75rem;
+  padding: 0.5rem 1rem 0.75rem;
 }
 
 #mainContent.chat-ativo .chat-header-logo {
@@ -90,7 +90,7 @@
 #mainContent.chat-ativo .conversation-area {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 2rem 1.25rem;
+  padding: 0.5rem 2rem 1.25rem;
 }
 
 #mainContent.chat-ativo .chat-input-wrap {
@@ -307,3 +307,32 @@
   font-size: 0.85rem;
   line-height: 1.7;
 }
+
+/* =====================================================
+   FIX MOBILE: o style.css tem DUAS regras !important pra
+   ".main-content" em telas < 768px (68px e depois 84px de
+   padding-top, pra não ficar atrás do .mobile-header fixo
+   de 52px). A que vence hoje é a de 84px, criando um espaço
+   morto grande entre o header fixo e o título ALETEIA.
+
+   #mainContent tem especificidade maior que a classe
+   ".main-content", então um !important aqui vence os dois
+   de lá — reduzimos pro mínimo necessário pra não colar no
+   header fixo (52px + um respiro pequeno).
+   ===================================================== */
+@media (max-width: 767px) {
+  #mainContent {
+    padding-top: 60px !important;
+  }
+}
+
+/* =====================================================
+   OBS: a regra antiga que escondia incondicionalmente o
+   wrapper ".position-absolute.top-0.end-0.m-4" (que contém
+   o #btnConta) foi removida daqui. Ela deixava o #btnConta
+   invisível em QUALQUER largura de tela, o que conflitava
+   com o comportamento responsivo desejado (visível >=768px,
+   oculto <=767px). Essa responsabilidade agora é 100% do
+   style.css, que já centraliza os estilos e a visibilidade
+   do #btnConta (elemento global, usado em várias páginas).
+   ===================================================== */
