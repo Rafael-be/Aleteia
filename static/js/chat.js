@@ -26,6 +26,13 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("conversaId", conversaId);
   }
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const conversaIdQuery = urlParams.get("conversa_id");
+  if (conversaIdQuery) {
+    conversaId = conversaIdQuery;
+    sessionStorage.setItem("conversaId", conversaId);
+  }
+
   let conversaJaNaSidebar = false;
   let ultimoPromptEnviado = "";
 
@@ -292,6 +299,25 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Erro ao carregar conversa:", err);
     }
   };
+
+  function carregarConversaDaUrl() {
+    if (!conversaIdQuery) return;
+    if (!window.carregarConversa) return;
+    window.carregarConversa(conversaIdQuery);
+  }
+
+  window.iniciarNovaConversa = function () {
+    conversaId = crypto.randomUUID();
+    sessionStorage.setItem("conversaId", conversaId);
+    conversaJaNaSidebar = false;
+    if (areaConversa) areaConversa.innerHTML = "";
+    resetarLayoutInicial();
+    textarea.value = "";
+    textarea.style.height = "auto";
+    textarea.focus();
+  };
+
+  carregarConversaDaUrl();
 
   /* ── Nova conversa ── */
   if (btnNovaConversa) {

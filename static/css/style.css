@@ -218,9 +218,34 @@ body {
 .brand-logo-img { width: 110px; height: auto; }
 
 @media (max-width: 767px) {
-  .brand-block { flex-direction: column; align-items: flex-start; }
-  .brand-logo-wrap { align-self: center; }
-  .brand-logo-img { width: 70px; }
+  .main-content {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding-top: 84px !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  .brand-block {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-top: 1rem;
+  }
+  .brand-block .text-start {
+    width: 100%;
+  }
+  .brand-logo-wrap {
+    align-self: center;
+  }
+  .brand-logo-img {
+    width: 70px;
+  }
+  .brand-block h1 {
+    font-size: 2.4rem;
+  }
+  .brand-block h2 {
+    font-size: 1.2rem;
+  }
 }
 
 /* -- Lista de conversas no aside -- */
