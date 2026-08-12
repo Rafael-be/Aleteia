@@ -66,8 +66,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (drawerOverlay) drawerOverlay.classList.remove("active");
   }
 
-  window.fecharDrawer = fecharDrawer;
-
   if (btnMenu)       btnMenu.addEventListener("click", abrirDrawer);
   if (drawerOverlay) drawerOverlay.addEventListener("click", fecharDrawer);
 
@@ -90,19 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ── Botão 'Nova conversa' compartilha comportamento entre página inicial e chat ── */
-  const btnNovaConversa = document.getElementById("btnNovaConversa");
-  if (btnNovaConversa) {
-    btnNovaConversa.addEventListener("click", (e) => {
-      if (window.iniciarNovaConversa) {
-        e.preventDefault();
-        window.iniciarNovaConversa();
-        return;
-      }
-      window.location.href = "/chat";
-    });
-  }
-
   /* ── Histórico do aside (compartilhado) ── */
   function adicionarItemNoAside(chat) {
     const lista = document.getElementById("listaConversas");
@@ -115,12 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // NOVO: clicar numa conversa antiga reabre ela no chat.js
     item.addEventListener("click", () => {
-      if (window.carregarConversa) {
-        window.carregarConversa(chat._id);
-        if (window.fecharDrawer) window.fecharDrawer();
-        return;
-      }
-      window.location.href = "/chat?conversa_id=" + encodeURIComponent(chat._id);
+      if (window.carregarConversa) window.carregarConversa(chat._id);
     });
 
     lista.prepend(item);
