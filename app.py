@@ -52,6 +52,16 @@ app.register_blueprint(auth_routes(db))
 app.register_blueprint(chat_routes(db))
 
 
+@app.context_processor
+def firebase_web_config():
+    """Expõe somente a configuração pública usada pelo SDK Web do Firebase."""
+    raw_config = os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}")
+    try:
+        return {"firebase_web_config": json.loads(raw_config)}
+    except json.JSONDecodeError:
+        return {"firebase_web_config": {}}
+
+
 @app.route("/cadastro")
 def cadastro():
     return render_template("cadastroTeste/cadastro.html")

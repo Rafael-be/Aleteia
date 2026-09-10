@@ -1,125 +1,26 @@
+import { cadastrarComEmail, loginComEmail, loginSocial } from "./firebase-init.js";
+
+const feedback = (element, mensagem, cor = "#e05555") => { element.textContent = mensagem; element.style.color = cor; element.style.display = "block"; };
 document.addEventListener("DOMContentLoaded", () => {
-  document.body.style.visibility = "visible";
-  document.body.style.opacity = "1";
-
-  const loginButton = document.getElementById("btnEntrar");
-  const registerButton = document.getElementById("btnCadastrar");
-
-  function showFeedback(element, message, color = "#e05555") {
-    if (!element) return;
-    element.textContent = message;
-    element.style.color = color;
-    element.style.display = "block";
-  }
-
-  async function readJson(response) {
-    try {
-      return await response.json();
-    } catch (error) {
-      return {};
-    }
-  }
-
-  if (loginButton) {
-    loginButton.addEventListener("click", async () => {
-      const email = document.getElementById("inputEmail")?.value.trim() || "";
-      const password = document.getElementById("inputSenha")?.value || "";
-      const feedback = document.getElementById("loginFeedback");
-
-      if (feedback) {
-        feedback.style.display = "none";
-        feedback.textContent = "";
-      }
-
-      if (!email || !password) {
-        showFeedback(feedback, "Preencha e-mail e senha.");
-        return;
-      }
-
-      loginButton.disabled = true;
-      loginButton.textContent = "Entrando...";
-
-      try {
-        const response = await fetch("/api/users/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const data = await readJson(response);
-
-        if (response.ok && data.token) {
-          localStorage.setItem("token", data.token);
-          window.location.href = "/";
-          return;
-        }
-
-        showFeedback(feedback, data.error || "Erro ao fazer login.");
-      } catch (error) {
-        showFeedback(feedback, "Nao foi possivel conectar ao servidor.");
-      } finally {
-        loginButton.disabled = false;
-        loginButton.textContent = "Entrar";
-      }
-    });
-  }
-
-  if (registerButton) {
-    registerButton.addEventListener("click", async () => {
-      const email = document.getElementById("email")?.value.trim() || "";
-      const password = document.getElementById("password")?.value || "";
-      const confirm_password = document.getElementById("confirm_password")?.value || "";
-      const feedback = document.getElementById("cadastroFeedback");
-
-      if (feedback) {
-        feedback.style.display = "none";
-        feedback.textContent = "";
-      }
-
-      if (!email || !password || !confirm_password) {
-        showFeedback(feedback, "Preencha todos os campos.");
-        return;
-      }
-
-      registerButton.disabled = true;
-      registerButton.textContent = "Cadastrando...";
-
-      try {
-        const response = await fetch("/api/users/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, confirm_password }),
-        });
-
-        const data = await readJson(response);
-
-        if (!response.ok) {
-          showFeedback(feedback, data.error || "Erro ao realizar cadastro.");
-          return;
-        }
-
-        const loginResponse = await fetch("/api/users/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const loginData = await readJson(loginResponse);
-
-        if (loginResponse.ok && loginData.token) {
-          localStorage.setItem("token", loginData.token);
-          window.location.href = "/";
-          return;
-        }
-
-        showFeedback(feedback, data.message || "Conta criada. Faca login para continuar.", "#3a9c4e");
-        setTimeout(() => { window.location.href = "/login"; }, 1500);
-      } catch (error) {
-        showFeedback(feedback, "Nao foi possivel conectar ao servidor.");
-      } finally {
-        registerButton.disabled = false;
-        registerButton.textContent = "Criar Conta";
-      }
-    });
-  }
+  document.body.style.visibility = "visible"; document.body.style.opacity = "1";
+  const entrar = document.getElementById("btnEntrar"), cadastrar = document.getElementById("btnCadastrar");
+  entrar?.addEventListener("click", async () => {
+    const email = document.getElementById("inputEmail")?.value.trim(), senha = document.getElementById("inputSenha")?.value, aviso = document.getElementById("loginFeedback");
+    if (!email || !senha) return feedback(aviso, "Preencha e-mail e senha.");
+    entrar.disabled = true;
+    try { const resultado = await loginComEmail(email, senha); if (!resultado.emailVerificado) return feedback(aviso, "Confirme seu e-mail. Enviamos um novo link."); window.location.href = "/"; }
+    catch { feedback(aviso, "Não foi possível fazer login. Confira seus dados."); } finally { entrar.disabled = false; }
+  });
+  cadastrar?.addEventListener("click", async () => {
+    const email = document.getElementById("email")?.value.trim(), senha = document.getElementById("password")?.value, confirmar = document.getElementById("confirm_password")?.value, aviso = document.getElementById("cadastroFeedback");
+    if (!email || !senha || !confirmar) return feedback(aviso, "Preencha todos os campos.");
+    if (senha !== confirmar) return feedback(aviso, "As senhas não coincidem.");
+    cadastrar.disabled = true;
+    try { await cadastrarComEmail(email, senha); feedback(aviso, "Verifique seu e-mail antes de fazer login.", "#3a9c4e"); setTimeout(() => { window.location.href = "/login"; }, 1500); }
+    catch { feedback(aviso, "Não foi possível criar a conta."); } finally { cadastrar.disabled = false; }
+  });
+  document.querySelectorAll("[data-firebase-provider]").forEach((botao) => botao.addEventListener("click", async () => {
+    try { await loginSocial(botao.dataset.firebaseProvider); window.location.href = "/"; }
+    catch { feedback(document.getElementById("loginFeedback"), "Não foi possível entrar com este provedor."); }
+  }));
 });
