@@ -1,264 +1,83 @@
-"""
-Módulo de Gerenciamento de Usuários.
+"""Persistência dos dados de negócio vinculados a usuários do Firebase."""
 
-Este módulo contém a classe UserModel, responsável por interagir com o MongoDB,
-realizar validações de e-mail e senha, e aplicar criptografia (bcrypt)
-para o armazenamento seguro das credenciais.
-"""
+from datetime import date, datetime, timezone
 
-import bcrypt
-from datetime import datetime
-from email_validator import validate_email, EmailNotValidError
-from bson import ObjectId  # NOVO: usado para buscar/atualizar por _id
+from pymongo import ReturnDocument
 
-
-class InMemoryUserStore:
-    """Fallback store used when MongoDB is unavailable."""
-
-    def __init__(self):
-        self.users = {}
-
-    def create_user(self, email: str, password: str, confirm_password: str) -> dict:
-        normalized_email = UserModel.validate_email_format(email)
-        UserModel.validate_password(password, confirm_password)
-
-        if normalized_email in self.users:
-            raise ValueError("Este e-mail já está cadastrado.")
-
-        hashed_password = UserModel.hash_password(password)
-        self.users[normalized_email] = {
-            "email": normalized_email,
-            "password": hashed_password,
-            "is_active": True,
-            "role": "user",                # NOVO
-            "tokens_usados_hoje": 0,        # NOVO
-            "data_ultimo_reset": None,      # NOVO
-            "_id": str(len(self.users) + 1),
-        }
-        return {"id": self.users[normalized_email]["_id"]}
-
-    def find_by_email(self, email: str):
-        normalized_email = email.strip().lower()
-        return self.users.get(normalized_email)
-
-    def find_by_id(self, user_id: str):  # NOVO
-        for user in self.users.values():
-            if user.get("_id") == user_id:
-                return user
-        return None
-
-    def update_by_id(self, user_id: str, campos: dict) -> None:  # NOVO
-        user = self.find_by_id(user_id)
-        if user:
-            user.update(campos)
-
-
-_MEMORY_STORE = InMemoryUserStore()
 
 class UserModel:
-    """
-    Modelo de usuário para MongoDB.
-    Responsável por validar, estruturar e criptografar dados do usuário.
-    """
+    """Modelo dos dados da aplicação; senhas e verificação ficam no Firebase."""
 
     COLLECTION_NAME = "users"
 
     def __init__(self, db):
-        """
-        Inicializa o modelo com a instância do banco de dados.
-
-        :param db: Instância do banco de dados MongoDB (pymongo.database.Database)
-        """
         self.collection = None
         self.db_available = False
         self.db_error = None
-
         if db is None:
             self.db_error = "Banco de dados indisponível"
             return
-
         try:
             self.collection = db[self.COLLECTION_NAME]
-            self.collection.create_index("email", unique=True)
+            self.collection.create_index("firebase_uid", unique=True)
+            self.collection.create_index("email", unique=True, sparse=True)
             self.db_available = True
         except Exception as exc:
             self.db_error = str(exc)
 
-    # ------------------------------------------------------------------
-    # Validações
-    # ------------------------------------------------------------------
+    def sincronizar_usuario_firebase(self, firebase_uid: str, email: str | None) -> dict:
+        """Cria, no primeiro login, o perfil de negócio do usuário Firebase."""
+        if not self.db_available or self.collection is None:
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
-    @staticmethod
-    def validate_email_format(email: str) -> str:
-        """
-        Valida o formato do e-mail.
-
-        :param email: String com o e-mail informado pelo usuário.
-        :return: E-mail normalizado (lowercase, sem espaços).
-        :raises ValueError: Se o e-mail for inválido.
-        """
-        try:
-            valid = validate_email(email, check_deliverability=False)
-            return valid.normalized
-        except EmailNotValidError as e:
-            raise ValueError(f"E-mail inválido: {str(e)}")
-
-    @staticmethod
-    def validate_password(password: str, confirm_password: str) -> None:
-        """
-        Valida a senha e a confirmação de senha.
-
-        Regras:
-        - Mínimo de 8 caracteres
-        - Ao menos uma letra maiúscula
-        - Ao menos um número
-        - password == confirm_password
-
-        :param password: Senha informada.
-        :param confirm_password: Confirmação da senha.
-        :raises ValueError: Se alguma regra for violada.
-        """
-        if len(password) < 8:
-            raise ValueError("A senha deve ter no mínimo 8 caracteres.")
-
-        if not any(c.isupper() for c in password):
-            raise ValueError("A senha deve conter ao menos uma letra maiúscula.")
-
-        if not any(c.isdigit() for c in password):
-            raise ValueError("A senha deve conter ao menos um número.")
-
-        if password != confirm_password:
-            raise ValueError("As senhas não coincidem.")
-
-    # ------------------------------------------------------------------
-    # Criptografia
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """
-        Gera o hash bcrypt da senha.
-
-        :param password: Senha em texto puro.
-        :return: Hash da senha como string UTF-8.
-        """
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-        return hashed.decode("utf-8")
-
-    @staticmethod
-    def check_password(password: str, hashed_password: str) -> bool:
-        """
-        Verifica se a senha informada corresponde ao hash armazenado.
-
-        :param password: Senha em texto puro.
-        :param hashed_password: Hash armazenado no banco.
-        :return: True se a senha for válida, False caso contrário.
-        """
-        return bcrypt.checkpw(
-            password.encode("utf-8"),
-            hashed_password.encode("utf-8")
+        documento = {
+            "firebase_uid": firebase_uid,
+            "plano": "gratuito",
+            "limite_diario_perguntas": 10,
+            "uso_diario": {"data": "", "perguntas_feitas": 0, "tokens_usados": 0},
+            "criado_em": datetime.now(timezone.utc),
+        }
+        if email:
+            documento["email"] = email.strip().lower()
+        return self.collection.find_one_and_update(
+            {"firebase_uid": firebase_uid},
+            {"$setOnInsert": documento},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
         )
 
-    # ------------------------------------------------------------------
-    # Estrutura do documento
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def build_user_document(email: str, hashed_password: str) -> dict:
-        """
-        Monta o documento que será inserido no MongoDB.
-
-        :param email: E-mail já validado e normalizado.
-        :param hashed_password: Senha já criptografada.
-        :return: Dicionário representando o documento do usuário.
-        """
-        return {
-            "email": email,
-            "password": hashed_password,
-            "is_active": True,
-            "role": "user",                # NOVO: todo cadastro novo nasce como "user"
-            "tokens_usados_hoje": 0,        # NOVO
-            "data_ultimo_reset": None,      # NOVO
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-        }
-
-    # ------------------------------------------------------------------
-    # Operações no banco
-    # ------------------------------------------------------------------
-
-    def create_user(self, email: str, password: str, confirm_password: str) -> dict:
-        """
-        Valida os dados, criptografa a senha e insere o usuário no banco.
-
-        :param email: E-mail informado pelo usuário.
-        :param password: Senha informada.
-        :param confirm_password: Confirmação de senha.
-        :return: Dicionário com o id do usuário inserido.
-        :raises ValueError: Se alguma validação falhar.
-        :raises Exception: Se o e-mail já estiver cadastrado.
-        """
+    def verificar_e_incrementar_uso(self, firebase_uid: str) -> tuple[bool, dict | None]:
+        """Aplica o limite diário de perguntas e incrementa o uso de modo atômico."""
         if not self.db_available or self.collection is None:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
-        normalized_email = self.validate_email_format(email)
-        self.validate_password(password, confirm_password)
+        hoje = date.today().isoformat()
+        usuario = self.collection.find_one({"firebase_uid": firebase_uid})
+        if not usuario:
+            return False, None
 
-        if self.collection.find_one({"email": normalized_email}):
-            raise ValueError("Este e-mail já está cadastrado.")
+        if usuario.get("uso_diario", {}).get("data") != hoje:
+            self.collection.update_one(
+                {"firebase_uid": firebase_uid},
+                {"$set": {"uso_diario": {"data": hoje, "perguntas_feitas": 0, "tokens_usados": 0}}},
+            )
 
-        hashed_password = self.hash_password(password)
-        user_document = self.build_user_document(normalized_email, hashed_password)
-        result = self.collection.insert_one(user_document)
+        usuario = self.collection.find_one_and_update(
+            {
+                "firebase_uid": firebase_uid,
+                "uso_diario.data": hoje,
+                "$expr": {"$lt": ["$uso_diario.perguntas_feitas", "$limite_diario_perguntas"]},
+            },
+            {"$inc": {"uso_diario.perguntas_feitas": 1}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return usuario is not None, usuario
 
-        return {"id": str(result.inserted_id)}
-
-    def find_by_email(self, email: str) -> dict | None:
-        """
-        Busca um usuário pelo e-mail.
-
-        :param email: E-mail a ser pesquisado.
-        :return: Documento do usuário ou None se não encontrado.
-        """
+    def registrar_tokens_usados(self, firebase_uid: str, tokens_gastos: int) -> None:
+        """Soma os tokens da resposta ao uso diário já aberto para o usuário."""
         if not self.db_available or self.collection is None:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
-
-        normalized_email = email.strip().lower()
-        return self.collection.find_one({"email": normalized_email})
-
-    def find_by_id(self, user_id: str) -> dict | None:  # NOVO
-        """
-        Busca um usuário pelo _id.
-
-        :param user_id: ID do usuário (string do ObjectId do Mongo, ou o id
-                         interno do fallback em memória).
-        :return: Documento do usuário ou None se não encontrado / id inválido.
-        """
-        if not self.db_available or self.collection is None:
-            raise RuntimeError(self.db_error or "Banco de dados indisponível")
-
-        try:
-            object_id = ObjectId(user_id)
-        except Exception:
-            return None
-        return self.collection.find_one({"_id": object_id})
-
-    def update_user(self, user_id: str, campos: dict) -> None:  # NOVO
-        """
-        Atualiza campos específicos do documento do usuário.
-
-        :param user_id: ID do usuário a ser atualizado.
-        :param campos: Dicionário com os campos e valores a atualizar.
-        """
-        if not self.db_available or self.collection is None:
-            raise RuntimeError(self.db_error or "Banco de dados indisponível")
-
-        try:
-            object_id = ObjectId(user_id)
-        except Exception:
-            return
-
-        campos = dict(campos)
-        campos["updated_at"] = datetime.utcnow()
-        self.collection.update_one({"_id": object_id}, {"$set": campos})
+        self.collection.update_one(
+            {"firebase_uid": firebase_uid},
+            {"$inc": {"uso_diario.tokens_usados": max(0, int(tokens_gastos))}},
+        )
