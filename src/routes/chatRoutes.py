@@ -26,7 +26,7 @@ def chat_routes(db) -> Blueprint:
     - GET /api/chat/conversas/<conversa_id>: retorna todas as mensagens de
       uma conversa específica.
 
-    Todas exigem token JWT no header: Authorization: Bearer <token>
+    Todas exigem um ID token Firebase no header: Authorization: Bearer <token>
 
     :param db: Instância do banco de dados MongoDB (pymongo.database.Database).
     :return: Blueprint configurado para registro na aplicação Flask principal.

@@ -31,7 +31,7 @@ class ChatModel:
         except Exception as exc:
             self.db_error = str(exc)
 
-    def save_mensagem(self, user_id: str, conversa_id: str, prompt: str, resposta: str) -> dict:
+    def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str) -> dict:
         """
         Salva uma troca completa (prompt do usuário + resposta da IA) no banco.
 
@@ -45,7 +45,7 @@ class ChatModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         doc = {
-            "user_id": user_id,
+            "firebase_uid": firebase_uid,
             "conversa_id": conversa_id,
             "prompt": prompt,
             "resposta": resposta,
@@ -57,7 +57,7 @@ class ChatModel:
         doc["created_at"] = doc["created_at"].isoformat()
         return doc
 
-    def get_mensagens_por_conversa(self, conversa_id: str) -> list:
+    def get_mensagens_por_conversa(self, firebase_uid: str, conversa_id: str) -> list:
         """
         Retorna todas as mensagens de uma conversa específica, em ordem cronológica.
 
@@ -68,7 +68,7 @@ class ChatModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         cursor = self.collection.find(
-            {"conversa_id": conversa_id},
+            {"firebase_uid": firebase_uid, "conversa_id": conversa_id},
             {"_id": 1, "prompt": 1, "resposta": 1, "created_at": 1}
         ).sort("created_at", 1)
 
@@ -80,7 +80,7 @@ class ChatModel:
 
         return results
 
-    def get_conversas_por_usuario(self, user_id: str) -> list:
+    def get_conversas_por_usuario(self, firebase_uid: str) -> list:
         """
         Retorna uma linha por conversa do usuário (para popular a sidebar),
         usando a primeira mensagem de cada conversa como prévia/título.
@@ -93,7 +93,7 @@ class ChatModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
 
         pipeline = [
-            {"$match": {"user_id": user_id}},
+            {"$match": {"firebase_uid": firebase_uid}},
             {"$sort": {"created_at": 1}},
             {"$group": {
                 "_id": "$conversa_id",
