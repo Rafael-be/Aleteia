@@ -1,3 +1,5 @@
+import { chamarApi } from "./firebase-init.js";
+
 /* =====================================================
    chat.js — Lógica exclusiva do chat
    Responsável por: envio de prompt, obtenção da resposta
@@ -9,7 +11,6 @@
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  const token           = localStorage.getItem("token");
   const textarea         = document.getElementById("promptInput");
   const btnEnviar         = document.getElementById("btnEnviar");
   const areaConversa     = document.getElementById("conversationArea");
@@ -218,11 +219,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadingBubble = adicionarBolha("Gerando resposta...", "sistema");
 
     try {
-      const res = await fetch("/api/chat/mensagem", {
+      const res = await chamarApi("/api/chat/mensagem", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ conversa_id: conversaId, prompt })
       });
@@ -284,9 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!areaConversa) return;
 
     try {
-      const res = await fetch(`/api/chat/conversas/${idConversa}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const res = await chamarApi(`/api/chat/conversas/${idConversa}`);
       if (!res.ok) return;
 
       const data = await res.json();

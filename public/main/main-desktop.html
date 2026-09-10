@@ -143,75 +143,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <script>
-    // Verifica sessão no servidor (fonte de verdade)
-    async function verificarSessao() {
-      try {
-        const res  = await fetch("/api/session-status");
-        const data = await res.json();
-
-        const btnConta      = document.getElementById("btnConta");
-        const btnContaMobile = document.getElementById("btnContaMobile");
-        const overlay       = document.getElementById("popupOverlay");
-        const popup         = document.getElementById("popupConta");
-        const btnVoltar     = document.getElementById("btnVoltar");
-        const btnSair       = document.getElementById("btnSair");
-        const usernameEl    = document.querySelector(".popup-username");
-
-        if (data.logado) {
-          // Exibe foto de perfil
-          document.getElementById("fotoConta").style.display = "block";
-          const fotoMobile = document.getElementById("fotoContaMobile");
-          if (fotoMobile) fotoMobile.style.display = "block";
-
-          // Mostra email no popup
-          if (usernameEl) usernameEl.textContent = "Olá, " + data.email;
-
-          // Abre popup ao clicar no botão desktop
-          if (btnConta) {
-            btnConta.addEventListener("click", () => {
-              overlay.classList.add("active");
-              popup.classList.add("active");
-            });
-          }
-          // Abre popup ao clicar no botão mobile
-          if (btnContaMobile) {
-            btnContaMobile.addEventListener("click", () => {
-              overlay.classList.add("active");
-              popup.classList.add("active");
-            });
-          }
-        } else {
-          // Não logado: clique vai para cadastro
-          if (btnConta) btnConta.addEventListener("click", () => window.location.href = "/cadastro");
-          if (btnContaMobile) btnContaMobile.addEventListener("click", () => window.location.href = "/cadastro");
-        }
-
-        // Fechar popup
-        function fecharPopup() {
-          overlay.classList.remove("active");
-          popup.classList.remove("active");
-        }
-        if (overlay) overlay.addEventListener("click", fecharPopup);
-        if (btnVoltar) btnVoltar.addEventListener("click", fecharPopup);
-        document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPopup(); });
-
-        // Botão Sair — chama /logout no servidor
-        if (btnSair) {
-          btnSair.addEventListener("click", async () => {
-            await fetch("/logout", { method: "POST" });
-            localStorage.removeItem("token"); // limpa também o localStorage
-            window.location.href = "/";
-          });
-        }
-
-      } catch (err) {
-        console.error("Erro ao verificar sessão:", err);
-      }
-    }
-
-    verificarSessao();
-  </script>
+  <script>window.FIREBASE_CONFIG = {{ firebase_web_config|tojson }};</script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
