@@ -53,13 +53,9 @@ app.register_blueprint(chat_routes(db))
 
 
 @app.context_processor
-def firebase_web_config():
-    """Expõe somente a configuração pública usada pelo SDK Web do Firebase."""
-    raw_config = os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}")
-    try:
-        return {"firebase_web_config": json.loads(raw_config)}
-    except json.JSONDecodeError:
-        return {"firebase_web_config": {}}
+def injetar_firebase_config():
+    """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
+    return {"firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}")}
 
 
 @app.route("/cadastro")
