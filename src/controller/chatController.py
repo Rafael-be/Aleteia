@@ -35,32 +35,43 @@ class ChatController:
             return jsonify({"error": "conversa_id é obrigatório."}), 400
         try:
             pode_usar, usuario = self.user_model.verificar_e_incrementar_uso(uid)
+            mensagens_anteriores = self.chat_model.get_mensagens_por_conversa(uid, conversa_id)
         except RuntimeError as exc:
             return jsonify({"error": str(exc)}), 503
         if not pode_usar:
             limite = usuario.get("limite_diario_perguntas", 10) if usuario else 10
             return jsonify({"error": "limite_diario_excedido", "limite": limite}), 429
-        mensagens_anteriores = self.chat_model.get_mensagens_por_conversa(uid, conversa_id)
         historico = [item for mensagem in mensagens_anteriores for item in (
             {"role": "user", "content": mensagem["prompt"]},
             {"role": "assistant", "content": mensagem["resposta"]},
         )]
         try:
             texto_resposta, tokens_gastos = obter_resposta(prompt, historico)
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 502
+        try:
             chat_salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto_resposta)
             self.user_model.registrar_tokens_usados(uid, tokens_gastos)
         except RuntimeError as exc:
-            return jsonify({"error": str(exc)}), 502
+            return jsonify({"error": str(exc)}), 503
         return jsonify({"resposta": texto_resposta, "chat": chat_salvo}), 200
 
     def get_conversas(self):
         uid, erro = self._usuario_autorizado()
         if erro:
             return erro
-        return jsonify({"prompts": self.chat_model.get_conversas_por_usuario(uid)}), 200
+        try:
+            conversas = self.chat_model.get_conversas_por_usuario(uid)
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 503
+        return jsonify({"prompts": conversas}), 200
 
     def get_mensagens_por_conversa(self, conversa_id):
         uid, erro = self._usuario_autorizado()
         if erro:
             return erro
-        return jsonify({"mensagens": self.chat_model.get_mensagens_por_conversa(uid, conversa_id)}), 200
+        try:
+            mensagens = self.chat_model.get_mensagens_por_conversa(uid, conversa_id)
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 503
+        return jsonify({"mensagens": mensagens}), 200

@@ -8,3 +8,6 @@ __pycache__/
 *.pyo
 *.pyd
 .vscode/
+Firebase_Back.json
+front.json
+aleteia/

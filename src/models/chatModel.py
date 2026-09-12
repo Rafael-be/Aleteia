@@ -17,19 +17,41 @@ class ChatModel:
     COLLECTION_NAME = "chats"
 
     def __init__(self, db):
+        self.db = db
         self.collection = None
         self.db_available = False
         self.db_error = None
 
-        if db is None:
-            self.db_error = "Banco de dados indisponível"
-            return
+        # Uma instância de Database direta continua suportada; com o provider
+        # da aplicação, a primeira tentativa acontece apenas quando necessária.
+        if not hasattr(db, "get_database"):
+            self._conectar()
 
+    def _conectar(self):
+        """Obtém a coleção e atualiza o estado a cada nova tentativa."""
+        db = self.db.get_database() if hasattr(self.db, "get_database") else self.db
+        if db is None:
+            self.collection = None
+            self.db_available = False
+            self.db_error = getattr(self.db, "last_error", None) or "Banco de dados indisponível"
+            return None
         try:
             self.collection = db[self.COLLECTION_NAME]
             self.db_available = True
+            self.db_error = None
+            return self.collection
         except Exception as exc:
+            self.collection = None
+            self.db_available = False
             self.db_error = str(exc)
+            return None
+
+    def _obter_colecao(self):
+        if not self.db_available or self.collection is None:
+            self._conectar()
+        if not self.db_available or self.collection is None:
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+        return self.collection
 
     def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str) -> dict:
         """
@@ -41,8 +63,7 @@ class ChatModel:
         :param resposta: Texto retornado pela IA.
         :return: Documento salvo, com _id em string e created_at em ISO.
         """
-        if not self.db_available or self.collection is None:
-            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+        collection = self._obter_colecao()
 
         doc = {
             "firebase_uid": firebase_uid,
@@ -51,7 +72,7 @@ class ChatModel:
             "resposta": resposta,
             "created_at": datetime.utcnow(),
         }
-        result = self.collection.insert_one(doc)
+        result = collection.insert_one(doc)
 
         doc["_id"] = str(result.inserted_id)
         doc["created_at"] = doc["created_at"].isoformat()
@@ -64,10 +85,9 @@ class ChatModel:
         :param conversa_id: ID da conversa a ser buscada.
         :return: Lista de documentos (prompt + resposta) daquela conversa.
         """
-        if not self.db_available or self.collection is None:
-            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+        collection = self._obter_colecao()
 
-        cursor = self.collection.find(
+        cursor = collection.find(
             {"firebase_uid": firebase_uid, "conversa_id": conversa_id},
             {"_id": 1, "prompt": 1, "resposta": 1, "created_at": 1}
         ).sort("created_at", 1)
@@ -89,8 +109,7 @@ class ChatModel:
         :return: Lista de dicionários {"_id": conversa_id, "prompt": primeiro_prompt,
                  "created_at": ...}, ordenada da conversa mais recente para a mais antiga.
         """
-        if not self.db_available or self.collection is None:
-            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+        collection = self._obter_colecao()
 
         pipeline = [
             {"$match": {"firebase_uid": firebase_uid}},
@@ -104,7 +123,7 @@ class ChatModel:
         ]
 
         results = []
-        for doc in self.collection.aggregate(pipeline):
+        for doc in collection.aggregate(pipeline):
             results.append({
                 "_id": doc["_id"],
                 "prompt": doc["prompt"],

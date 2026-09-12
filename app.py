@@ -8,8 +8,7 @@ import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import credentials
 from flask import Flask, render_template
-from pymongo import MongoClient
-
+from src.database import MongoDatabaseProvider
 from src.routes.authRoutes import auth_routes
 from src.routes.chatRoutes import chat_routes
 
@@ -39,23 +38,23 @@ app = Flask(__name__, template_folder="public", static_folder="static", static_u
 
 mongo_uri = os.getenv("MONGO_URI") or "mongodb://localhost:27017"
 mongo_db_name = os.getenv("MONGO_DB_NAME") or "aleteia"
-try:
-    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
-    client.admin.command("ping")
-    db = client[mongo_db_name]
-    print(f"MongoDB conectado em {mongo_uri}")
-except Exception as exc:
-    print(f"MongoDB indisponível: {exc}")
-    db = None
+# A conexão é feita sob demanda pelos models e é tentada novamente em cada
+# requisição que chegar enquanto o Mongo estiver indisponível.
+mongo_db = MongoDatabaseProvider(mongo_uri, mongo_db_name)
 
-app.register_blueprint(auth_routes(db))
-app.register_blueprint(chat_routes(db))
+app.register_blueprint(auth_routes(mongo_db))
+app.register_blueprint(chat_routes(mongo_db))
 
 
 @app.context_processor
 def injetar_firebase_config():
     """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
     return {"firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}")}
+
+@app.after_request
+def add_coop_headers(response):
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    return response
 
 
 @app.route("/cadastro")
