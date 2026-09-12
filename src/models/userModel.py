@@ -31,7 +31,7 @@ class UserModel:
             return None
         try:
             self.collection = db[self.COLLECTION_NAME]
-            self.collection.create_index("firebase_uid", unique=True)
+            self.collection.create_index("firebase_uid", unique=True, sparse=True)
             self.collection.create_index("email", unique=True, sparse=True)
             self.db_available = True
             self.db_error = None
