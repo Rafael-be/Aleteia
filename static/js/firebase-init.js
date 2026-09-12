@@ -26,18 +26,12 @@ export async function cadastrarComEmail(email, senha) {
 
 export async function loginComEmail(email, senha) {
   const resultado = await signInWithEmailAndPassword(auth, email, senha);
-  if (!resultado.user.emailVerified) {
-    await sendEmailVerification(resultado.user);
-    return { usuario: resultado.user, emailVerificado: false };
-  }
-  await sincronizarComBackend(resultado.user);
-  return { usuario: resultado.user, emailVerificado: true };
+  return resultado.user;
 }
 
 export async function loginSocial(provedor) {
   const providers = { google: new GoogleAuthProvider(), microsoft: new OAuthProvider("microsoft.com"), github: new OAuthProvider("github.com") };
   const resultado = await signInWithPopup(auth, providers[provedor]);
-  await sincronizarComBackend(resultado.user);
   return resultado.user;
 }
 

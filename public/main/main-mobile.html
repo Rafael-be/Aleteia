@@ -181,9 +181,17 @@
       text-align: center;
       line-height: 1.5;
     }
+    .aviso-verificacao-email { display: none; position: fixed; top: 8px; left: 8px; right: 8px; z-index: 10; padding: 10px; border-radius: 6px; background: #fff4d6; color: #473400; text-align: center; }
+    .aviso-verificacao-email.visivel { display: block; }
   </style>
 </head>
 <body>
+
+  <aside id="avisoVerificacaoEmail" class="aviso-verificacao-email" role="status" aria-live="polite">
+    Confirme seu e-mail para liberar o chat.
+    <button id="btnReenviarVerificacao" type="button">Reenviar confirmação</button>
+    <small id="feedbackReenvioVerificacao"></small>
+  </aside>
 
   <!-- TOP BAR -->
   <div class="topbar">

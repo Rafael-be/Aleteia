@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = document.getElementById("inputEmail")?.value.trim(), senha = document.getElementById("inputSenha")?.value, aviso = document.getElementById("loginFeedback");
     if (!email || !senha) return feedback(aviso, "Preencha e-mail e senha.");
     entrar.disabled = true;
-    try { const resultado = await loginComEmail(email, senha); if (!resultado.emailVerificado) return feedback(aviso, "Confirme seu e-mail. Enviamos um novo link."); window.location.href = "/"; }
+    try { await loginComEmail(email, senha); window.location.href = "/"; }
     catch { feedback(aviso, "Não foi possível fazer login. Confira seus dados."); } finally { entrar.disabled = false; }
   });
   cadastrar?.addEventListener("click", async () => {
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!email || !senha || !confirmar) return feedback(aviso, "Preencha todos os campos.");
     if (senha !== confirmar) return feedback(aviso, "As senhas não coincidem.");
     cadastrar.disabled = true;
-    try { await cadastrarComEmail(email, senha); feedback(aviso, "Verifique seu e-mail antes de fazer login.", "#3a9c4e"); setTimeout(() => { window.location.href = "/login"; }, 1500); }
+    try { await cadastrarComEmail(email, senha); window.location.href = "/"; }
     catch { feedback(aviso, "Não foi possível criar a conta."); } finally { cadastrar.disabled = false; }
   });
   document.querySelectorAll("[data-firebase-provider]").forEach((botao) => botao.addEventListener("click", async () => {

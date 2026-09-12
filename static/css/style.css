@@ -294,3 +294,34 @@ body {
 .sidebar #listaConversas li:hover {
   background-color: rgba(255,255,255,0.07);
 }
+
+/* Aviso mostrado enquanto a sessão Firebase ainda não tem e-mail confirmado. */
+.aviso-verificacao-email {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 1000;
+  width: min(92vw, 680px);
+  transform: translateX(-50%);
+  padding: .85rem 1rem;
+  border: 1px solid #f3c969;
+  border-radius: .5rem;
+  background: #fff4d6;
+  color: #473400;
+  box-shadow: 0 .3rem 1rem rgba(0, 0, 0, .2);
+  text-align: center;
+}
+
+.aviso-verificacao-email.visivel { display: block; }
+.aviso-verificacao-email button {
+  margin-left: .5rem;
+  border: 0;
+  border-radius: .25rem;
+  padding: .35rem .6rem;
+  background: #008e05;
+  color: #fff;
+  font-weight: 600;
+}
+
+.aviso-verificacao-email small { display: block; margin-top: .35rem; }
