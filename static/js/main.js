@@ -1,5 +1,5 @@
 import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
-import { onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { deleteUser, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
 
@@ -23,7 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const popup = document.getElementById("popupConta");
   const aviso = document.getElementById("avisoVerificacaoEmail");
   const reenviar = document.getElementById("btnReenviarVerificacao");
+  const corrigirEmail = document.getElementById("btnCorrigirEmailVerificacao");
   const feedbackReenvio = document.getElementById("feedbackReenvioVerificacao");
+  const emailPendente = document.getElementById("emailVerificacaoPendente");
   const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
   const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
 
@@ -46,12 +48,26 @@ document.addEventListener("DOMContentLoaded", () => {
       reenviar.disabled = false;
     }
   });
+  corrigirEmail?.addEventListener("click", async () => {
+    const usuario = auth.currentUser;
+    if (!usuario) return;
+    corrigirEmail.disabled = true;
+    try {
+      await deleteUser(usuario);
+      await signOut(auth);
+      window.location.href = "/cadastro";
+    } catch {
+      if (feedbackReenvio) feedbackReenvio.textContent = "Para corrigir este e-mail, faça login novamente e tente outra vez.";
+      corrigirEmail.disabled = false;
+    }
+  });
 
   // Responsabilidade: estado visual da conta e aviso de verificação.
   onAuthStateChanged(auth, async (usuario) => {
     verificacaoEmAndamento = null;
     const emailVerificado = await emailEstaVerificado(usuario);
     aviso?.classList.toggle("visivel", Boolean(usuario && !emailVerificado));
+    if (emailPendente) emailPendente.textContent = usuario?.email || "";
     const chatBloqueado = Boolean(usuario && !emailVerificado);
     [document.getElementById("promptInput"), document.getElementById("btnEnviar")]
       .forEach((controle) => { if (controle) controle.disabled = chatBloqueado; });

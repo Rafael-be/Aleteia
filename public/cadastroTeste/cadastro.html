@@ -51,6 +51,16 @@
 
   </div>
 
+  <dialog id="dialogoEmailIncerto" class="dialogo-email-incerto" aria-labelledby="textoEmailIncerto">
+    <p id="textoEmailIncerto" class="mb-2"></p>
+    <p>Isso é normal para alguns provedores, como Yahoo, e-mails corporativos ou de órgãos públicos, e não significa necessariamente que o endereço está errado.</p>
+    <p>Deseja continuar mesmo assim?</p>
+    <div class="dialogo-email-acoes">
+      <button id="btnCorrigirEmailIncerto" type="button">Corrigir e-mail</button>
+      <button id="btnContinuarEmailIncerto" type="button">Continuar</button>
+    </div>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
   <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>

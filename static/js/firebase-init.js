@@ -18,7 +18,31 @@ export async function sincronizarComBackend(usuario) {
   return usuario;
 }
 
-export async function cadastrarComEmail(email, senha) {
+export async function validarEmailAntesDoCadastro(email) {
+  try {
+    const resposta = await fetch("/api/auth/validar-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!resposta.ok) return { status: "incerto", checagem_disponivel: false };
+    return await resposta.json();
+  } catch {
+    return { status: "incerto", checagem_disponivel: false };
+  }
+}
+
+export async function cadastrarComEmail(email, senha, confirmarEmailIncerto) {
+  const validacao = await validarEmailAntesDoCadastro(email);
+  if (validacao.status === "rejeitado") {
+    const erro = new Error("Esse e-mail não parece existir. Confira e tente novamente.");
+    erro.code = "email_rejeitado";
+    throw erro;
+  }
+  if (validacao.status === "incerto" && validacao.checagem_disponivel) {
+    const continuar = await confirmarEmailIncerto();
+    if (!continuar) return null;
+  }
   const resultado = await createUserWithEmailAndPassword(auth, email, senha);
   await sendEmailVerification(resultado.user);
   return resultado.user;
