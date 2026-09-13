@@ -66,6 +66,18 @@ class ChatController:
             return jsonify({"error": str(exc)}), 503
         return jsonify({"prompts": conversas}), 200
 
+    def apagar_conversa(self, conversa_id):
+        uid, erro = self._usuario_autorizado()
+        if erro:
+            return erro
+        try:
+            apagadas = self.chat_model.apagar_conversa(uid, conversa_id)
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 503
+        if apagadas == 0:
+            return jsonify({"error": "Conversa não encontrada."}), 404
+        return jsonify({"apagadas": apagadas}), 200
+
     def get_mensagens_por_conversa(self, conversa_id):
         uid, erro = self._usuario_autorizado()
         if erro:
