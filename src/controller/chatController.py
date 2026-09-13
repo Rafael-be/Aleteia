@@ -66,6 +66,19 @@ class ChatController:
             return jsonify({"error": str(exc)}), 503
         return jsonify({"prompts": conversas}), 200
 
+    def pesquisar_conversas(self):
+        uid, erro = self._usuario_autorizado()
+        if erro:
+            return erro
+        termo = request.args.get("q", "").strip()
+        if not termo:
+            return jsonify({"error": "Informe um termo de busca."}), 400
+        try:
+            conversas = self.chat_model.pesquisar_conversas(uid, termo)
+        except RuntimeError as exc:
+            return jsonify({"error": str(exc)}), 503
+        return jsonify({"prompts": conversas}), 200
+
     def apagar_conversa(self, conversa_id):
         uid, erro = self._usuario_autorizado()
         if erro:
