@@ -2,6 +2,7 @@ import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
 import { deleteUser, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
+let debouncePesquisaConversas = null;
 
 async function emailEstaVerificado(usuario) {
   if (!usuario) return false;
@@ -103,7 +104,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     item.dataset.id = chat._id;
     item.style.cursor = "pointer";
-    item.addEventListener("click", () => window.carregarConversa?.(chat._id));
+    item.addEventListener("click", () => {
+      if (window.carregarConversa) {
+        window.carregarConversa(chat._id);
+      } else {
+        window.location.href = `/chat?conversa_id=${chat._id}`;
+      }
+    });
     botaoExcluir.addEventListener("click", async (event) => {
       event.stopPropagation();
       botaoExcluir.disabled = true;
@@ -122,13 +129,38 @@ document.addEventListener("DOMContentLoaded", () => {
     lista.prepend(item);
   };
 
+  const renderizarConversas = (conversas) => {
+    const lista = document.getElementById("listaConversas");
+    if (!lista) return;
+    lista.replaceChildren();
+    conversas.forEach(window.adicionarItemNoAside);
+  };
+
+  const inputPesquisarConversas = document.getElementById("inputPesquisarConversas");
+  inputPesquisarConversas?.addEventListener("input", () => {
+    clearTimeout(debouncePesquisaConversas);
+    debouncePesquisaConversas = setTimeout(async () => {
+      const termo = inputPesquisarConversas.value.trim();
+      const url = termo
+        ? `/api/chat/pesquisar?q=${encodeURIComponent(termo)}`
+        : "/api/chat/conversas";
+      try {
+        const resposta = await chamarApi(url);
+        if (!resposta?.ok || inputPesquisarConversas.value.trim() !== termo) return;
+        renderizarConversas((await resposta.json()).prompts);
+      } catch (erro) {
+        console.error("Não foi possível pesquisar conversas:", erro);
+      }
+    }, 300);
+  });
+
   // Responsabilidade: dados da aplicação; usuários não verificados não chamam a API.
   onAuthStateChanged(auth, async (usuario) => {
     if (!usuario || !await emailEstaVerificado(usuario)) return;
     try {
       await sincronizarComBackend(usuario);
       const resposta = await chamarApi("/api/chat/conversas");
-      if (resposta?.ok) (await resposta.json()).prompts.forEach(window.adicionarItemNoAside);
+      if (resposta?.ok) renderizarConversas((await resposta.json()).prompts);
     } catch (erro) {
       console.error("Não foi possível preparar os dados da conta:", erro);
     }
