@@ -94,7 +94,11 @@ document.addEventListener("DOMContentLoaded", () => {
     botaoExcluir.setAttribute("aria-label", "Excluir conversa");
     botaoExcluir.innerHTML = `
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+        <path d="M9 7V4h6v3" />
+        <path d="M6 7l1 13h10l1-13" />
+        <g class="tampa-lixeira">
+          <path d="M4 7h16" />
+        </g>
       </svg>`;
 
     item.dataset.id = chat._id;

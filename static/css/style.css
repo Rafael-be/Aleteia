@@ -321,6 +321,16 @@ body {
   pointer-events: all;
 }
 
+.tampa-lixeira {
+  transform-box: view-box;
+  transform-origin: 9px 7px;
+  transition: transform 0.2s ease;
+}
+
+.btn-excluir-conversa:hover .tampa-lixeira {
+  transform: rotate(-18deg);
+}
+
 /* Aviso mostrado enquanto a sessão Firebase ainda não tem e-mail confirmado. */
 .aviso-verificacao-email {
   display: none;
