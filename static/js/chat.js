@@ -322,6 +322,10 @@ document.addEventListener("DOMContentLoaded", () => {
     textarea.focus();
   };
 
+  window.addEventListener("conversaApagada", ({ detail: idConversa }) => {
+    if (idConversa === conversaId) window.iniciarNovaConversa();
+  });
+
   carregarConversaDaUrl();
 
   /* ── Nova conversa ── */

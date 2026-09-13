@@ -84,10 +84,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const lista = document.getElementById("listaConversas");
     if (!lista) return;
     const item = document.createElement("li");
-    item.textContent = chat.prompt.slice(0, 40) + (chat.prompt.length > 40 ? "…" : "");
+    const texto = document.createElement("span");
+    texto.textContent = chat.prompt.slice(0, 40) + (chat.prompt.length > 40 ? "…" : "");
+
+    const botaoExcluir = document.createElement("button");
+    botaoExcluir.className = "btn-excluir-conversa";
+    botaoExcluir.type = "button";
+    botaoExcluir.title = "Excluir conversa";
+    botaoExcluir.setAttribute("aria-label", "Excluir conversa");
+    botaoExcluir.innerHTML = `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+      </svg>`;
+
     item.dataset.id = chat._id;
     item.style.cursor = "pointer";
     item.addEventListener("click", () => window.carregarConversa?.(chat._id));
+    botaoExcluir.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      botaoExcluir.disabled = true;
+      try {
+        const resposta = await chamarApi(`/api/chat/conversas/${chat._id}`, { method: "DELETE" });
+        if (!resposta?.ok) return;
+        item.remove();
+        window.dispatchEvent(new CustomEvent("conversaApagada", { detail: chat._id }));
+      } catch (erro) {
+        console.error("Não foi possível excluir a conversa:", erro);
+      } finally {
+        if (item.isConnected) botaoExcluir.disabled = false;
+      }
+    });
+    item.append(texto, botaoExcluir);
     lista.prepend(item);
   };
 
