@@ -297,6 +297,27 @@ body {
   background-color: rgba(255,255,255,0.07);
 }
 
+#inputPesquisarConversas {
+  min-width: 0;
+  flex: 1;
+  padding: 0.2rem 0.35rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-light);
+  font-family: inherit;
+  font-size: inherit;
+  transition: border-color 0.2s ease;
+}
+
+#inputPesquisarConversas:focus {
+  border-color: var(--border-mid);
+  outline: none;
+}
+
+#inputPesquisarConversas::placeholder {
+  color: var(--text-muted);
+}
+
 .btn-excluir-conversa {
   position: absolute;
   right: 6px;
