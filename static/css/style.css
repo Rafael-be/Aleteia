@@ -19,6 +19,7 @@
   --text-muted:          #c0c0c0;
   --border-dark:         #222;
   --border-mid:          #3a3a3a;
+  --verdade-vermelha:    #D94040;
 }
 
 /* ── Reset base ── */
@@ -277,9 +278,10 @@ body {
 
 .sidebar #listaConversas li {
   display: block;
+  position: relative;
   min-height: 32px;
   margin: 0 0 0.35rem;
-  padding: 0.35rem 0.45rem;
+  padding: 0.35rem 2rem 0.35rem 0.45rem;
   color: var(--text-light);
   font-size: 0.9rem;
   font-weight: 400;
@@ -293,6 +295,30 @@ body {
 
 .sidebar #listaConversas li:hover {
   background-color: rgba(255,255,255,0.07);
+}
+
+.btn-excluir-conversa {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  background: none;
+  border: none;
+  color: var(--verdade-vermelha);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar #listaConversas li:hover .btn-excluir-conversa,
+.sidebar #listaConversas li:focus-within .btn-excluir-conversa {
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* Aviso mostrado enquanto a sessão Firebase ainda não tem e-mail confirmado. */
