@@ -100,6 +100,15 @@ class ChatModel:
 
         return results
 
+    def apagar_conversa(self, firebase_uid: str, conversa_id: str) -> int:
+        """Apaga todas as mensagens de uma conversa pertencente ao usuário."""
+        collection = self._obter_colecao()
+        resultado = collection.delete_many({
+            "firebase_uid": firebase_uid,
+            "conversa_id": conversa_id,
+        })
+        return resultado.deleted_count
+
     def get_conversas_por_usuario(self, firebase_uid: str) -> list:
         """
         Retorna uma linha por conversa do usuário (para popular a sidebar),
