@@ -1,5 +1,6 @@
 venv/
 venv-1/
+venv-2/
 Exemplo.env
 .env
 __pycache__/

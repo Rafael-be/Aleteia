@@ -6,8 +6,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-for env_path in (BASE_DIR / ".env", BASE_DIR / "Exemplo.env"):
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+for env_path in (PROJECT_ROOT / ".env", PROJECT_ROOT / "Exemplo.env"):
     if env_path.exists():
         load_dotenv(env_path, override=True)
 

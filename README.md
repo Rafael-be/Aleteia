@@ -6,57 +6,128 @@ O projeto se norteia pela descoberta e validação do problema da fácil propaga
 
 Por isso, a proposta feita foi o desenvolvimento de um software capaz de ler um input, em texto ou imagem, e submetê-lo a uma série de testes academicamente comprovados, através de uma IA aplicada. O software contará com um site para inserir o input e uma extensão para acesso mais fácil e rápido, com menos informações e com um botão de redirecionamento para o site, onde será possível ver mais informações sobre o porquê do veredito.
 
-## Ferramentas e tecnologias
+## Visão geral
+
+A Aleteia combina:
+
+- backend em Python com Flask;
+- autenticação via JWT;
+- banco de dados MongoDB;
+- interface web em HTML, CSS e JavaScript;
+- integração com a API da OpenAI para geração de respostas com base em contexto e busca web.
+
+O projeto foi pensado como ferramenta de apoio ao estudo de desinformação, com finalidade acadêmica e experimental.
+
+## Tecnologias utilizadas
 
 ### Backend
 
-**Python:** linguagem de programação usada no backend do projeto. É uma linguagem poderosa, escalável e completa, com bibliotecas robustas, como Scikit-learn, NLTK e Spacy, que facilitam o desenvolvimento de sistemas com inteligência artificial e Processamento de Linguagem Natural (NLP).
-
-**Flask:** framework usado para estruturar o backend, criar rotas, renderizar páginas e disponibilizar endpoints de API. Ele conversa bem com aplicações de NLP e com a futura integração de IA do projeto.
-
-**MongoDB:** banco de dados usado para armazenar usuários e histórico de prompts.
-
-**JWT:** usado para autenticação. Depois do login, o backend gera um token que o frontend salva no `localStorage` e envia nas rotas protegidas.
+- Python 3
+- Flask
+- MongoDB
+- PyMongo
+- PyJWT
+- bcrypt
+- python-dotenv
+- OpenAI Python SDK
 
 ### Frontend
 
-**HTML5:** usado para estruturar as páginas, formulários e elementos principais da interface.
+- HTML5
+- CSS
+- JavaScript
+- Templates Jinja
 
-**CSS e Bootstrap:** usados para estilização visual, responsividade e componentes básicos de interface.
+### Infraestrutura e utilidades
 
-**JavaScript:** usado para controlar interações da interface, autenticação no frontend, envio de prompts e carregamento do histórico de conversas.
+- Arquivos de ambiente com `.env`
+- Sessões do Flask para controle de autenticação
+- Limite diário de uso por usuário
 
-## Como rodar o projeto
+## Funcionalidades atuais
 
-1. Crie e ative um ambiente virtual:
+- Cadastro de usuários
+- Login com autenticação JWT
+- Proteção de rotas autenticadas
+- Histórico de conversas por usuário
+- Envio de mensagens para a IA
+- Geração de resposta estruturada em português
+- Persistência de prompt e resposta no banco
+- Limitação diária de uso por usuário
+
+## Requisitos
+
+- Python 3.10 ou superior
+- MongoDB local ou remoto acessível
+- Chave da API OpenAI
+
+## Configuração do ambiente
+
+1. Crie um ambiente virtual:
 
 ```bash
 python -m venv venv
 ```
 
-2. Instale as dependências:
+2. Ative o ambiente virtual:
+
+- Linux/macOS:
+
+```bash
+source venv/bin/activate
+```
+
+- Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+3. Instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Crie um arquivo `.env` com base no `Exemplo.env`.
+4. Crie um arquivo `.env` com base no `Exemplo.env`.
 
-4. Configure as variáveis:
+5. Defina as variáveis de ambiente:
 
 ```env
 MONGO_URI=sua_string_de_conexao_mongodb
 MONGO_DB_NAME=nome_do_banco
 JWT_SECRET_KEY=sua_chave_secreta
+SECRET_KEY=sua_chave_de_sessao
+OPENAI_API_KEY=sua_chave_openai
+OPENAI_MODEL=gpt-5.6-terra
+TOKENS_LIMITE_DIARIO_USUARIO=50000
 ```
 
-5. Execute a aplicação:
+> O arquivo `Exemplo.env` pode ser usado como referência para preencher as variáveis necessárias.
+> Antes de iniciar a aplicação, o responsável pela execução deve escolher o modelo de IA que será usado e também definir o limite diário de tokens conforme sua necessidade e orçamento.
+> O valor de `TOKENS_LIMITE_DIARIO_USUARIO` é configurável e pode ser ajustado para qualquer valor desejado, de acordo com os critérios do ambiente em que o projeto será executado.
+
+## Execução local
 
 ```bash
 python app.py
 ```
 
-Por padrão, o Flask inicia em `http://127.0.0.1:5000`.
+Por padrão, a aplicação será iniciada em:
+
+```text
+http://127.0.0.1:5000
+```
+
+## Deploy
+
+O projeto também foi publicado em ambiente de demonstração na web em:
+
+```text
+https://aleteia.onrender.com
+```
+
+Essa versão pública serve como ambiente de apresentação do sistema, permitindo acesso ao fluxo principal da aplicação em um deploy externo para testes e demonstração do projeto.
 
 ## Estrutura do projeto
 
@@ -66,62 +137,73 @@ Aleteia/
 ├── README.md
 ├── requirements.txt
 ├── Exemplo.env
-├── css/
-│   ├── style.css
-│   ├── auth.css
-│   └── chat.css
-├── images/
-├── js/
-│   ├── main.js
-│   ├── auth.js
-│   └── chat.js
+├── manifest.json
 ├── public/
-│   ├── main/
-│   ├── login/
 │   ├── cadastroTeste/
+│   │   └── cadastro.html
 │   ├── chat/
-│   └── index/
-└── src/
-    ├── controller/
-    ├── models/
-    └── routes/
+│   │   └── chatIndex.html
+│   ├── index/
+│   │   └── popup.html
+│   ├── login/
+│   │   └── login.html
+│   └── main/
+│       ├── main-desktop.html
+│       └── main-mobile.html
+├── src/
+│   ├── controller/
+│   │   ├── chatController.py
+│   │   ├── gemini_controller.py
+│   │   └── userController.py
+│   ├── models/
+│   │   ├── chatModel.py
+│   │   └── userModel.py
+│   ├── routes/
+│   │   ├── chatRoutes.py
+│   │   └── userRoutes.py
+│   ├── services/
+│   │   ├── gemini_services.py
+│   │   └── openai_services.py
+│   └── utils/
+│       └── token_limiter.py
+├── static/
+│   ├── css/
+│   ├── images/
+│   └── js/
+└── query/
 ```
 
-## Páginas
+## Fluxo da aplicação
 
-| Rota | Arquivo | Função |
-| --- | --- | --- |
-| `/` | `public/main/main-desktop.html` | Página inicial do site, com apresentação da AleteIA, sidebar e botão para iniciar o chat. |
-| `/login` | `public/login/login.html` | Tela de login. Envia e-mail e senha para a API de autenticação. |
-| `/cadastro` | `public/cadastroTeste/cadastro.html` | Tela de cadastro. Cria usuário e tenta realizar login automático. |
-| `/chat` | `public/chat/chatIndex.html` | Tela de envio de prompts e visualização do histórico de conversas do usuário logado. |
+### Autenticação
 
-Observação: `public/main/main-mobile.html` existe como versão/protótipo mobile separado, mas a rota principal atual usa `main-desktop.html`, que já possui comportamento responsivo.
-
-## Extensão
-
-A extensão ainda está em fase de protótipo.
-
-O arquivo `manifest.json` aponta para `public/index/popup.html` como popup da extensão. Essa tela representa uma versão simples para envio de input, mas ainda não está integrada ao fluxo completo do site nem às APIs finais de verificação.
-
-## Fluxo de autenticação
-
-1. O usuário cria uma conta em `/cadastro`.
+1. O usuário acessa a rota `/cadastro` para criar conta.
 2. O frontend envia os dados para `POST /api/users/register`.
-3. Depois do cadastro, o frontend tenta autenticar o usuário em `POST /api/users/login`.
+3. O usuário faz login em `POST /api/users/login`.
 4. A API retorna um token JWT.
-5. O frontend salva o token no `localStorage`.
-6. As rotas protegidas do chat usam o header:
+5. O token é enviado no header `Authorization` para rotas protegidas.
+
+Formato esperado:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-## API de usuários
+### Chat
 
-### `POST /api/users/register`
+1. O usuário acessa `/chat` após autenticação.
+2. O frontend envia a mensagem para `POST /api/chat/mensagem`.
+3. O backend valida o token, verifica limites e chama a IA.
+4. A resposta é salva junto ao prompt no MongoDB.
+5. O histórico pode ser consultado em `GET /api/chat/conversas`.
 
-Cadastra um novo usuário.
+## API
+
+### Usuários
+
+#### `POST /api/users/register`
+
+Cria um novo usuário.
 
 Body esperado:
 
@@ -133,18 +215,16 @@ Body esperado:
 }
 ```
 
-Possíveis respostas:
+Respostas possíveis:
 
-| Status | Significado |
-| --- | --- |
-| `201` | Usuário cadastrado com sucesso. |
-| `400` | Corpo inválido ou campos obrigatórios ausentes. |
-| `422` | Regra de validação violada, como e-mail inválido, senha fraca ou senhas diferentes. |
-| `500` | Erro interno no servidor. |
+- `201`: cadastro realizado com sucesso
+- `400`: corpo da requisição inválido
+- `422`: regra de validação violada
+- `500`: erro interno do servidor
 
-### `POST /api/users/login`
+#### `POST /api/users/login`
 
-Autentica um usuário e retorna um token JWT.
+Autentica um usuário e retorna um JWT.
 
 Body esperado:
 
@@ -155,24 +235,20 @@ Body esperado:
 }
 ```
 
-Possíveis respostas:
+Respostas possíveis:
 
-| Status | Significado |
-| --- | --- |
-| `200` | Login realizado com sucesso. Retorna o token JWT. |
-| `400` | Corpo inválido ou campos obrigatórios ausentes. |
-| `401` | Credenciais inválidas. |
-| `403` | Conta desativada. |
-| `422` | Falha nas validações de formato. |
-| `500` | Erro interno no servidor. |
+- `200`: login concluído com sucesso
+- `400`: dados ausentes ou inválidos
+- `401`: credenciais inválidas
+- `403`: conta desativada
+- `422`: falha em validações
+- `500`: erro interno do servidor
 
-## API de chat
+### Chat
 
-As rotas de chat exigem autenticação por JWT.
+#### `POST /api/chat/mensagem`
 
-### `POST /api/chat/prompt`
-
-Salva um prompt no histórico do usuário logado.
+Envia uma mensagem do usuário para a IA e salva o histórico da conversa.
 
 Headers:
 
@@ -185,21 +261,22 @@ Body esperado:
 
 ```json
 {
-  "prompt": "Texto que o usuário deseja verificar"
+  "conversa_id": "uuid-da-conversa",
+  "prompt": "Texto que deseja verificar"
 }
 ```
 
-Possíveis respostas:
+Respostas possíveis:
 
-| Status | Significado |
-| --- | --- |
-| `201` | Prompt salvo com sucesso. |
-| `400` | Prompt vazio ou inválido. |
-| `401` | Token ausente ou inválido. |
+- `200`: resposta da IA gerada com sucesso
+- `400`: prompt vazio ou conversa_id ausente
+- `401`: token ausente ou inválido
+- `429`: limite diário excedido
+- `502`: falha ao chamar a OpenAI
 
-### `GET /api/chat/prompts`
+#### `GET /api/chat/conversas`
 
-Retorna o histórico de prompts do usuário logado, ordenado do mais recente para o mais antigo.
+Retorna as conversas do usuário autenticado.
 
 Headers:
 
@@ -207,16 +284,32 @@ Headers:
 Authorization: Bearer <token>
 ```
 
-Possíveis respostas:
+#### `GET /api/chat/conversas/<conversa_id>`
 
-| Status | Significado |
-| --- | --- |
-| `200` | Histórico retornado com sucesso. |
-| `401` | Token ausente ou inválido. |
+Retorna todas as mensagens de uma conversa específica.
 
-## Observações de desenvolvimento
+Headers:
 
-- O botão de anexar arquivo e o botão de microfone aparecem na interface do chat, mas ainda não possuem implementação completa.
-- Os botões de login com Google e Microsoft aparecem na tela de login, mas ainda não possuem autenticação integrada.
-- O JavaScript do chat atualmente redireciona para `/conversa?q=...` após salvar o prompt, porém essa rota ainda não está registrada em `app.py`.
-- O projeto ainda está em desenvolvimento acadêmico, então algumas telas e fluxos podem representar protótipos ou funcionalidades futuras.
+```http
+Authorization: Bearer <token>
+```
+
+## Observações importantes
+
+- A extensão em `manifest.json` existe como protótipo inicial, mas não está integrada ao fluxo completo da aplicação.
+- O projeto está em desenvolvimento acadêmico, portanto alguns elementos da interface podem representar versões experimentais ou recursos em expansão.
+- O backend atual foi implementado com a OpenAI como motor principal de análise de fato, e não depende de bibliotecas locais de NLP para o funcionamento principal.
+- O arquivo `src/routes/chatRoutes.py` mantém rotas antigas do Gemini como referência histórica, mas elas não são registradas em `app.py` no fluxo atual.
+- O modelo de IA pode ser selecionado conforme a preferência e disponibilidade do ambiente: o projeto aceita ajuste da variável `OPENAI_MODEL`, e o modelo atual configurado no exemplo é `gpt-5.6-terra`.
+- O limite diário de tokens também deve ser definido pelo responsável pela execução, conforme o orçamento e a necessidade de uso do sistema.
+
+## Status do projeto
+
+Este projeto está em evolução e foi estruturado como um sistema de demonstração funcional para validação de uso em contexto acadêmico, com foco em:
+
+- autenticação de usuários;
+- integração com IA para verificação de textos;
+- histórico de conversas;
+- experiência web simples e direta.
+
+
