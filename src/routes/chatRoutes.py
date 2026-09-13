@@ -41,6 +41,11 @@ def chat_routes(db) -> Blueprint:
         view_func=controller.get_mensagens_por_conversa,
         methods=["GET"]
     )
+    chat_bp.add_url_rule(
+        "/conversas/<conversa_id>",
+        view_func=controller.apagar_conversa,
+        methods=["DELETE"]
+    )
 
     return chat_bp
 
