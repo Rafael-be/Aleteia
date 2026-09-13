@@ -56,10 +56,10 @@
           <img alt="nova_conversa" src="{{ url_for('static', filename='images/novaconversa.png') }}" style="width:10%;height:auto;margin-right:5%;">
           Nova conversa
         </a>
-        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <div class="nav-link text-light px-0 d-flex align-items-center mb-2">
           <img alt="pesquisar_conversa" src="{{ url_for('static', filename='images/lupa.png') }}" style="width:10%;height:auto;margin-right:5%;">
-          Pesquisar conversas
-        </a>
+          <input type="text" id="inputPesquisarConversas" placeholder="Pesquisar conversas" autocomplete="off">
+        </div>
         <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
           <img alt="home" src="{{ url_for('static', filename='images/home.png') }}" style="width:8%;height:auto;margin-right:6%;">
           Página inicial
