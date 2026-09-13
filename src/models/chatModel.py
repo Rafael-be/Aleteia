@@ -7,6 +7,7 @@ coleção dedicada no MongoDB.
 """
 
 from datetime import datetime
+import re
 
 
 class ChatModel:
@@ -108,6 +109,36 @@ class ChatModel:
             "conversa_id": conversa_id,
         })
         return resultado.deleted_count
+
+    def pesquisar_conversas(self, firebase_uid: str, termo: str) -> list:
+        """Busca conversas do usuário pelo conteúdo de prompts e respostas."""
+        collection = self._obter_colecao()
+        termo_escapado = re.escape(termo)
+        pipeline = [
+            {"$match": {
+                "firebase_uid": firebase_uid,
+                "$or": [
+                    {"prompt": {"$regex": termo_escapado, "$options": "i"}},
+                    {"resposta": {"$regex": termo_escapado, "$options": "i"}},
+                ],
+            }},
+            {"$sort": {"created_at": 1}},
+            {"$group": {
+                "_id": "$conversa_id",
+                "prompt": {"$first": "$prompt"},
+                "resposta": {"$first": "$resposta"},
+                "created_at": {"$first": "$created_at"},
+            }},
+            {"$sort": {"created_at": -1}},
+        ]
+        return [
+            {
+                "_id": doc["_id"],
+                "prompt": doc["prompt"],
+                "created_at": doc["created_at"].isoformat(),
+            }
+            for doc in collection.aggregate(pipeline)
+        ]
 
     def get_conversas_por_usuario(self, firebase_uid: str) -> list:
         """
