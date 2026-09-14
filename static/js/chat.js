@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </svg>`;
 
   /* ── Resposta estruturada da IA: veredicto colorido + análise + fontes + ações ── */
-  function adicionarRespostaIA(textoCru, promptOrigem) {
+  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null) {
     if (!areaConversa) return null;
 
     const dados = parseRespostaIA(textoCru);
@@ -143,7 +143,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const corpo = document.createElement("div");
     corpo.className = "resposta-corpo";
-    preencherTexto(corpo, dados.analise);
+    if (respostaFormatada?.analise_html) {
+      corpo.innerHTML = respostaFormatada.analise_html;
+    } else {
+      preencherTexto(corpo, dados.analise);
+    }
     bloco.appendChild(corpo);
 
     if (dados.fontes) {
@@ -152,7 +156,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const forte = document.createElement("strong");
       forte.textContent = "Fontes consultadas: ";
       fontesEl.appendChild(forte);
-      fontesEl.appendChild(document.createTextNode(dados.fontes));
+      if (respostaFormatada?.fontes_html) {
+        const fontesFormatadas = document.createElement("span");
+        fontesFormatadas.innerHTML = respostaFormatada.fontes_html;
+        fontesEl.appendChild(fontesFormatadas);
+      } else {
+        fontesEl.appendChild(document.createTextNode(dados.fontes));
+      }
       bloco.appendChild(fontesEl);
     }
 
@@ -242,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      adicionarRespostaIA(data.resposta, prompt);
+      adicionarRespostaIA(data.resposta, prompt, data.resposta_formatada);
 
       if (!conversaJaNaSidebar && window.adicionarItemNoAside) {
         window.adicionarItemNoAside({ _id: conversaId, prompt });
@@ -294,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       data.mensagens.forEach((m) => {
         adicionarBolha(m.prompt, "usuario");
-        adicionarRespostaIA(m.resposta, m.prompt);
+        adicionarRespostaIA(m.resposta, m.prompt, m.resposta_formatada);
       });
 
       conversaId = idConversa;

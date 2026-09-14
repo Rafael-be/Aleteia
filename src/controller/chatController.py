@@ -4,6 +4,7 @@ from flask import jsonify, request
 
 from src.models.chatModel import ChatModel
 from src.models.userModel import UserModel
+from src.services.markdown_service import formatar_resposta_ia
 from src.services.openai_services import obter_resposta
 from src.utils.auth import obter_uid_do_token_firebase
 
@@ -54,7 +55,11 @@ class ChatController:
             self.user_model.registrar_tokens_usados(uid, tokens_gastos)
         except RuntimeError as exc:
             return jsonify({"error": str(exc)}), 503
-        return jsonify({"resposta": texto_resposta, "chat": chat_salvo}), 200
+        return jsonify({
+            "resposta": texto_resposta,
+            "resposta_formatada": formatar_resposta_ia(texto_resposta),
+            "chat": chat_salvo,
+        }), 200
 
     def get_conversas(self):
         uid, erro = self._usuario_autorizado()
@@ -99,4 +104,6 @@ class ChatController:
             mensagens = self.chat_model.get_mensagens_por_conversa(uid, conversa_id)
         except RuntimeError as exc:
             return jsonify({"error": str(exc)}), 503
+        for mensagem in mensagens:
+            mensagem["resposta_formatada"] = formatar_resposta_ia(mensagem["resposta"])
         return jsonify({"mensagens": mensagens}), 200
