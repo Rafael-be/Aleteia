@@ -1,6 +1,5 @@
 venv/
-venv-1/
-venv-2/
+venvAleteia/
 Exemplo.env
 .env
 __pycache__/

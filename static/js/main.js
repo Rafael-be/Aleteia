@@ -4,6 +4,11 @@ import { deleteUser, onAuthStateChanged, sendEmailVerification, signOut } from "
 let verificacaoEmAndamento = null;
 let debouncePesquisaConversas = null;
 
+/* ── Cache local com a lista completa (não filtrada) de conversas.
+     Usado para restaurar a lista instantaneamente quando o campo de
+     busca é esvaziado, sem depender de uma nova chamada à API. ── */
+let conversasCompletas = [];
+
 async function emailEstaVerificado(usuario) {
   if (!usuario) return false;
   if (!verificacaoEmAndamento) {
@@ -118,6 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const resposta = await chamarApi(`/api/chat/conversas/${chat._id}`, { method: "DELETE" });
         if (!resposta?.ok) return;
         item.remove();
+        // Remove também do cache local, para não reaparecer ao limpar a busca.
+        conversasCompletas = conversasCompletas.filter((c) => c._id !== chat._id);
         window.dispatchEvent(new CustomEvent("conversaApagada", { detail: chat._id }));
       } catch (erro) {
         console.error("Não foi possível excluir a conversa:", erro);
@@ -127,6 +134,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     item.append(texto, botaoExcluir);
     lista.prepend(item);
+
+    // Mantém o cache local atualizado (evita duplicar quem já está nele).
+    if (!conversasCompletas.some((c) => c._id === chat._id)) {
+      conversasCompletas = [chat, ...conversasCompletas];
+    }
   };
 
   const renderizarConversas = (conversas) => {
@@ -139,13 +151,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputPesquisarConversas = document.getElementById("inputPesquisarConversas");
   inputPesquisarConversas?.addEventListener("input", () => {
     clearTimeout(debouncePesquisaConversas);
+    const termo = inputPesquisarConversas.value.trim();
+
+    // Campo de busca vazio: restaura a lista completa imediatamente a
+    // partir do cache local, sem esperar nenhuma chamada à API. É isso
+    // que garante que, ao apagar o texto, as conversas ocultas voltem
+    // a aparecer na hora, mesmo que a rede esteja lenta ou falhe.
+    if (!termo) {
+      renderizarConversas(conversasCompletas);
+      return;
+    }
+
     debouncePesquisaConversas = setTimeout(async () => {
-      const termo = inputPesquisarConversas.value.trim();
-      const url = termo
-        ? `/api/chat/pesquisar?q=${encodeURIComponent(termo)}`
-        : "/api/chat/conversas";
       try {
-        const resposta = await chamarApi(url);
+        const resposta = await chamarApi(`/api/chat/pesquisar?q=${encodeURIComponent(termo)}`);
         if (!resposta?.ok || inputPesquisarConversas.value.trim() !== termo) return;
         renderizarConversas((await resposta.json()).prompts);
       } catch (erro) {
@@ -160,7 +179,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await sincronizarComBackend(usuario);
       const resposta = await chamarApi("/api/chat/conversas");
-      if (resposta?.ok) renderizarConversas((await resposta.json()).prompts);
+      if (resposta?.ok) {
+        conversasCompletas = (await resposta.json()).prompts || [];
+        renderizarConversas(conversasCompletas);
+      }
     } catch (erro) {
       console.error("Não foi possível preparar os dados da conta:", erro);
     }

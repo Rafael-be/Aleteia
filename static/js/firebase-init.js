@@ -1,12 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { GoogleAuthProvider, OAuthProvider, createUserWithEmailAndPassword, getAuth, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { GoogleAuthProvider, OAuthProvider, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 const firebaseConfig = window.FIREBASE_CONFIG;
 if (!firebaseConfig?.apiKey || !firebaseConfig?.authDomain) throw new Error("FIREBASE_WEB_CONFIG_JSON não foi configurada.");
 export const auth = getAuth(initializeApp(firebaseConfig));
+const authPronta = new Promise((resolver) => onAuthStateChanged(auth, resolver));
 
 export async function chamarApi(url, opcoes = {}) {
-  const usuario = auth.currentUser;
+  const usuarioInicializado = await authPronta;
+  const usuario = auth.currentUser || usuarioInicializado;
   if (!usuario) { window.location.href = "/login"; return undefined; }
   const token = await usuario.getIdToken();
   return fetch(url, { ...opcoes, headers: { ...opcoes.headers, Authorization: `Bearer ${token}` } });
