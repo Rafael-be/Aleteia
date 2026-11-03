@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import cast
 
+from src.services.chat_events import FiltroVeredito, etapa
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -41,7 +43,8 @@ Seu trabalho:
 
 Regras:
 - Responda SEMPRE em português do Brasil
-- Comece a resposta com o veredicto em negrito
+- Termine a resposta com o veredicto em negrito, sempre na última linha
+- Nunca antecipe o campo Veredicto antes da análise e das fontes
 - Cite as fontes que embasam sua resposta
 - Se não encontrar informação suficiente, declare INCONCLUSIVO
 - Jamais invente fatos — use apenas o que encontrou na busca
@@ -50,46 +53,65 @@ Regras:
   usuário envie uma afirmação para checar
 
 Formato obrigatório da resposta:
-**Veredicto:** [VERDADEIRO / FALSO / PARCIALMENTE VERDADEIRO / INCONCLUSIVO]
-
 **Análise:** [Explicação em 1 a 4 parágrafos]
 
-**Fontes consultadas:** [Liste as fontes encontradas]"""
+**Fontes consultadas:** [Liste as fontes encontradas]
+
+**Veredicto:** [VERDADEIRO / FALSO / PARCIALMENTE VERDADEIRO / INCONCLUSIVO]
+
+Inclua sempre o Veredicto, inclusive para mensagens não verificáveis (INCONCLUSIVO)."""
 
 
-def obter_resposta(mensagem: str, historico: list[dict[str, str]] | None = None) -> tuple[str, int]:
-    """
-    Envia o prompt do usuário à OpenAI (Responses API), com a ferramenta de
-    busca na web habilitada, e retorna a resposta + tokens gastos.
-
-    :param mensagem: Texto novo enviado pelo usuário.
-    :param historico: Lista de mensagens anteriores no formato
-                       [{"role": "user"|"assistant", "content": "..."}].
-    :return: Tupla (texto_resposta, tokens_usados).
-    :raises RuntimeError: Se a chamada à API falhar.
-    """
+def transmitir_resposta(mensagem: str, historico: list[dict[str, str]] | None = None):
+    """Traduz eventos da OpenAI para o contrato público do chat, sem raciocínio interno."""
     entrada = [{"role": "system", "content": SYSTEM_PROMPT}]
     entrada.extend(historico or [])
     entrada.append({"role": "user", "content": mensagem})
-
-    parametros_extra = {}
-    if _e_modelo_de_raciocinio(MODEL_NAME):
-        parametros_extra["reasoning"] = {"effort": REASONING_EFFORT}
-    else:
-        parametros_extra["temperature"] = TEMPERATURE
-
+    extras = ({"reasoning": {"effort": REASONING_EFFORT}}
+              if _e_modelo_de_raciocinio(MODEL_NAME) else {"temperature": TEMPERATURE})
+    filtro = FiltroVeredito()
+    escrevendo = False
+    yield etapa("analyzing", "Analisando a afirmação e o contexto...")
     try:
-        resultado = client.responses.create(
-            model=MODEL_NAME,
-            input=cast(list, entrada),
-            tools=[{"type": "web_search"}],
-            tool_choice="auto",
-            **parametros_extra,
-        )
+        with client.responses.create(
+            model=MODEL_NAME, input=cast(list, entrada), tools=[{"type": "web_search"}],
+            tool_choice="auto", stream=True, **extras,
+        ) as stream:
+            for evento in stream:
+                tipo = evento.type
+                if tipo in {"response.web_search_call.in_progress", "response.web_search_call.searching"}:
+                    yield etapa("searching", "Pesquisando informações e fontes na web...")
+                elif tipo == "response.web_search_call.completed":
+                    yield etapa("evaluating", "Analisando as informações encontradas...")
+                elif tipo == "response.output_item.added" and getattr(evento.item, "type", "") == "reasoning":
+                    yield etapa("analyzing", "Analisando a afirmação e as evidências disponíveis...")
+                elif tipo == "response.output_text.delta":
+                    if not escrevendo:
+                        yield etapa("writing", "Redigindo a resposta...")
+                        escrevendo = True
+                    trecho = filtro.adicionar(evento.delta)
+                    if trecho:
+                        yield {"type": "delta", "text": trecho}
+                elif tipo == "response.completed":
+                    restante = filtro.finalizar()
+                    if restante:
+                        yield {"type": "delta", "text": restante}
+                    resultado = evento.response
+                    if not resultado.output_text:
+                        raise RuntimeError("A IA não retornou uma resposta em texto.")
+                    yield {"type": "result", "text": resultado.output_text,
+                           "tokens": resultado.usage.total_tokens if resultado.usage else 0}
+                    return
+                elif tipo in {"response.failed", "response.incomplete", "error"}:
+                    raise RuntimeError("A geração da resposta foi interrompida. Tente novamente.")
+        raise RuntimeError("A conexão com a IA terminou antes de concluir a resposta.")
     except Exception as exc:
-        print(f"[OpenAI] Erro ao gerar resposta: {exc}")
-        raise RuntimeError("Não foi possível processar a resposta da IA.") from exc
+        raise RuntimeError("Não foi possível concluir a resposta da IA. Tente novamente.") from exc
 
-    texto = resultado.output_text or "Não foi possível gerar uma resposta."
-    tokens_usados = resultado.usage.total_tokens if resultado.usage else 0
-    return texto, tokens_usados
+
+def obter_resposta(mensagem: str, historico: list[dict[str, str]] | None = None) -> tuple[str, int]:
+    """Compatibilidade para consumidores que ainda precisam da resposta completa."""
+    for evento in transmitir_resposta(mensagem, historico):
+        if evento["type"] == "result":
+            return evento["text"], evento["tokens"]
+    raise RuntimeError("A IA não concluiu a resposta.")

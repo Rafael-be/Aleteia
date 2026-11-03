@@ -15,7 +15,7 @@
 
   <!-- Estilos globais + exclusivos do chat -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css', v=chat_assets_version) }}">
 </head>
 <body>
 
@@ -157,6 +157,6 @@
 <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
 <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/chat.js', v=chat_assets_version) }}"></script>
 </body>
 </html>

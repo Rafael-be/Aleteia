@@ -49,7 +49,13 @@ app.register_blueprint(chat_routes(mongo_db))
 @app.context_processor
 def injetar_firebase_config():
     """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
-    return {"firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}")}
+    return {
+        "firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"),
+        "chat_assets_version": max(
+            (BASE_DIR / arquivo).stat().st_mtime_ns
+            for arquivo in ("static/js/chat.js", "static/js/chat-stream.js", "static/css/chat.css")
+        ),
+    }
 
 @app.after_request
 def add_coop_headers(response):

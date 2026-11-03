@@ -54,7 +54,8 @@ class ChatModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
         return self.collection
 
-    def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str) -> dict:
+    def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str,
+                      veredito: dict | None = None) -> dict:
         """
         Salva uma troca completa (prompt do usuário + resposta da IA) no banco.
 
@@ -73,6 +74,8 @@ class ChatModel:
             "resposta": resposta,
             "created_at": datetime.utcnow(),
         }
+        if veredito is not None:
+            doc["veredito"] = veredito
         result = collection.insert_one(doc)
 
         doc["_id"] = str(result.inserted_id)
@@ -90,7 +93,7 @@ class ChatModel:
 
         cursor = collection.find(
             {"firebase_uid": firebase_uid, "conversa_id": conversa_id},
-            {"_id": 1, "prompt": 1, "resposta": 1, "created_at": 1}
+            {"_id": 1, "prompt": 1, "resposta": 1, "veredito": 1, "created_at": 1}
         ).sort("created_at", 1)
 
         results = []

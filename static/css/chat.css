@@ -187,6 +187,14 @@
   margin-bottom: 0.75rem;
 }
 
+.resposta-stream .resposta-corpo {
+  overflow-wrap: anywhere;
+}
+
+.resposta-ia .veracidade-label {
+  margin-top: 1rem;
+}
+
 .resposta-fontes {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.6);

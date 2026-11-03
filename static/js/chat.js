@@ -1,4 +1,5 @@
 import { chamarApi } from "./firebase-init.js";
+import { consumirEventos } from "./chat-stream.js";
 
 /* =====================================================
    chat.js — Lógica exclusiva do chat
@@ -36,6 +37,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let conversaJaNaSidebar = false;
   let ultimoPromptEnviado = "";
+  let requisicaoAtiva = null;
+
+  function cancelarGeracao() {
+    requisicaoAtiva?.abort();
+    requisicaoAtiva = null;
+    textarea.disabled = false;
+    btnEnviar.disabled = !textarea.value.trim();
+  }
 
   /* =====================================================
      Mapeamento Veredicto (backend) → Veracidade (Figma)
@@ -66,14 +75,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ── Extrai veredicto/análise/fontes do texto bruto vindo da IA ── */
   function parseRespostaIA(textoCru) {
-    const texto = String(textoCru ?? "");
+    const matchVeredicto = String(textoCru ?? "").match(
+      /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*{1,2}|__)?veredi(?:c)?to(?:\*{1,2}|__)?[ \t]*:[ \t]*(?:\*{1,2}|__)?\s*(PARCIALMENTE VERDADEIRO|VERDADEIRO|FALSO|INCONCLUSIVO)\b/im
+    );
+    const texto = String(textoCru ?? "").replace(
+      /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*{1,2}|__)?veredi(?:c)?to(?:\*{1,2}|__)?[ \t]*:[^\n]*(?:\n[ \t]*(?:\*{1,2}|__)?(?:PARCIALMENTE VERDADEIRO|VERDADEIRO|FALSO|INCONCLUSIVO)[^\n]*)?/gim, ""
+    );
 
-    const matchVeredicto = texto.match(/\*\*Veredicto:\*\*\s*([^\n]+)/i);
     const matchAnalise   = texto.match(/\*\*Análise:\*\*\s*([\s\S]*?)(?:\*\*Fontes consultadas:\*\*|$)/i);
     const matchFontes    = texto.match(/\*\*Fontes consultadas:\*\*\s*([\s\S]*)/i);
 
     const veredictoBruto = matchVeredicto ? matchVeredicto[1].trim().toUpperCase() : null;
-    const info = MAPA_VEREDICTO[veredictoBruto] || null;
+    const info = MAPA_VEREDICTO[veredictoBruto] || MAPA_VEREDICTO.INCONCLUSIVO;
 
     return {
       label: info ? info.label : null,
@@ -123,34 +136,27 @@ document.addEventListener("DOMContentLoaded", () => {
     </svg>`;
 
   /* ── Resposta estruturada da IA: veredicto colorido + análise + fontes + ações ── */
-  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null) {
+  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null, veredito = null) {
     if (!areaConversa) return null;
 
     const dados = parseRespostaIA(textoCru);
+    const info = MAPA_VEREDICTO[veredito?.code];
+    if (info) Object.assign(dados, info);
     const bloco = document.createElement("div");
     bloco.className = "resposta-ia";
 
-    if (dados.label) {
-      const linhaVeracidade = document.createElement("p");
-      linhaVeracidade.className = "veracidade-label";
-      linhaVeracidade.append("Veracidade: ");
-      const valor = document.createElement("span");
-      valor.className = `veracidade-valor ${dados.classe}`;
-      valor.textContent = dados.label;
-      linhaVeracidade.appendChild(valor);
-      bloco.appendChild(linhaVeracidade);
-    }
-
     const corpo = document.createElement("div");
     corpo.className = "resposta-corpo";
-    if (respostaFormatada?.analise_html) {
+    if (typeof respostaFormatada?.corpo_html === "string") {
+      corpo.innerHTML = respostaFormatada.corpo_html;
+    } else if (respostaFormatada?.analise_html) {
       corpo.innerHTML = respostaFormatada.analise_html;
     } else {
       preencherTexto(corpo, dados.analise);
     }
     bloco.appendChild(corpo);
 
-    if (dados.fontes) {
+    if (dados.fontes && typeof respostaFormatada?.corpo_html !== "string") {
       const fontesEl = document.createElement("p");
       fontesEl.className = "resposta-fontes";
       const forte = document.createElement("strong");
@@ -164,6 +170,21 @@ document.addEventListener("DOMContentLoaded", () => {
         fontesEl.appendChild(document.createTextNode(dados.fontes));
       }
       bloco.appendChild(fontesEl);
+    }
+
+    const linhaVeracidade = document.createElement("p");
+    linhaVeracidade.className = "veracidade-label";
+    linhaVeracidade.append("Veracidade: ");
+    const valorVeredito = document.createElement("span");
+    valorVeredito.className = `veracidade-valor ${dados.classe}`;
+    valorVeredito.textContent = dados.label;
+    linhaVeracidade.appendChild(valorVeredito);
+    bloco.appendChild(linhaVeracidade);
+    for (const metrica of veredito?.metrics || []) {
+      const linha = document.createElement("p");
+      linha.className = "veredito-metrica";
+      linha.textContent = `${metrica.label}: ${metrica.value}${metrica.unit || ""}`;
+      bloco.appendChild(linha);
     }
 
     const acoes = document.createElement("div");
@@ -222,50 +243,92 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ── Envia um prompt específico à API e renderiza a resposta ── */
   async function chamarApiEExibir(prompt) {
+    if (requisicaoAtiva) return;
+    const controle = new AbortController();
+    requisicaoAtiva = controle;
+    const idDaConversa = conversaId;
     textarea.disabled = true;
     btnEnviar.disabled = true;
     btnEnviar.classList.remove("active");
     // mostra feedback temporário enquanto a IA responde
-    const loadingBubble = adicionarBolha("Gerando resposta...", "sistema");
+    const loadingBubble = adicionarBolha("Preparando a consulta...", "sistema");
+    loadingBubble.setAttribute("role", "status");
+    loadingBubble.setAttribute("aria-live", "polite");
+    const parcial = document.createElement("div");
+    parcial.className = "resposta-ia resposta-stream";
+    const corpoParcial = document.createElement("div");
+    corpoParcial.className = "resposta-corpo";
+    parcial.appendChild(corpoParcial);
+    areaConversa.appendChild(parcial);
+    let texto = "";
+    let concluida = false;
+    let veredito = null;
+    let htmlParcial = null;
 
     try {
       const res = await chamarApi("/api/chat/mensagem", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
         },
-        body: JSON.stringify({ conversa_id: conversaId, prompt })
+        body: JSON.stringify({ conversa_id: idDaConversa, prompt }),
+        signal: controle.signal
       });
 
-      const data = await res.json();
-
-      // remove a mensagem de carregamento (se ainda existir)
-      if (loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
-
-      if (res.status === 429) {
-        adicionarBolha("Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã.", "sistema");
-        return;
-      }
-
+      if (!res) throw new Error("Faça login para continuar.");
       if (!res.ok) {
-        adicionarBolha(data.error || "Não foi possível obter resposta. Tente novamente.", "sistema");
-        return;
+        const data = await res.json();
+        throw new Error(res.status === 429
+          ? "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã."
+          : data.error || "Não foi possível obter resposta.");
       }
-
-      adicionarRespostaIA(data.resposta, prompt, data.resposta_formatada);
+      await consumirEventos(res, (evento) => {
+        if (controle.signal.aborted) return;
+        if (evento.type === "stage") loadingBubble.textContent = evento.message;
+        if (evento.type === "delta") {
+          texto += evento.text;
+          if (typeof evento.html === "string") {
+            htmlParcial = evento.html;
+            corpoParcial.innerHTML = evento.html;
+          }
+          else corpoParcial.textContent = texto;
+          areaConversa.scrollTop = areaConversa.scrollHeight;
+        }
+        if (evento.type === "verdict") veredito = evento.veredito;
+        if (evento.type === "error") throw new Error(evento.message);
+        if (evento.type === "done") {
+          concluida = true;
+          parcial.remove();
+          adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito);
+        }
+      });
+      if (!concluida) throw new Error("A conexão foi interrompida antes de concluir a resposta.");
 
       if (!conversaJaNaSidebar && window.adicionarItemNoAside) {
         window.adicionarItemNoAside({ _id: conversaId, prompt });
         conversaJaNaSidebar = true;
       }
     } catch (err) {
+      if (controle.signal.aborted) return;
       console.error("Erro ao obter resposta da IA:", err);
       // remove loading e exibe erro
       if (typeof loadingBubble !== 'undefined' && loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
-      adicionarBolha("Não foi possível obter resposta. Tente novamente.", "sistema");
+      if (!concluida) {
+        parcial.remove();
+        adicionarRespostaIA(texto, prompt, htmlParcial ? { corpo_html: htmlParcial } : null,
+          veredito || { code: "INCONCLUSIVO", metrics: [] });
+      }
+      adicionarBolha(err.message || "Não foi possível obter resposta. Tente novamente.", "sistema");
     } finally {
-      textarea.disabled = false;
-      textarea.focus();
+      loadingBubble.remove();
+      if (requisicaoAtiva === controle) {
+        requisicaoAtiva = null;
+        textarea.disabled = false;
+        btnEnviar.disabled = !textarea.value.trim();
+        btnEnviar.classList.toggle("active", !btnEnviar.disabled);
+        textarea.focus();
+      }
     }
   }
 
@@ -292,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Reabrir uma conversa antiga (chamado pelo main.js ao clicar na sidebar) ── */
   window.carregarConversa = async function (idConversa) {
     if (!areaConversa) return;
+    cancelarGeracao();
 
     try {
       const res = await chamarApi(`/api/chat/conversas/${idConversa}`);
@@ -304,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       data.mensagens.forEach((m) => {
         adicionarBolha(m.prompt, "usuario");
-        adicionarRespostaIA(m.resposta, m.prompt, m.resposta_formatada);
+        adicionarRespostaIA(m.resposta, m.prompt, m.resposta_formatada, m.veredito);
       });
 
       conversaId = idConversa;
@@ -322,6 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   window.iniciarNovaConversa = function () {
+    cancelarGeracao();
     conversaId = crypto.randomUUID();
     sessionStorage.setItem("conversaId", conversaId);
     conversaJaNaSidebar = false;
@@ -342,14 +407,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnNovaConversa) {
     btnNovaConversa.addEventListener("click", (e) => {
       e.preventDefault();
-      conversaId = crypto.randomUUID();
-      sessionStorage.setItem("conversaId", conversaId);
-      conversaJaNaSidebar = false;
-      if (areaConversa) areaConversa.innerHTML = "";
-      resetarLayoutInicial();
-      textarea.value = "";
-      textarea.style.height = "auto";
-      textarea.focus();
+      window.iniciarNovaConversa();
     });
   }
 
