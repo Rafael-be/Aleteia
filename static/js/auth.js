@@ -2,7 +2,6 @@ import { cadastrarComEmail, loginComEmail, loginSocial } from "./firebase-init.j
 
 const feedback = (element, mensagem, cor = "#e05555") => { element.textContent = mensagem; element.style.color = cor; element.style.display = "block"; };
 document.addEventListener("DOMContentLoaded", () => {
-  document.body.style.visibility = "visible"; document.body.style.opacity = "1";
   const entrar = document.getElementById("btnEntrar"), cadastrar = document.getElementById("btnCadastrar");
   const dialogoEmailIncerto = document.getElementById("dialogoEmailIncerto");
   const textoEmailIncerto = document.getElementById("textoEmailIncerto");

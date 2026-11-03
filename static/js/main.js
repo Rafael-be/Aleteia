@@ -1,6 +1,6 @@
 import { atualizarAvatares } from "./account-avatar.js";
 import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
-import { deleteUser, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
 let debouncePesquisaConversas = null;
@@ -21,9 +21,6 @@ async function emailEstaVerificado(usuario) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.body.style.visibility = "visible";
-  document.body.style.opacity = "1";
-
   const conta = document.getElementById("btnConta");
   const contaMobile = document.getElementById("btnContaMobile");
   const overlay = document.getElementById("popupOverlay");
@@ -55,17 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
       reenviar.disabled = false;
     }
   });
-  corrigirEmail?.addEventListener("click", async () => {
-    const usuario = auth.currentUser;
-    if (!usuario) return;
-    corrigirEmail.disabled = true;
-    try {
-      await deleteUser(usuario);
-      await signOut(auth);
-      window.location.href = "/cadastro";
-    } catch {
-      if (feedbackReenvio) feedbackReenvio.textContent = "Para corrigir este e-mail, faça login novamente e tente outra vez.";
-      corrigirEmail.disabled = false;
+  corrigirEmail?.addEventListener("click", () => {
+    if (feedbackReenvio) {
+      feedbackReenvio.textContent = "A alteração de e-mail não está disponível agora. Sua conta não foi alterada.";
     }
   });
 

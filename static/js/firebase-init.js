@@ -6,10 +6,14 @@ if (!firebaseConfig?.apiKey || !firebaseConfig?.authDomain) throw new Error("FIR
 export const auth = getAuth(initializeApp(firebaseConfig));
 const authPronta = new Promise((resolver) => onAuthStateChanged(auth, resolver));
 
+function redirecionarParaLogin() {
+  if (window.location.pathname !== "/login") window.location.replace("/login");
+}
+
 export async function chamarApi(url, opcoes = {}) {
   const usuarioInicializado = await authPronta;
   const usuario = auth.currentUser || usuarioInicializado;
-  if (!usuario) { window.location.href = "/login"; return undefined; }
+  if (!usuario) { redirecionarParaLogin(); return undefined; }
   const token = await usuario.getIdToken();
   return fetch(url, { ...opcoes, headers: { ...opcoes.headers, Authorization: `Bearer ${token}` } });
 }

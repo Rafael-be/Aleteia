@@ -32,13 +32,6 @@ body {
   margin: 0;
 }
 
-/* ── Anti-FOUC ── */
-body {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
 /* ── Sidebar ── */
 .sidebar {
   background-color: var(--sidebar-bg);
