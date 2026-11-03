@@ -85,7 +85,7 @@ body {
   padding: 0;
 }
 #btnConta:hover { opacity: 0.8; border-color: #aaa; }
-#fotoConta { width: 100%; height: 100%; object-fit: cover; display: none; }
+#fotoConta { width: 100%; height: 100%; }
 
 /* ── Overlay ── */
 .popup-overlay {
@@ -179,7 +179,7 @@ body {
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
 }
-#fotoContaMobile { width: 100%; height: 100%; object-fit: cover; display: none; }
+#fotoContaMobile { width: 100%; height: 100%; }
 
 /* ── Sidebar como Drawer (mobile) ── */
 .sidebar-drawer {
@@ -382,3 +382,20 @@ body {
 }
 
 .aviso-verificacao-email small { display: block; margin-top: .35rem; }
+
+/* Avatar compartilhado pelo desktop, mobile e menu da conta. */
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #666;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+.account-avatar svg { width: 65%; height: 65%; }
+.account-avatar.popup-avatar { font-size: 2rem; }

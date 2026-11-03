@@ -1,3 +1,4 @@
+import { atualizarAvatares } from "./account-avatar.js";
 import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
 import { deleteUser, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
@@ -70,6 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Responsabilidade: estado visual da conta e aviso de verificação.
   onAuthStateChanged(auth, async (usuario) => {
+    atualizarAvatares(usuario);
     verificacaoEmAndamento = null;
     const emailVerificado = await emailEstaVerificado(usuario);
     aviso?.classList.toggle("visivel", Boolean(usuario && !emailVerificado));
@@ -77,13 +79,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatBloqueado = Boolean(usuario && !emailVerificado);
     [document.getElementById("promptInput"), document.getElementById("btnEnviar")]
       .forEach((controle) => { if (controle) controle.disabled = chatBloqueado; });
-    [document.getElementById("fotoConta"), document.getElementById("fotoContaMobile")]
-      .forEach((foto) => { if (foto) foto.style.display = usuario ? "block" : "none"; });
     const acaoConta = () => usuario ? abrir() : (window.location.href = "/cadastro");
-    conta?.addEventListener("click", acaoConta, { once: true });
-    contaMobile?.addEventListener("click", acaoConta, { once: true });
+    if (conta) conta.onclick = acaoConta;
+    if (contaMobile) contaMobile.onclick = acaoConta;
     const nome = document.querySelector(".popup-username");
-    if (usuario && nome) nome.textContent = `Olá, ${usuario.email}`;
+    if (nome) nome.textContent = usuario ? `Olá, ${usuario.email || "usuário"}` : "Minha conta";
   });
 
   window.adicionarItemNoAside = (chat) => {
