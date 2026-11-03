@@ -1,21 +1,20 @@
 """Ponto de entrada Flask da AleteIA."""
 
+import logging
 import json
 import os
 from pathlib import Path
 
 import firebase_admin
-from dotenv import load_dotenv
 from firebase_admin import credentials
 from flask import Flask, render_template
+from src import config
+from src.utils.api import configure_api
 from src.database import MongoDatabaseProvider
 from src.routes.authRoutes import auth_routes
 from src.routes.chatRoutes import chat_routes
 
 BASE_DIR = Path(__file__).resolve().parent
-for env_file, override in ((BASE_DIR / "Exemplo.env", False), (BASE_DIR / ".env", True)):
-    if env_file.exists():
-        load_dotenv(env_file, override=override)
 
 
 def inicializar_firebase_admin() -> None:
@@ -35,6 +34,9 @@ def inicializar_firebase_admin() -> None:
 inicializar_firebase_admin()
 
 app = Flask(__name__, template_folder="public", static_folder="static", static_url_path="/static")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+configure_api(app)
 
 mongo_uri = os.getenv("MONGO_URI") or "mongodb://localhost:27017"
 mongo_db_name = os.getenv("MONGO_DB_NAME") or "aleteia"

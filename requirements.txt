@@ -1,8 +1,8 @@
 Flask==3.0.2
-gunicorn
+gunicorn==26.2.0
 python-dotenv==1.0.1
 pymongo==3.11.0
 dnspython==2.6.1
-openai
-firebase-admin
+openai==2.53.0
+firebase-admin==7.7.0
 markdown-it-py==4.0.0

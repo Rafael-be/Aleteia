@@ -4,12 +4,7 @@ import importlib
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-for env_path in (PROJECT_ROOT / ".env", PROJECT_ROOT / "Exemplo.env"):
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
+from src import config
 
 #o que tava no modelo.py mas deu erro de importacao, entao movi pra cá
 SYSTEM_PROMPT = """Você é a Aleteia, uma inteligência artificial brasileira especializada em
@@ -162,6 +157,6 @@ def obter_resposta(mensagem: str, sessao_id: str) -> str:
 
         return resposta
     except Exception as exc:
-        print(f"[Gemini] Erro ao gerar resposta: {exc}")
+        print("[Gemini] Falha no servico legado")
         raise RuntimeError("Não foi possível processar a resposta da IA.") from exc
     

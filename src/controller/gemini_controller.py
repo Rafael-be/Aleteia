@@ -21,5 +21,5 @@ def responder_controller():
         resposta = obter_resposta(mensagem, sessao_id)
         return jsonify({"resposta": resposta}), 200
     except Exception as e:
-        print(f"[Gemini] Erro: {e}")
+        print("[Gemini] Falha no controller legado")
         return jsonify({"erro": "Erro ao processar com a IA. Tente novamente."}), 500;

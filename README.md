@@ -35,3 +35,7 @@ python app.py
 Para validar o fluxo completo, cadastre uma conta, confirme o e-mail, faça login,
 envie mensagens até o limite diário e confirme as respostas 403 (e-mail não
 verificado) e 429 (limite atingido).
+
+# Correções e operação do backend
+
+Consulte [CORRECOES_BACKEND.md](CORRECOES_BACKEND.md) para os 23 itens da auditoria, testes, limites de API, pré-requisitos MongoDB e verificações pendentes de infraestrutura. Execute os comandos a partir da raiz que contém este README, não do checkout aninhado `Aleteia/`.

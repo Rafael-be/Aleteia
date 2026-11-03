@@ -1,6 +1,7 @@
 """Renderização segura de markdown produzido exclusivamente pela IA."""
 
 import re
+from urllib.parse import urlsplit
 
 from markdown_it import MarkdownIt
 from src.services.chat_events import separar_veredito
@@ -14,6 +15,17 @@ _MARKDOWN = MarkdownIt(
         "typographer": False,
     },
 ).enable("table")
+
+
+def _link_seguro(url):
+    """Only web links and local fragments; reject data/file/script schemes."""
+    try:
+        return not any(ord(c) < 32 for c in url) and urlsplit(url).scheme.lower() in {'', 'http', 'https'}
+    except ValueError:
+        return False
+
+
+_MARKDOWN.validateLink = _link_seguro
 
 
 def renderizar_markdown(texto: str) -> str:

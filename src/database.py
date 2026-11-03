@@ -1,40 +1,19 @@
-"""Conexão sob demanda com o MongoDB.
-
-O cliente não é validado durante a inicialização do Flask. Assim, uma
-indisponibilidade temporária do Atlas não deixa a aplicação presa a ``None``
-até o próximo deploy/restart.
-"""
-
+"""One lazy, pooled client per worker. Health checks are explicit."""
+from threading import Lock
 from pymongo import MongoClient
 
-
 class MongoDatabaseProvider:
-    """Entrega o banco quando ele estiver acessível e tenta novamente após falhas."""
-
-    def __init__(self, uri: str, database_name: str, timeout_ms: int = 10_000):
-        self.uri = uri
-        self.database_name = database_name
-        self.timeout_ms = timeout_ms
-        self.client = None
-        self.last_error = None
+    def __init__(self, uri, database_name, timeout_ms=3000):
+        self.uri, self.database_name = uri, database_name
+        self.timeout_ms, self.client, self.last_error = timeout_ms, None, None
+        self._lock = Lock()
 
     def get_database(self):
-        """Valida a conexão atual ou cria uma nova antes de devolver o banco."""
-        try:
+        with self._lock:
             if self.client is None:
-                self.client = MongoClient(
-                    self.uri,
-                    serverSelectionTimeoutMS=self.timeout_ms,
-                    connectTimeoutMS=self.timeout_ms,
-                )
-            self.client.admin.command("ping")
-            self.last_error = None
+                self.client = MongoClient(self.uri, serverSelectionTimeoutMS=self.timeout_ms,
+                    connectTimeoutMS=self.timeout_ms, socketTimeoutMS=5000)
             return self.client[self.database_name]
-        except Exception as exc:
-            self.last_error = str(exc) or "Banco de dados indisponível"
-            if self.client is not None:
-                self.client.close()
-            # A próxima requisição deve criar um cliente novo, inclusive após
-            # uma falha de seleção de servidor do Atlas.
-            self.client = None
-            return None
+
+    def healthcheck(self):
+        self.get_database().command('ping')

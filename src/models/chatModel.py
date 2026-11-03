@@ -8,6 +8,8 @@ coleção dedicada no MongoDB.
 
 from datetime import datetime
 import re
+from src.utils.timing import timed
+from pymongo.database import Database
 
 
 class ChatModel:
@@ -25,12 +27,12 @@ class ChatModel:
 
         # Uma instância de Database direta continua suportada; com o provider
         # da aplicação, a primeira tentativa acontece apenas quando necessária.
-        if not hasattr(db, "get_database"):
+        if isinstance(db, Database) or not hasattr(db, "get_database"):
             self._conectar()
 
     def _conectar(self):
         """Obtém a coleção e atualiza o estado a cada nova tentativa."""
-        db = self.db.get_database() if hasattr(self.db, "get_database") else self.db
+        db = self.db if isinstance(self.db, Database) else (self.db.get_database() if hasattr(self.db, "get_database") else self.db)
         if db is None:
             self.collection = None
             self.db_available = False
@@ -54,6 +56,7 @@ class ChatModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
         return self.collection
 
+    @timed("save_mensagem")
     def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str,
                       veredito: dict | None = None) -> dict:
         """
@@ -82,7 +85,8 @@ class ChatModel:
         doc["created_at"] = doc["created_at"].isoformat()
         return doc
 
-    def get_mensagens_por_conversa(self, firebase_uid: str, conversa_id: str) -> list:
+    @timed("get_mensagens_por_conversa")
+    def get_mensagens_por_conversa(self, firebase_uid: str, conversa_id: str, limit=100, offset=0, recent=False) -> list:
         """
         Retorna todas as mensagens de uma conversa específica, em ordem cronológica.
 
@@ -94,7 +98,7 @@ class ChatModel:
         cursor = collection.find(
             {"firebase_uid": firebase_uid, "conversa_id": conversa_id},
             {"_id": 1, "prompt": 1, "resposta": 1, "veredito": 1, "created_at": 1}
-        ).sort("created_at", 1)
+        ).sort([("created_at", -1 if recent else 1), ("_id", -1 if recent else 1)]).skip(offset).limit(limit).max_time_ms(3000)
 
         results = []
         for doc in cursor:
@@ -102,8 +106,9 @@ class ChatModel:
             doc["created_at"] = doc["created_at"].isoformat()
             results.append(doc)
 
-        return results
+        return list(reversed(results)) if recent else results
 
+    @timed("apagar_conversa")
     def apagar_conversa(self, firebase_uid: str, conversa_id: str) -> int:
         """Apaga todas as mensagens de uma conversa pertencente ao usuário."""
         collection = self._obter_colecao()
@@ -113,7 +118,8 @@ class ChatModel:
         })
         return resultado.deleted_count
 
-    def pesquisar_conversas(self, firebase_uid: str, termo: str) -> list:
+    @timed("pesquisar_conversas")
+    def pesquisar_conversas(self, firebase_uid: str, termo: str, limit=100, offset=0) -> list:
         """Busca conversas do usuário pelo conteúdo de prompts e respostas."""
         collection = self._obter_colecao()
         termo_escapado = re.escape(termo)
@@ -130,7 +136,7 @@ class ChatModel:
                 "_id": "$conversa_id",
                 "prompt": {"$first": "$prompt"},
                 "resposta": {"$first": "$resposta"},
-                "created_at": {"$first": "$created_at"},
+                "created_at": {"$max": "$created_at"},
             }},
             {"$sort": {"created_at": -1}},
         ]
@@ -140,10 +146,11 @@ class ChatModel:
                 "prompt": doc["prompt"],
                 "created_at": doc["created_at"].isoformat(),
             }
-            for doc in collection.aggregate(pipeline)
+            for doc in collection.aggregate(pipeline + [{"$skip": offset}, {"$limit": limit}], maxTimeMS=3000)
         ]
 
-    def get_conversas_por_usuario(self, firebase_uid: str) -> list:
+    @timed("get_conversas_por_usuario")
+    def get_conversas_por_usuario(self, firebase_uid: str, limit=100, offset=0) -> list:
         """
         Retorna uma linha por conversa do usuário (para popular a sidebar),
         usando a primeira mensagem de cada conversa como prévia/título.
@@ -160,13 +167,13 @@ class ChatModel:
             {"$group": {
                 "_id": "$conversa_id",
                 "prompt": {"$first": "$prompt"},
-                "created_at": {"$first": "$created_at"}
+                "created_at": {"$max": "$created_at"}
             }},
             {"$sort": {"created_at": -1}}
         ]
 
         results = []
-        for doc in collection.aggregate(pipeline):
+        for doc in collection.aggregate(pipeline + [{"$skip": offset}, {"$limit": limit}], maxTimeMS=3000):
             results.append({
                 "_id": doc["_id"],
                 "prompt": doc["prompt"],
