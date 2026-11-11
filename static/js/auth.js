@@ -1,4 +1,4 @@
-import { cadastrarComEmail, loginComEmail, loginSocial } from "./firebase-init.js";
+import { cadastrarComEmail, loginComEmail, loginSocial, destinoAposLogin } from "./firebase-init.js";
 
 const feedback = (element, mensagem, cor = "#e05555") => { element.textContent = mensagem; element.style.color = cor; element.style.display = "block"; };
 document.addEventListener("DOMContentLoaded", () => {
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = document.getElementById("inputEmail")?.value.trim(), senha = document.getElementById("inputSenha")?.value, aviso = document.getElementById("loginFeedback");
     if (!email || !senha) return feedback(aviso, "Preencha e-mail e senha.");
     entrar.disabled = true;
-    try { await loginComEmail(email, senha); window.location.href = "/"; }
+    try { await loginComEmail(email, senha); window.location.href = destinoAposLogin; }
     catch { feedback(aviso, "Não foi possível fazer login. Confira seus dados."); } finally { entrar.disabled = false; }
   });
   cadastrar?.addEventListener("click", async () => {
@@ -34,13 +34,13 @@ document.addEventListener("DOMContentLoaded", () => {
     cadastrar.disabled = true;
     try {
       const usuario = await cadastrarComEmail(email, senha, () => confirmarEmailIncerto(email));
-      if (usuario) window.location.href = "/";
+      if (usuario) window.location.href = destinoAposLogin;
     } catch (erro) {
       feedback(aviso, erro.code === "email_rejeitado" ? erro.message : "Não foi possível criar a conta.");
     } finally { cadastrar.disabled = false; }
   });
   document.querySelectorAll("[data-firebase-provider]").forEach((botao) => botao.addEventListener("click", async () => {
-    try { await loginSocial(botao.dataset.firebaseProvider); window.location.href = "/"; }
+    try { await loginSocial(botao.dataset.firebaseProvider); window.location.href = destinoAposLogin; }
     catch { feedback(document.getElementById("loginFeedback"), "Não foi possível entrar com este provedor."); }
   }));
 });

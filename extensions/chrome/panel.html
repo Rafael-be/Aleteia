@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AleteIA</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <strong>AleteIA</strong>
+    <button id="reload" type="button" title="Recarregar chat">Recarregar</button>
+    <button id="open-site" type="button">Abrir site em nova aba ↗</button>
+  </header>
+  <details>
+    <summary>O chat não carregou ou o login falhou?</summary>
+    <p>Confira a conexão, o endereço em config.js e o ID autorizado no servidor.
+    Se o provedor bloquear o login incorporado, use e-mail e senha ou abra o site.
+    A sessão do site pode ser separada da sessão do painel pelo Chrome.</p>
+  </details>
+  <iframe id="chat" title="Chat da AleteIA" allow="clipboard-write"></iframe>
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

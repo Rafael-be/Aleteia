@@ -1,5 +1,11 @@
 # AleteIA
 
+## Extensão para Chrome
+
+O chat também pode ser aberto no painel lateral, mantendo a aba atual visível.
+Consulte o [guia de instalação e distribuição](extensions/chrome/README.md).
+O pacote da extensão fica em `extensions/chrome`, no mesmo repositório.
+
 ## Autenticação
 
 A autenticação é feita pelo Firebase Authentication. O backend nunca recebe nem

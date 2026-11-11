@@ -1,5 +1,7 @@
 """Consistent API errors, bounded input and secret-free timing records."""
 import logging
+import os
+import re
 from time import perf_counter
 from uuid import uuid4
 from flask import g, jsonify, request
@@ -50,7 +52,15 @@ def configure_api(app):
                 response.headers['Retry-After'] = '60'
         response.headers['X-Request-ID'] = g.request_id
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['Content-Security-Policy'] = "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+        extension_ids = os.getenv('CHROME_EXTENSION_IDS', '').split(',')
+        ancestors = ["'self'"] + [
+            f'chrome-extension://{extension_id.strip()}'
+            for extension_id in extension_ids
+            if re.fullmatch(r'[a-p]{32}', extension_id.strip())
+        ]
+        response.headers['Content-Security-Policy'] = (
+            "object-src 'none'; base-uri 'self'; frame-ancestors " + ' '.join(ancestors)
+        )
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         # Report-only until all Firebase providers/CDNs have been exercised.
         response.headers['Content-Security-Policy-Report-Only'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'"

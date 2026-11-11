@@ -1,0 +1,11 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: #111816; color: #fff; }
+header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; border-bottom: 1px solid #35443b; }
+header strong { margin-right: auto; }
+button { cursor: pointer; border: 1px solid #53735e; border-radius: 6px; background: #1c3525; color: #fff; padding: 7px; font: inherit; font-size: 12px; }
+button:focus-visible, summary:focus-visible { outline: 2px solid #93e4ae; outline-offset: 2px; }
+details { padding: 6px 10px; font-size: 12px; }
+summary { cursor: pointer; }
+details p { line-height: 1.5; }
+iframe { width: 100%; flex: 1; min-height: 0; border: 0; background: #111816; }
