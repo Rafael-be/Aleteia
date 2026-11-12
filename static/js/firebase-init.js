@@ -2,9 +2,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/fireba
 import { GoogleAuthProvider, OAuthProvider, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 const firebaseConfig = window.FIREBASE_CONFIG;
+// O painel reutiliza as páginas do site, mantendo o retorno ao chat após login.
+if (new URLSearchParams(window.location.search).get("extension") === "1" && window.self !== window.top) {
+  sessionStorage.setItem("aleteiaExtension", "1");
+}
+export const destinoAposLogin = sessionStorage.getItem("aleteiaExtension") === "1" ? "/chat" : "/";
 if (!firebaseConfig?.apiKey || !firebaseConfig?.authDomain) throw new Error("FIREBASE_WEB_CONFIG_JSON não foi configurada.");
 export const auth = getAuth(initializeApp(firebaseConfig));
 const authPronta = new Promise((resolver) => onAuthStateChanged(auth, resolver));
+if (sessionStorage.getItem("aleteiaExtension") === "1" && window.location.pathname === "/chat") {
+  authPronta.then((usuario) => { if (!usuario) redirecionarParaLogin(); });
+}
 
 function redirecionarParaLogin() {
   if (window.location.pathname !== "/login") window.location.replace("/login");

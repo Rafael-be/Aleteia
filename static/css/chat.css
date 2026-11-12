@@ -344,3 +344,33 @@
    style.css, que já centraliza os estilos e a visibilidade
    do #btnConta (elemento global, usado em várias páginas).
    ===================================================== */
+
+/* Keep the chat within the available width and viewport height. */
+.conversation-area { min-height: 0; overflow-wrap: anywhere; }
+.resposta-corpo { overflow-wrap: anywhere; }
+.conversation-area img { max-width: 100%; height: auto; }
+.conversation-area pre { max-width: 100%; overflow-x: auto; }
+.chat-header, .chat-input-wrap { flex-shrink: 0; }
+@media (max-width: 767px) {
+  .chat-header-title { font-size: clamp(1.6rem, 8vw, 3rem); }
+  .chat-header-logo { width: clamp(36px, 12vw, 60px); margin-right: .5rem; }
+  .chat-header-subtitle { font-size: 1.25rem; }
+  .conversation-area, #mainContent.chat-ativo .conversation-area { padding-left: 1rem; padding-right: 1rem; }
+  .bolha { max-width: 90%; }
+  #mainContent:not(.chat-ativo) { overflow-y: auto; }
+}
+@media (max-height: 500px) {
+  #mainContent:not(.chat-ativo) { justify-content: flex-start; overflow-y: auto; }
+  #mainContent.chat-ativo .chat-header { padding-top: 0; padding-bottom: .25rem; }
+}
+
+#mainContent:not(.chat-ativo) { justify-content: safe center; overflow-y: auto; }
+.chat-header { max-width: 100%; }
+.chat-header > .d-flex { flex-wrap: wrap; }
+.chat-header-logo { max-width: 70px; max-height: 80px; object-fit: contain; }
+.chat-header-title { font-size: clamp(1.6rem, 5vw, 3.5rem); }
+#mainContent.chat-ativo .chat-header-title { font-size: clamp(1.4rem, 4vw, 2rem); }
+@media (max-height: 600px) {
+  #mainContent.chat-ativo .chat-header-logo { width: 30px; max-height: 36px; }
+  #mainContent.chat-ativo .chat-header-title { font-size: 1.4rem; }
+}

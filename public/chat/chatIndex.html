@@ -28,11 +28,11 @@
 </aside>
 
   <header class="mobile-header d-flex d-md-none align-items-center justify-content-between px-3">
-    <button id="btnMenuMobile" class="mobile-icon-btn" aria-label="Abrir menu">
+<div class="d-flex align-items-center">    <button id="btnMenuMobile" type="button" aria-controls="sidebar" aria-expanded="false" class="mobile-icon-btn" aria-label="Abrir menu">
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
-    </button>
+    </button><button class="mobile-icon-btn sidebar-settings" type="button" aria-label="Configurações" title="Configurações"><img src="{{ url_for('static', filename='images/engrenagem.png') }}" alt="" width="22" height="22"></button></div>
     <div class="d-flex align-items-center gap-2">
       <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="chat-header-logo">
       <h1 class="chat-header-title mb-0">ALETE<span class="text-success fw-bold">IA</span></h1> -->
@@ -46,15 +46,22 @@
 
   <div class="drawer-overlay" id="drawerOverlay"></div>
 
-<div class="d-flex vh-100">
+<div class="app-layout d-flex vh-100">
 
   <!-- Sidebar -->
-  <aside class="sidebar sidebar-drawer p-3 d-flex flex-column">
-    <div class="mb-4">
-      <img alt="configurações" src="{{ url_for('static', filename='images/engrenagem.png') }}" style="width:10%;height:auto;">
+  <aside id="sidebar" aria-label="Menu lateral" class="sidebar sidebar-drawer p-3 d-flex flex-column">
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+      <button id="btnFecharSidebar" class="mobile-icon-btn" type="button" aria-label="Fechar menu" aria-controls="sidebar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>
+      </button>
+      <button class="mobile-icon-btn sidebar-settings" type="button" aria-label="Configurações" title="Configurações"><img src="{{ url_for('static', filename='images/engrenagem.png') }}" alt="" width="22" height="22"></button>
     </div>
 
     <nav class="nav flex-column mb-4 fs-6">
+      <a href="/" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <img alt="home" src="{{ url_for('static', filename='images/home.png') }}" style="width:8%;height:auto;margin-right:6%;">
+        Página inicial
+      </a>
       <a href="#" id="btnNovaConversa" class="nav-link text-light px-0 d-flex align-items-center mb-2">
         <img alt="nova_conversa" src="{{ url_for('static', filename='images/novaconversa.png') }}" style="width:10%;height:auto;margin-right:5%;">
         Nova conversa
@@ -63,10 +70,6 @@
         <img alt="pesquisar_conversa" src="{{ url_for('static', filename='images/lupa.png') }}" style="width:10%;height:auto;margin-right:5%;">
         <input type="text" id="inputPesquisarConversas" placeholder="Pesquisar conversas" autocomplete="off">
       </div>
-      <a href="/" class="nav-link text-light px-0 d-flex align-items-center mb-2">
-        <img alt="home" src="{{ url_for('static', filename='images/home.png') }}" style="width:8%;height:auto;margin-right:6%;">
-        Página inicial
-      </a>
     </nav>
 
     <p class="text-light fw-bold mb-3" style="font-size:0.9rem;">Conversas anteriores:</p>
@@ -77,7 +80,10 @@
   </aside>
 
   <!-- Main --> 
-  <main class="main-content flex-grow-1 position-relative d-flex flex-column" id="mainContent">
+<aside class="sidebar-rail" aria-label="Menu compacto"><div class="rail-controls">  <button id="btnAbrirSidebar" class="mobile-icon-btn sidebar-open-desktop" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button><button class="mobile-icon-btn sidebar-settings" type="button" aria-label="Configurações" title="Configurações"><img src="{{ url_for('static', filename='images/engrenagem.png') }}" alt="" width="22" height="22"></button></div><nav class="rail-nav" aria-label="Atalhos"><button type="button" class="mobile-icon-btn" data-sidebar-action="home" aria-label="Página inicial" title="Página inicial"><img src="{{ url_for('static', filename='images/home.png') }}" alt="" width="22" height="22"></button><button type="button" class="mobile-icon-btn" data-sidebar-action="new" aria-label="Nova conversa" title="Nova conversa"><img src="{{ url_for('static', filename='images/novaconversa.png') }}" alt="" width="22" height="22"></button><button type="button" class="mobile-icon-btn" data-sidebar-action="search" aria-label="Pesquisar conversas" title="Pesquisar conversas"><img src="{{ url_for('static', filename='images/lupa.png') }}" alt="" width="22" height="22"></button></nav></aside>
+    <main class="main-content flex-grow-1 position-relative d-flex flex-column" id="mainContent">
 
     <div class="position-absolute top-0 end-0 m-4" style="z-index: 20;">
       <button id="btnConta">
@@ -155,8 +161,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
+<script>window.ALETEIA_EXTENSION_IDS = {{ chrome_extension_ids | tojson }};</script>
 <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/chat.js', v=chat_assets_version) }}"></script>
+<script src="{{ url_for('static', filename='js/sidebar.js') }}" defer></script>
+<script type="module" src="{{ url_for('static', filename='js/extension-selection.js') }}"></script>
 </body>
 </html>

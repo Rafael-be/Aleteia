@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AleteIA</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <div class="brand" aria-label="AleteIA">
+      <img src="logo.png" alt="" width="22" height="26">
+      <span>ALETE<span class="brand-ia">IA</span></span>
+    </div>
+    <button id="reload" type="button" title="Recarregar chat">
+      Recarregar
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 4v6h-6"/>
+        <path d="M20 10a8 8 0 1 0-1 7M20 10l-4-4"/>
+      </svg>
+    </button>
+    <button id="open-site" type="button">Abrir site em nova aba ↗</button>
+  </header>
+  <p id="selection-status" role="status" hidden></p>
+  <button id="cancel-selection" type="button" hidden>Cancelar textos pendentes</button>
+  <iframe id="chat" title="Chat da AleteIA" allow="clipboard-write"></iframe>
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

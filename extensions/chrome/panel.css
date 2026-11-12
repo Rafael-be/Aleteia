@@ -1,0 +1,19 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: #4b4b4b; color: #e0e0e0; }
+header { display: flex; align-items: center; gap: 4px; padding: 4px 8px; min-height: 36px; flex-shrink: 0; background: #303030; border-bottom: 1px solid #3a3a3a; }
+.brand { display: flex; align-items: center; gap: 5px; margin-right: auto; white-space: nowrap; }
+.brand img { object-fit: contain; }
+.brand > span { font-family: 'Lora', Georgia, serif; font-size: 15px; font-weight: 400; letter-spacing: 1px; }
+.brand-ia { color: #28a745; font-weight: 700; }
+button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; border: 0; border-radius: 4px; background: transparent; color: #c0c0c0; padding: 5px 6px; font: inherit; font-size: 11px; line-height: 16px; white-space: nowrap; }
+button:hover { background: #414141; color: #fff; }
+button:focus-visible { outline: 2px solid #c0c0c0; outline-offset: 1px; }
+button svg { flex-shrink: 0; }
+#selection-status { margin: 0; padding: 7px 10px; background: #303030; color: #e0e0e0; font-size: 12px; line-height: 1.4; }
+button[hidden] { display: none; }
+iframe { width: 100%; flex: 1; min-height: 0; border: 0; background: #4b4b4b; }
+@media (max-width: 350px) {
+  header { flex-wrap: wrap; }
+  .brand { flex: 1; }
+}

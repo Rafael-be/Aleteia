@@ -53,6 +53,7 @@ def injetar_firebase_config():
     """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
     return {
         "firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"),
+        "chrome_extension_ids": os.getenv("CHROME_EXTENSION_IDS", "").split(","),
         "chat_assets_version": max(
             (BASE_DIR / arquivo).stat().st_mtime_ns
             for arquivo in ("static/js/chat.js", "static/js/chat-stream.js", "static/css/chat.css")
