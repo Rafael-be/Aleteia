@@ -1,107 +1,93 @@
-from flask import Flask, render_template, session, redirect, url_for, jsonify
-"""
-Ponto de entrada da aplicação Flask da AleteIA.
+"""Ponto de entrada Flask da AleteIA."""
 
-Este arquivo configura a aplicação, conecta ao MongoDB, registra os
-blueprints da API e define as rotas que renderizam as páginas HTML.
-"""
-
+import logging
+import json
 import os
+from pathlib import Path
 
-from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
 from flask import Flask, render_template
-from pymongo import MongoClient
-
+from src import config
+from src.utils.api import configure_api
+from src.database import MongoDatabaseProvider
+from src.routes.authRoutes import auth_routes
 from src.routes.chatRoutes import chat_routes
-from src.routes.userRoutes import user_routes
-from dotenv import load_dotenv
-from functools import wraps
-import os
 
-load_dotenv()
-
-app = Flask(__name__, template_folder="public", static_folder='.', static_url_path='')
-
-# SECRET_KEY é obrigatório para sessões Flask funcionarem
-app.secret_key = os.getenv("SECRET_KEY", "criptografia123")
-
-# Configurações de segurança do cookie de sessão
-app.config["SESSION_COOKIE_HTTPONLY"] = True   # JS não consegue ler o cookie
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Proteção contra CSRF básica
-# app.config["SESSION_COOKIE_SECURE"] = True   # Descomente em produção (HTTPS)
-app = Flask(__name__, template_folder="public", static_folder=".", static_url_path="")
-
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("MONGO_DB_NAME")]
-
-# Rotas de API:
-# - /api/users/register
-# - /api/users/login
-# - /api/chat/prompt
-# - /api/chat/prompts
-app.register_blueprint(user_routes(db))
+BASE_DIR = Path(__file__).resolve().parent
 
 
-# ------------------------------------------------------------------
-# Decorator: protege rotas que exigem login
-# ------------------------------------------------------------------
-def login_required(f):
-    """
-    Use @login_required em qualquer rota que precise de autenticação.
-    Redireciona para /login se o usuário não estiver logado.
-    """
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login_page"))
-        return f(*args, **kwargs)
-    return decorated
+def inicializar_firebase_admin() -> None:
+    """Inicializa o Admin SDK com a service account armazenada no ambiente."""
+    if firebase_admin._apps:
+        return
+    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if not service_account_json:
+        raise RuntimeError("FIREBASE_SERVICE_ACCOUNT_JSON não foi configurada.")
+    try:
+        service_account = json.loads(service_account_json)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("FIREBASE_SERVICE_ACCOUNT_JSON contém JSON inválido.") from exc
+    firebase_admin.initialize_app(credentials.Certificate(service_account))
 
-app.register_blueprint(chat_routes(db))
+
+inicializar_firebase_admin()
+
+app = Flask(__name__, template_folder="public", static_folder="static", static_url_path="/static")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+configure_api(app)
+
+mongo_uri = os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+mongo_db_name = os.getenv("MONGO_DB_NAME") or "aleteia"
+# A conexão é feita sob demanda pelos models e é tentada novamente em cada
+# requisição que chegar enquanto o Mongo estiver indisponível.
+mongo_db = MongoDatabaseProvider(mongo_uri, mongo_db_name)
+
+app.register_blueprint(auth_routes(mongo_db))
+app.register_blueprint(chat_routes(mongo_db))
+
+
+@app.context_processor
+def injetar_firebase_config():
+    """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
+    return {
+        "firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"),
+        "chat_assets_version": max(
+            (BASE_DIR / arquivo).stat().st_mtime_ns
+            for arquivo in ("static/js/chat.js", "static/js/chat-stream.js", "static/css/chat.css")
+        ),
+    }
+
+@app.after_request
+def add_coop_headers(response):
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    return response
 
 
 @app.route("/cadastro")
 def cadastro():
-    """Renderiza a página de cadastro de usuário."""
     return render_template("cadastroTeste/cadastro.html")
 
 
 @app.route("/")
 def index():
-    """Renderiza a página inicial do site."""
     return render_template("main/main-desktop.html")
 
 
 @app.route("/chat")
-@login_required          # ← protege a rota /chat
-def logado():
-    """Renderiza a página principal do chat."""
+@app.route("/conversa")
+def chat():
+    """A proteção de acesso é feita pelo token Firebase no frontend e APIs."""
     return render_template("chat/chatIndex.html")
 
 
 @app.route("/login")
 def login_page():
-    """Renderiza a página de login."""
     return render_template("login/login.html")
-
-@app.route("/logout", methods=["POST"])
-def logout():
-    """Encerra a sessão do servidor e redireciona para a página inicial."""
-    session.clear()
-    return redirect(url_for("index"))
-
-@app.route("/api/session-status")
-def session_status():
-    """Retorna se o usuário está logado e seus dados básicos (usado pelo JS)."""
-    if "user_id" in session:
-        return jsonify({
-            "logado": True,
-            "email": session.get("email"),
-            "user_id": session.get("user_id")
-        })
-    return jsonify({"logado": False})
 
 
 if __name__ == "__main__":
-    print(app.url_map)
-    app.run(debug=True)
+    port = int(os.getenv("PORT", "5000"))
+    host = os.getenv("HOST", "127.0.0.1")
+    app.run(host=host, port=port, debug=False)

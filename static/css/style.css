@@ -19,6 +19,7 @@
   --text-muted:          #c0c0c0;
   --border-dark:         #222;
   --border-mid:          #3a3a3a;
+  --verdade-vermelha:    #D94040;
 }
 
 /* ── Reset base ── */
@@ -29,13 +30,6 @@ body {
   color: var(--text-light);
   font-family: 'Montserrat', sans-serif;
   margin: 0;
-}
-
-/* ── Anti-FOUC ── */
-body {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
 /* ── Sidebar ── */
@@ -63,7 +57,12 @@ body {
 }
 .btn-custom-green:hover { background-color: var(--btn-green-dark); }
 
-/* ── Botão de conta (desktop) ── */
+/* ── Botão de conta (desktop) ──
+   Visível por padrão (>=768px). Escondido em telas <=767px
+   pelo bloco "@media (max-width: 767px)" mais abaixo, onde
+   quem assume a exibição da conta é o #btnContaMobileInner
+   (dentro do .mobile-header, controlado via classes do
+   Bootstrap d-flex/d-md-none). */
 #btnConta {
   width: 44px;
   height: 44px;
@@ -79,7 +78,7 @@ body {
   padding: 0;
 }
 #btnConta:hover { opacity: 0.8; border-color: #aaa; }
-#fotoConta { width: 100%; height: 100%; object-fit: cover; display: none; }
+#fotoConta { width: 100%; height: 100%; }
 
 /* ── Overlay ── */
 .popup-overlay {
@@ -173,7 +172,7 @@ body {
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
 }
-#fotoContaMobile { width: 100%; height: 100%; object-fit: cover; display: none; }
+#fotoContaMobile { width: 100%; height: 100%; }
 
 /* ── Sidebar como Drawer (mobile) ── */
 .sidebar-drawer {
@@ -203,24 +202,62 @@ body {
 }
 .drawer-overlay.active { display: block; }
 
-/* ── Offset do header mobile no main ── */
+/* ── Offset do header mobile no main / visibilidade do btnConta ── */
 @media (max-width: 767px) {
   .main-content { padding-top: 68px !important; }
+
+  /* Abaixo de 768px quem representa a conta é o
+     #btnContaMobileInner (dentro do .mobile-header, que já
+     aparece aqui via as classes Bootstrap d-flex/d-md-none).
+     O #btnConta "de mesa" some para não duplicar o ícone. */
+  #btnConta {
+    display: none;
+  }
 }
 
 /* ── Brand block ── */
 .brand-block {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 .brand-logo-img { width: 110px; height: auto; }
 
 @media (max-width: 767px) {
-  .brand-block { flex-direction: column; align-items: flex-start; }
-  .brand-logo-wrap { align-self: center; }
-  .brand-logo-img { width: 70px; }
+  .main-content {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding-top: 84px !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  .brand-block {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    text-align: left;
+    margin-top: 1rem;
+    gap: 0.5rem;
+  }
+
+  .brand-logo-wrap {
+    align-self: center;
+    flex-shrink: 0;
+  }
+
+  .brand-logo-img {
+    width: 70px;
+  }
+
+  .brand-block h1 {
+    font-size: 2.4rem;
+  }
+
+  .brand-block h2 {
+    font-size: 1.2rem;
+  }
 }
 
 /* -- Lista de conversas no aside -- */
@@ -234,16 +271,124 @@ body {
 
 .sidebar #listaConversas li {
   display: block;
-  height: 24px;
-  margin: 0;
-  padding: 0;
+  position: relative;
+  min-height: 32px;
+  margin: 0 0 0.35rem;
+  padding: 0.35rem 2rem 0.35rem 0.45rem;
   color: var(--text-light);
-  font-size: 16px;
+  font-size: 0.9rem;
   font-weight: 400;
-  line-height: 24px;
+  line-height: 1.35;
   cursor: pointer;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .sidebar #listaConversas li:hover {
   background-color: rgba(255,255,255,0.07);
 }
+
+#inputPesquisarConversas {
+  min-width: 0;
+  flex: 1;
+  padding: 0.2rem 0.35rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-light);
+  font-family: inherit;
+  font-size: inherit;
+  transition: border-color 0.2s ease;
+}
+
+#inputPesquisarConversas:focus {
+  border-color: var(--border-mid);
+  outline: none;
+}
+
+#inputPesquisarConversas::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-excluir-conversa {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  background: none;
+  border: none;
+  color: var(--verdade-vermelha);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar #listaConversas li:hover .btn-excluir-conversa,
+.sidebar #listaConversas li:focus-within .btn-excluir-conversa {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.tampa-lixeira {
+  transform-box: view-box;
+  transform-origin: 9px 7px;
+  transition: transform 0.2s ease;
+}
+
+.btn-excluir-conversa:hover .tampa-lixeira {
+  transform: rotate(-18deg);
+}
+
+/* Aviso mostrado enquanto a sessão Firebase ainda não tem e-mail confirmado. */
+.aviso-verificacao-email {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 1000;
+  width: min(92vw, 680px);
+  transform: translateX(-50%);
+  padding: .85rem 1rem;
+  border: 1px solid #f3c969;
+  border-radius: .5rem;
+  background: #fff4d6;
+  color: #473400;
+  box-shadow: 0 .3rem 1rem rgba(0, 0, 0, .2);
+  text-align: center;
+}
+
+.aviso-verificacao-email.visivel { display: block; }
+.aviso-verificacao-email button {
+  margin-left: .5rem;
+  border: 0;
+  border-radius: .25rem;
+  padding: .35rem .6rem;
+  background: #008e05;
+  color: #fff;
+  font-weight: 600;
+}
+
+.aviso-verificacao-email small { display: block; margin-top: .35rem; }
+
+/* Avatar compartilhado pelo desktop, mobile e menu da conta. */
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #666;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+.account-avatar svg { width: 65%; height: 65%; }
+.account-avatar.popup-avatar { font-size: 2rem; }

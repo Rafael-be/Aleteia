@@ -32,17 +32,17 @@
     /* TOP BAR */
     .topbar {
       background-color: var(--bg-topbar);
-      height: 52px;
+      height: 46px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 14px;
     }
 
     .topbar-left {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .topbar .icon-btn {
@@ -52,19 +52,19 @@
     }
 
     .topbar .avatar {
-      width: 36px; height: 36px;
+      width: 34px; height: 34px;
       border-radius: 50%;
       background: #555;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
+      font-size: 15px;
     }
 
     /* CONTENT */
     .content {
       flex: 1;
-      padding: 36px 24px 32px;
+      padding: 28px 18px 24px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
     }
 
     /* BRAND */
@@ -75,32 +75,40 @@
       color: var(--white);
       opacity: 0.9;
       margin-bottom: 2px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
+    /* Título e logo lado a lado (row), sem quebrar para
+       a linha de baixo — antes estava em column, o que
+       empilhava a logo abaixo do texto. */
     .brand-row {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 28px;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      text-align: center;
     }
 
     .brand-name {
       font-family: 'Lora', serif;
-      font-size: 52px;
+      font-size: 34px;
       font-weight: 700;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       line-height: 1.05;
+      white-space: nowrap;
     }
 
     .brand-name .white { color: var(--white); }
     .brand-name .green { color: var(--green); }
 
     .brand-logo {
-      width: 90px;
+      width: 64px;
       height: auto;
       opacity: 0.9;
       flex-shrink: 0;
-      margin-top: 8px;
     }
 
     /* DESCRIPTION */
@@ -110,6 +118,7 @@
       color: rgba(255,255,255,0.88);
       line-height: 1.6;
       margin-bottom: 6px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
     .welcome-desc-bold {
@@ -117,6 +126,7 @@
       font-weight: 500;
       color: rgba(255,255,255,0.88);
       margin-bottom: 22px;
+      text-align: center; /* antes ficava alinhado à esquerda (padrão do navegador) */
     }
 
     /* FEATURE LIST */
@@ -135,6 +145,7 @@
       font-size: 14px;
       color: rgba(255,255,255,0.88);
       line-height: 1.5;
+      text-align: left; /* mantém o texto ao lado do ícone alinhado à esquerda, mesmo que o pai fique centralizado */
     }
 
     .feature-list li svg {
@@ -170,9 +181,19 @@
       text-align: center;
       line-height: 1.5;
     }
+    .aviso-verificacao-email { display: none; position: fixed; top: 8px; left: 8px; right: 8px; z-index: 10; padding: 10px; border-radius: 6px; background: #fff4d6; color: #473400; text-align: center; }
+    .aviso-verificacao-email.visivel { display: block; }
   </style>
 </head>
 <body>
+
+  <aside id="avisoVerificacaoEmail" class="aviso-verificacao-email" role="status" aria-live="polite">
+    <strong>Confirme seu e-mail</strong>
+    <span>Enviamos um link de confirmação para <span id="emailVerificacaoPendente"></span>.</span>
+    <button id="btnReenviarVerificacao" type="button">Reenviar confirmação</button>
+    <button id="btnCorrigirEmailVerificacao" type="button">Corrigir e-mail</button>
+    <small id="feedbackReenvioVerificacao"></small>
+  </aside>
 
   <!-- TOP BAR -->
   <div class="topbar">

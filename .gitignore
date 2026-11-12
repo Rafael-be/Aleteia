@@ -1,7 +1,12 @@
 venv/
+venvAleteia/
+Exemplo.env
 .env
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .vscode/
+Firebase_Back.json
+front.json
+aleteia/

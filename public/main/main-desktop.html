@@ -18,6 +18,14 @@
 </head>
 <body>
 
+  <aside id="avisoVerificacaoEmail" class="aviso-verificacao-email" role="status" aria-live="polite">
+    <strong>Confirme seu e-mail</strong>
+    <span>Enviamos um link de confirmação para <span id="emailVerificacaoPendente"></span>. Abra sua caixa de entrada e clique no link para continuar.</span>
+    <button id="btnReenviarVerificacao" type="button">Reenviar e-mail de confirmação</button>
+    <button id="btnCorrigirEmailVerificacao" type="button">Corrigir e-mail</button>
+    <small id="feedbackReenvioVerificacao"></small>
+  </aside>
+
   <!-- HEADER MOBILE -->
   <header class="mobile-header d-flex d-md-none align-items-center justify-content-between px-3">
     <button id="btnMenuMobile" class="mobile-icon-btn">
@@ -27,7 +35,7 @@
     </button>
     <button id="btnContaMobile" class="mobile-icon-btn p-0">
       <div id="btnContaMobileInner">
-        <img id="fotoContaMobile" src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="perfil">
+        <span id="fotoContaMobile" class="account-avatar" data-account-avatar role="img" aria-label="Usu?rio deslogado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>
       </div>
     </button>
   </header>
@@ -44,14 +52,14 @@
       </div>
 
       <nav class="nav flex-column mb-4 fs-6">
-        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <a id="btnNovaConversa" href="/chat" class="nav-link text-light px-0 d-flex align-items-center mb-2">
           <img alt="nova_conversa" src="{{ url_for('static', filename='images/novaconversa.png') }}" style="width:10%;height:auto;margin-right:5%;">
           Nova conversa
         </a>
-        <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
+        <div class="nav-link text-light px-0 d-flex align-items-center mb-2">
           <img alt="pesquisar_conversa" src="{{ url_for('static', filename='images/lupa.png') }}" style="width:10%;height:auto;margin-right:5%;">
-          Pesquisar conversas
-        </a>
+          <input type="text" id="inputPesquisarConversas" placeholder="Pesquisar conversas" autocomplete="off">
+        </div>
         <a href="#" class="nav-link text-light px-0 d-flex align-items-center mb-2">
           <img alt="home" src="{{ url_for('static', filename='images/home.png') }}" style="width:8%;height:auto;margin-right:6%;">
           Página inicial
@@ -70,7 +78,7 @@
 
       <div class="position-absolute top-0 end-0 m-4 d-none d-md-block">
         <button id="btnConta">
-          <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" id="fotoConta">
+          <span id="fotoConta" class="account-avatar" data-account-avatar role="img" aria-label="Usu?rio deslogado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>
         </button>
       </div>
 
@@ -128,8 +136,8 @@
   <div class="popup-card" id="popupConta">
     <button class="btn-voltar" id="btnVoltar">&#8592; Voltar</button>
     <div class="d-flex flex-column align-items-center mb-3">
-      <img src="{{ url_for('static', filename='images/contaimagem.png') }}" alt="foto de perfil" class="popup-avatar">
-      <p class="popup-username">Olá, ContaTeste123</p>
+      <span class="account-avatar popup-avatar" data-account-avatar role="img" aria-label="Usu?rio deslogado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>
+      <p class="popup-username">Minha conta</p>
     </div>
     <hr class="popup-divider">
     <button class="popup-menu-item" onclick="window.location.href='/login'">
@@ -143,75 +151,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <script>
-    // Verifica sessão no servidor (fonte de verdade)
-    async function verificarSessao() {
-      try {
-        const res  = await fetch("/api/session-status");
-        const data = await res.json();
-
-        const btnConta      = document.getElementById("btnConta");
-        const btnContaMobile = document.getElementById("btnContaMobile");
-        const overlay       = document.getElementById("popupOverlay");
-        const popup         = document.getElementById("popupConta");
-        const btnVoltar     = document.getElementById("btnVoltar");
-        const btnSair       = document.getElementById("btnSair");
-        const usernameEl    = document.querySelector(".popup-username");
-
-        if (data.logado) {
-          // Exibe foto de perfil
-          document.getElementById("fotoConta").style.display = "block";
-          const fotoMobile = document.getElementById("fotoContaMobile");
-          if (fotoMobile) fotoMobile.style.display = "block";
-
-          // Mostra email no popup
-          if (usernameEl) usernameEl.textContent = "Olá, " + data.email;
-
-          // Abre popup ao clicar no botão desktop
-          if (btnConta) {
-            btnConta.addEventListener("click", () => {
-              overlay.classList.add("active");
-              popup.classList.add("active");
-            });
-          }
-          // Abre popup ao clicar no botão mobile
-          if (btnContaMobile) {
-            btnContaMobile.addEventListener("click", () => {
-              overlay.classList.add("active");
-              popup.classList.add("active");
-            });
-          }
-        } else {
-          // Não logado: clique vai para cadastro
-          if (btnConta) btnConta.addEventListener("click", () => window.location.href = "/cadastro");
-          if (btnContaMobile) btnContaMobile.addEventListener("click", () => window.location.href = "/cadastro");
-        }
-
-        // Fechar popup
-        function fecharPopup() {
-          overlay.classList.remove("active");
-          popup.classList.remove("active");
-        }
-        if (overlay) overlay.addEventListener("click", fecharPopup);
-        if (btnVoltar) btnVoltar.addEventListener("click", fecharPopup);
-        document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPopup(); });
-
-        // Botão Sair — chama /logout no servidor
-        if (btnSair) {
-          btnSair.addEventListener("click", async () => {
-            await fetch("/logout", { method: "POST" });
-            localStorage.removeItem("token"); // limpa também o localStorage
-            window.location.href = "/";
-          });
-        }
-
-      } catch (err) {
-        console.error("Erro ao verificar sessão:", err);
-      }
-    }
-
-    verificarSessao();
-  </script>
+  <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
+  <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

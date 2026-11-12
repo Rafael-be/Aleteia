@@ -1,168 +1,135 @@
-"""
-Módulo de Gerenciamento de Usuários.
+"""Persistência dos dados de negócio vinculados a usuários do Firebase."""
 
-Este módulo contém a classe UserModel, responsável por interagir com o MongoDB,
-realizar validações de e-mail e senha, e aplicar criptografia (bcrypt) 
-para o armazenamento seguro das credenciais.
-"""
+from datetime import datetime, timezone, timedelta
+from uuid import uuid4
 
-import bcrypt
-from datetime import datetime
-from email_validator import validate_email, EmailNotValidError
+from src.utils.timing import timed
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
+from pymongo.database import Database
+
 
 class UserModel:
-    """
-    Modelo de usuário para MongoDB.
-    Responsável por validar, estruturar e criptografar dados do usuário.
-    """
+    """Modelo dos dados da aplicação; senhas e verificação ficam no Firebase."""
 
     COLLECTION_NAME = "users"
 
     def __init__(self, db):
-        """
-        Inicializa o modelo com a instância do banco de dados.
+        self.db = db
+        self.collection = None
+        self.db_available = False
+        self.db_error = None
 
-        :param db: Instância do banco de dados MongoDB (pymongo.database.Database)
-        """
-        self.collection = db[self.COLLECTION_NAME]
-        # Garante índice único no campo email
-        self.collection.create_index("email", unique=True)
+        # Mantém compatibilidade com uma instância de Database direta, mas
+        # não fixa o resultado quando recebe o provider usado pela aplicação.
+        if isinstance(db, Database) or not hasattr(db, "get_database"):
+            self._conectar()
 
-    # ------------------------------------------------------------------
-    # Validações
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def validate_email_format(email: str) -> str:
-        """
-        Valida o formato do e-mail.
-
-        :param email: String com o e-mail informado pelo usuário.
-        :return: E-mail normalizado (lowercase, sem espaços).
-        :raises ValueError: Se o e-mail for inválido.
-        """
+    def _conectar(self):
+        """Obtém a coleção, tentando reconectar se a tentativa anterior falhou."""
+        db = self.db if isinstance(self.db, Database) else (self.db.get_database() if hasattr(self.db, "get_database") else self.db)
+        if db is None:
+            self.collection = None
+            self.db_available = False
+            self.db_error = getattr(self.db, "last_error", None) or "Banco de dados indisponível"
+            return None
         try:
-            valid = validate_email(email, check_deliverability=False)
-            return valid.normalized  # retorna e-mail normalizado
-        except EmailNotValidError as e:
-            raise ValueError(f"E-mail inválido: {str(e)}")
+            self.collection = db[self.COLLECTION_NAME]
+            self.db_available = True
+            self.db_error = None
+            return self.collection
+        except Exception as exc:
+            self.collection = None
+            self.db_available = False
+            self.db_error = str(exc)
+            return None
 
-    @staticmethod
-    def validate_password(password: str, confirm_password: str) -> None:
-        """
-        Valida a senha e a confirmação de senha.
+    def _obter_colecao(self):
+        # Quando o Mongo estava fora no boot, esta chamada é repetida em cada
+        # operação, permitindo que o Atlas volte sem reiniciar o Flask.
+        if not self.db_available or self.collection is None:
+            self._conectar()
+        if not self.db_available or self.collection is None:
+            raise RuntimeError(self.db_error or "Banco de dados indisponível")
+        return self.collection
 
-        Regras:
-        - Mínimo de 8 caracteres
-        - Ao menos uma letra maiúscula
-        - Ao menos um número
-        - password == confirm_password
+    @timed("sincronizar_usuario_firebase")
+    def sincronizar_usuario_firebase(self, firebase_uid: str, email: str | None) -> dict:
+        """Cria, no primeiro login, o perfil de negócio do usuário Firebase."""
+        collection = self._obter_colecao()
 
-        :param password: Senha informada.
-        :param confirm_password: Confirmação da senha.
-        :raises ValueError: Se alguma regra for violada.
-        """
-        if len(password) < 8:
-            raise ValueError("A senha deve ter no mínimo 8 caracteres.")
-
-        if not any(c.isupper() for c in password):
-            raise ValueError("A senha deve conter ao menos uma letra maiúscula.")
-
-        if not any(c.isdigit() for c in password):
-            raise ValueError("A senha deve conter ao menos um número.")
-
-        if password != confirm_password:
-            raise ValueError("As senhas não coincidem.")
-
-    # ------------------------------------------------------------------
-    # Criptografia
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """
-        Gera o hash bcrypt da senha.
-
-        :param password: Senha em texto puro.
-        :return: Hash da senha como string UTF-8.
-        """
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-        return hashed.decode("utf-8")
-
-    @staticmethod
-    def check_password(password: str, hashed_password: str) -> bool:
-        """
-        Verifica se a senha informada corresponde ao hash armazenado.
-
-        :param password: Senha em texto puro.
-        :param hashed_password: Hash armazenado no banco.
-        :return: True se a senha for válida, False caso contrário.
-        """
-        return bcrypt.checkpw(
-            password.encode("utf-8"),
-            hashed_password.encode("utf-8")
-        )
-
-    # ------------------------------------------------------------------
-    # Estrutura do documento
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def build_user_document(email: str, hashed_password: str) -> dict:
-        """
-        Monta o documento que será inserido no MongoDB.
-
-        :param email: E-mail já validado e normalizado.
-        :param hashed_password: Senha já criptografada.
-        :return: Dicionário representando o documento do usuário.
-        """
-        return {
-            "email": email,
-            "password": hashed_password,
-            "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+        documento = {
+            "firebase_uid": firebase_uid,
+            "plano": "gratuito",
+            "limite_diario_perguntas": 10,
+            "uso_diario": {"data": "", "perguntas_feitas": 0, "tokens_usados": 0},
+            "criado_em": datetime.now(timezone.utc),
         }
+        update = {"$setOnInsert": documento}
+        if email:
+            update['$set'] = {'email': email.strip().lower()}
+        try:
+            return collection.find_one_and_update(
+                {"firebase_uid": firebase_uid}, update,
+                upsert=True, return_document=ReturnDocument.AFTER)
+        except DuplicateKeyError:
+            # Concurrent first requests may race on the unique UID index.
+            usuario = collection.find_one({'firebase_uid': firebase_uid})
+            if usuario is None:
+                raise
+            return usuario
 
-    # ------------------------------------------------------------------
-    # Operações no banco
-    # ------------------------------------------------------------------
+    @timed("verificar_e_incrementar_uso")
+    def verificar_e_incrementar_uso(self, firebase_uid: str) -> tuple[bool, dict | None]:
+        """Atomic day rollover, short rate limit, quota reservation and per-user lease.
 
-    def create_user(self, email: str, password: str, confirm_password: str) -> dict:
+        Requires MongoDB 4.2+. No expired lease refunds: an interrupted worker may
+        already have spent API credits. Fail closed until the lease expires.
         """
-        Valida os dados, criptografa a senha e insere o usuário no banco.
+        collection = self._obter_colecao()
+        now = datetime.now(timezone.utc)
+        today = now.date().isoformat()
+        minute = now.strftime('%Y-%m-%dT%H:%M')
+        reservation = uuid4().hex
+        same_day = {'$eq': ['$uso_diario.data', today]}
+        count = {'$cond': [same_day, {'$ifNull': ['$uso_diario.perguntas_feitas', 0]}, 0]}
+        same_minute = {'$eq': ['$rate_minute', minute]}
+        rate = {'$cond': [same_minute, {'$ifNull': ['$rate_count', 0]}, 0]}
+        user = collection.find_one_and_update(
+            {'firebase_uid': firebase_uid,
+             '$and': [{'$or': [{'lease_until': {'$exists': False}}, {'lease_until': {'$lte': now}}]},
+                      {'$expr': {'$lt': [count, '$limite_diario_perguntas']}},
+                      {'$expr': {'$lt': [rate, 3]}}]},
+            [{'$set': {
+                'uso_diario': {'data': today, 'perguntas_feitas': {'$add': [count, 1]},
+                              'tokens_usados': {'$cond': [same_day, {'$ifNull': ['$uso_diario.tokens_usados', 0]}, 0]}},
+                'rate_minute': minute, 'rate_count': {'$add': [rate, 1]},
+                'reservation_id': reservation, 'reservation_day': today,
+                'lease_until': now + timedelta(seconds=180),
+            }}], return_document=ReturnDocument.AFTER)
+        if user is not None:
+            return True, user
+        user = collection.find_one({'firebase_uid': firebase_uid})
+        if user:
+            exhausted = (user.get('uso_diario', {}).get('data') == today and
+                         user['uso_diario'].get('perguntas_feitas', 0) >= user.get('limite_diario_perguntas', 10))
+            user['quota_reason'] = 'daily_quota_exceeded' if exhausted else 'rate_limited'
+        return False, user
 
-        :param email: E-mail informado pelo usuário.
-        :param password: Senha informada.
-        :param confirm_password: Confirmação de senha.
-        :return: Dicionário com o id do usuário inserido.
-        :raises ValueError: Se alguma validação falhar.
-        :raises Exception: Se o e-mail já estiver cadastrado.
-        """
-        # 1. Validações
-        normalized_email = self.validate_email_format(email)
-        self.validate_password(password, confirm_password)
+    @timed("finalizar_reserva")
+    def finalizar_reserva(self, firebase_uid, reserva, sucesso):
+        """Idempotent release/refund; never refund a different request or day."""
+        if not reserva:
+            return
+        query = {'firebase_uid': firebase_uid, 'reservation_id': reserva['reservation_id']}
+        update = {'$unset': {'lease_until': '', 'reservation_id': '', 'reservation_day': ''}}
+        if not sucesso:
+            query['uso_diario.data'] = reserva['reservation_day']
+            update['$inc'] = {'uso_diario.perguntas_feitas': -1}
+        self._obter_colecao().update_one(query, update)
 
-        # 2. Verifica duplicidade
-        if self.collection.find_one({"email": normalized_email}):
-            raise ValueError("Este e-mail já está cadastrado.")
-
-        # 3. Criptografa a senha
-        hashed_password = self.hash_password(password)
-
-        # 4. Monta e insere o documento
-        user_document = self.build_user_document(normalized_email, hashed_password)
-        result = self.collection.insert_one(user_document)
-
-        return {"id": str(result.inserted_id)}
-
-    def find_by_email(self, email: str) -> dict | None:
-        """
-        Busca um usuário pelo e-mail.
-
-        :param email: E-mail a ser pesquisado.
-        :return: Documento do usuário ou None se não encontrado.
-        """
-        normalized_email = email.strip().lower()
-        return self.collection.find_one({"email": normalized_email})
+    @timed("registrar_tokens_usados")
+    def registrar_tokens_usados(self, firebase_uid: str, tokens_gastos: int) -> None:
+        self._obter_colecao().update_one(
+            {'firebase_uid': firebase_uid, 'uso_diario.data': datetime.now(timezone.utc).date().isoformat()},
+            {'$inc': {'uso_diario.tokens_usados': max(0, int(tokens_gastos))}})

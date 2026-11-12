@@ -100,3 +100,16 @@ body.auth-page {
 .signup-text a:hover { text-decoration: underline; }
 
 .field-gap { margin-bottom: 1rem; }
+
+.dialogo-email-incerto {
+  max-width: 430px;
+  border: 0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: #333;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .3);
+}
+.dialogo-email-incerto::backdrop { background: rgba(0, 0, 0, .55); }
+.dialogo-email-acoes { display: flex; justify-content: flex-end; gap: .75rem; }
+.dialogo-email-acoes button { border: 0; border-radius: 6px; padding: .55rem .8rem; cursor: pointer; }
+.dialogo-email-acoes button:last-child { background: var(--btn-green-alt); color: #fff; }
