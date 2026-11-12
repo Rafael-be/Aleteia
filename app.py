@@ -88,6 +88,11 @@ def login_page():
     return render_template("login/login.html")
 
 
+@app.route("/extension")
+def extensao():
+    return render_template("extensao/extensao.html")
+
+
 @app.route("/privacidade")
 def privacidade():
     return render_template("privacidade.html")

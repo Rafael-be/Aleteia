@@ -1,0 +1,28 @@
+{% extends "main/main-desktop.html" %}
+
+{% block title %}AleteIA — Extensão{% endblock %}
+
+{% block page_content %}
+<div class="brand-block mb-5">
+  <div class="text-start">
+    <h2 class="fw-light mb-1 fs-3">Extensão da</h2>
+    <h1 class="mb-0" style="font-size:3.5rem;letter-spacing:2px;font-family:'Lora',serif;font-weight:100;">
+      ALETE<span class="text-success fw-bold">IA</span>
+    </h1>
+  </div>
+  <div class="brand-logo-wrap">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="brand-logo-img">
+  </div>
+</div>
+
+<p class="fs-5 mb-4 text-light opacity-75">Com a extensão da Aleteia, você poderá “escanear” notícias diretamente no navegador.</p>
+<p class="fs-6 mb-4 text-light opacity-75">Bastará selecionar o texto da notícia, clicar com o botão direito e escolher a opção de enviar para a Aleteia. Ela analisará as informações em um painel lateral, sem você sair da página.</p>
+
+<h2 class="fw-light fs-3 mb-3">Em breve</h2>
+<p class="fs-6 mb-5 text-light opacity-75">A extensão ainda não está disponível por aqui. Em breve, você encontrará o link nesta página, mas já pode <a href="/chat" class="text-light">utilizar a Aleteia pelo site!</a></p>
+
+<div class="text-center text-light opacity-50" style="font-size:0.85rem;">
+  <p class="mb-0">Aviso: a Aleteia pode cometer erros.</p>
+  <p>Considere verificar informações importantes</p>
+</div>
+{% endblock %}
