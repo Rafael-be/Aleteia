@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "AleteIA — Chat lateral",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Converse com a AleteIA ao lado da sua aba atual.",
   "minimum_chrome_version": "116",
-  "permissions": ["sidePanel"],
+  "permissions": ["sidePanel", "contextMenus", "storage"],
   "action": { "default_title": "Abrir AleteIA" },
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "panel.html" }

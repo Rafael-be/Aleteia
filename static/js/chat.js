@@ -329,6 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btnEnviar.classList.toggle("active", !btnEnviar.disabled);
         textarea.focus();
       }
+      window.dispatchEvent?.(new Event("aleteia:chat-idle"));
     }
   }
 
@@ -402,6 +403,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   carregarConversaDaUrl();
+
+  window.aleteiaEnviarSelecao = (text) => {
+    if (requisicaoAtiva || textarea.value.trim()) return false;
+    textarea.value = text;
+    enviarMensagem();
+    return true;
+  };
+  textarea.addEventListener("input", () => window.dispatchEvent(new Event("aleteia:chat-idle")));
 
   /* ── Nova conversa ── */
   if (btnNovaConversa) {

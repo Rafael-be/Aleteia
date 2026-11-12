@@ -83,6 +83,36 @@ o conteúdo desta pasta (o `manifest.json` precisa estar na raiz do ZIP).
 Autorize no servidor o ID atribuído à extensão da loja antes de distribuir.
 Nunca inclua `.env`, service account, chaves privadas ou o backend nesse ZIP.
 
-A única permissão pedida é `sidePanel`. A extensão não lê a página visitada e não
-precisa de acesso a todos os sites. O botão de nova aba usa `tabs.create`, que não
-exige a permissão `tabs`. É necessária conexão com o servidor; não há modo offline.
+As permissões são `sidePanel` (painel), `contextMenus` (ação sobre o texto selecionado)
+e `storage` (fila temporária na memória do navegador). Não há acesso permanente aos
+sites, leitura do restante da página, nem leitura da área de transferência. O botão
+de nova aba usa `tabs.create`, que não exige a permissão `tabs`.
+
+## Enviar um trecho selecionado
+
+1. Em uma página HTTP/HTTPS, selecione um texto e clique com o botão direito.
+2. Escolha **Enviar texto à AleteIA**. Essa ação autoriza enviar o trecho à IA,
+   consumindo o limite normal da conta e salvando-o no histórico como uma mensagem.
+3. O painel abre e envia o texto na conversa atual. Se necessário, entre na conta
+   e confirme o e-mail primeiro. Uma resposta em andamento ou um rascunho existente
+   fazem o trecho aguardar; o rascunho não é sobrescrito.
+
+É possível cancelar textos ainda pendentes pelo botão exibido no painel. Isso não
+cancela mensagens já enviadas. Cada seleção aceita até 12.000 caracteres; trechos
+maiores são recusados, sem corte silencioso. Vários trechos aguardam em ordem por
+janela. Seleções pendentes expiram para envio após dez minutos. A fila usa
+`storage.session`, sem sincronização nem persistência em disco, e é removida ao
+entregar o texto, fechar a janela ou encerrar a sessão do navegador.
+
+O texto não é colocado na URL nem nos logs da extensão. A comunicação entre painel
+e site valida a origem e a janela remetente nos dois lados, e o site só aceita IDs
+configurados em `CHROME_EXTENSION_IDS`. Tokens e senhas continuam no fluxo Firebase
+do site. O backend continua verificando token, conta, limites e acesso às conversas.
+
+Para ativar a versão 1.1.0, publique também o template do chat, `app.py`,
+`static/js/chat.js` e `static/js/extension-selection.js` no servidor; recarregue a
+extensão em `brave://extensions` ou `chrome://extensions` e reabra o painel.
+Na loja, envie um novo pacote e atualize as declarações de permissões e privacidade
+para mencionar o envio explícito de seleções. Teste com duas janelas, login pendente,
+rascunho, resposta em andamento e recarregamento. Páginas internas do navegador não
+oferecem esse fluxo; não há OCR de imagens. É necessária conexão com o servidor.
