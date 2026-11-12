@@ -88,6 +88,11 @@ def login_page():
     return render_template("login/login.html")
 
 
+@app.route("/privacidade")
+def privacidade():
+    return render_template("privacidade.html")
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     host = os.getenv("HOST", "127.0.0.1")
