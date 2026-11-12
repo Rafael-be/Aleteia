@@ -58,7 +58,77 @@ document.addEventListener("DOMContentLoaded", () => {
     "FALSO":                   { label: "Desmentida",  classe: "veracidade-vermelha"  },
     "PARCIALMENTE VERDADEIRO": { label: "Parcial",     classe: "veracidade-amarela"   },
     "INCONCLUSIVO":            { label: "Inconclusivo", classe: "veracidade-neutra"   },
+    "STRONGLY_SUPPORTED": { label: "Fortemente sustentada", classe: "veracidade-verde" },
+    "PREDOMINANTLY_SUPPORTED": { label: "Predominantemente sustentada", classe: "veracidade-verde" },
+    "STRONGLY_CONTRADICTED": { label: "Fortemente contraditada", classe: "veracidade-vermelha" },
+    "PREDOMINANTLY_CONTRADICTED": { label: "Predominantemente contraditada", classe: "veracidade-vermelha" },
+    "CONTESTED": { label: "Evidências em conflito", classe: "veracidade-amarela" },
+    "INCONCLUSIVE": { label: "Inconclusiva", classe: "veracidade-neutra" },
+    "NOT_VERIFIABLE": { label: "Não verificável", classe: "veracidade-neutra" },
+    "HUMAN_REVIEW_REQUIRED": { label: "Requer revisão humana", classe: "veracidade-amarela" },
   };
+
+  const MOTIVOS = {
+    INSUFFICIENT_EVIDENCE: "evidências insuficientes",
+    MATERIAL_COVERAGE_INCOMPLETE: "faltam elementos materiais",
+    ATTRIBUTES_MISSING: "atributos não observados",
+    CONTEXT_INCOMPLETE: "contexto incompleto",
+    DECOMPOSITION_INCOMPLETE: "alegações incompletas",
+    PROVENANCE_UNCERTAIN: "origem das evidências incerta",
+    RETRIEVAL_INCOMPLETE: "busca incompleta",
+    REQUIREMENTS_NOT_MET: "requisitos não atendidos",
+    DIMENSIONS_MISSING: "dimensões não medidas",
+    MULTIPLE_CLAIMS: "consulte cada alegação",
+    NOT_VERIFIABLE: "alegação não verificável",
+    LOW_ACS: "qualidade do processo abaixo do limiar de decisão",
+    HUMAN_REVIEW_REQUIRED: "revisão humana necessária",
+  };
+
+  function adicionarMetricas(container, metricas) {
+    for (const m of (Array.isArray(metricas) ? metricas : []).slice(0, 2)) {
+      if (!["ESS", "ACS"].includes(m.id)) continue;
+      const linha = document.createElement("div");
+      linha.className = "veredito-metrica";
+      const valido = m.valid === true && typeof m.value === "number" && Number.isFinite(m.value) && m.value >= 0 && m.value <= 100;
+      const rotulo = document.createElement("p");
+      rotulo.className = "metrica-rotulo";
+      rotulo.textContent = `${m.id} · ${m.id === "ESS" ? "Sustentação das evidências" : "Qualidade da análise"}`;
+      const valor = document.createElement("strong");
+      valor.textContent = valido ? `${m.value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}/100` : "Indisponível";
+      rotulo.appendChild(valor);
+      linha.appendChild(rotulo);
+      if (valido) {
+        const barra = document.createElement("meter");
+        barra.className = `metrica-barra metrica-${m.id.toLowerCase()}`;
+        barra.min = 0; barra.max = 100; barra.value = m.value;
+        barra.setAttribute("aria-label", `${m.id}: ${m.value} de 100`);
+        barra.textContent = `${m.value}/100`;
+        const trilho = document.createElement("div");
+        trilho.className = "metrica-trilho";
+        trilho.appendChild(barra);
+        if (m.id === "ESS") {
+          const centro = document.createElement("span");
+          centro.className = "metrica-centro";
+          centro.setAttribute("aria-hidden", "true");
+          trilho.appendChild(centro);
+        }
+        linha.appendChild(trilho);
+        if (m.id === "ESS") {
+          const eixo = document.createElement("p");
+          eixo.className = "metrica-eixo";
+          for (const texto of ["Contradiz", "50 · equilíbrio", "Sustenta"]) {
+            const item = document.createElement("span"); item.textContent = texto; eixo.appendChild(item);
+          }
+          linha.appendChild(eixo);
+        }
+      } else {
+        const motivo = document.createElement("small");
+        motivo.textContent = MOTIVOS[m.reason] || "medição não disponível";
+        linha.appendChild(motivo);
+      }
+      container.appendChild(linha);
+    }
+  }
 
   /* ── Liga/desliga o layout "conversa ativa" (header compacto + input fixo embaixo) ── */
   function ativarLayoutDeConversa() {
@@ -174,17 +244,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const linhaVeracidade = document.createElement("p");
     linhaVeracidade.className = "veracidade-label";
-    linhaVeracidade.append("Veracidade: ");
+    linhaVeracidade.append(veredito?.version === 2 ? "Avaliação: " : "Veracidade: ");
     const valorVeredito = document.createElement("span");
     valorVeredito.className = `veracidade-valor ${dados.classe}`;
     valorVeredito.textContent = dados.label;
     linhaVeracidade.appendChild(valorVeredito);
     bloco.appendChild(linhaVeracidade);
-    for (const metrica of veredito?.metrics || []) {
-      const linha = document.createElement("p");
-      linha.className = "veredito-metrica";
-      linha.textContent = `${metrica.label}: ${metrica.value}${metrica.unit || ""}`;
-      bloco.appendChild(linha);
+    if (veredito?.version === 2) {
+      const painel = document.createElement("section");
+      painel.className = "painel-indicadores";
+      painel.setAttribute("aria-label", "Indicadores da análise");
+      adicionarMetricas(painel, veredito.metrics);
+      const nota = document.createElement("p");
+      nota.className = "metrica-nota";
+      nota.textContent = "Índices experimentais: não são probabilidades de verdade ou acerto.";
+      painel.appendChild(nota);
+      if (veredito.claim_details?.length) {
+        const detalhes = document.createElement("details");
+        const resumo = document.createElement("summary");
+        resumo.textContent = "Alegações e limites da análise";
+        detalhes.appendChild(resumo);
+        for (const claim of veredito.claim_details.slice(0, 4)) {
+          const item = document.createElement("div"); item.className = "metrica-alegacao";
+          const titulo = document.createElement("p"); titulo.textContent = claim.text;
+          item.appendChild(titulo);
+          const estado = document.createElement("p");
+          estado.textContent = MAPA_VEREDICTO[claim.state]?.label || "Inconclusiva";
+          item.appendChild(estado);
+          if (veredito.claim_details.length > 1) adicionarMetricas(item, claim.metrics);
+          if (claim.reasons?.length) {
+            const motivos = document.createElement("p"); motivos.className = "metrica-nota";
+            motivos.textContent = claim.reasons.map((r) => MOTIVOS[r] || "requisito pendente").join("; ");
+            item.appendChild(motivos);
+          }
+          detalhes.appendChild(item);
+        }
+        painel.appendChild(detalhes);
+      }
+      bloco.appendChild(painel);
+    } else {
+      const nota = document.createElement("small");
+      nota.className = "metrica-nota";
+      nota.textContent = "ESS e ACS não foram calculados nesta versão da resposta.";
+      bloco.appendChild(nota);
     }
 
     const acoes = document.createElement("div");
@@ -198,7 +300,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ações: copiar / regenerar / falar
     acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
-      navigator.clipboard?.writeText(textoCru || "");
+      const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
+        `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}/100` : "indisponível"}`).join("\n") +
+        "\nÍndices experimentais; não são probabilidades." : "";
+      navigator.clipboard?.writeText((textoCru || "") + indicadores);
     });
 
     acoes.querySelector('[data-acao="falar"]').addEventListener("click", () => {
@@ -280,7 +385,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) {
         const data = await res.json();
         throw new Error(res.status === 429
-          ? "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã."
+          ? (data.code === "rate_limited" ? "Aguarde antes de enviar outra pergunta." : "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã.")
           : data.error || "Não foi possível obter resposta.");
       }
       await consumirEventos(res, (evento) => {
@@ -296,7 +401,10 @@ document.addEventListener("DOMContentLoaded", () => {
           areaConversa.scrollTop = areaConversa.scrollHeight;
         }
         if (evento.type === "verdict") veredito = evento.veredito;
-        if (evento.type === "error") throw new Error(evento.message);
+        if (evento.type === "error") {
+          veredito = null;
+          throw new Error(evento.message);
+        }
         if (evento.type === "done") {
           concluida = true;
           parcial.remove();
@@ -316,8 +424,19 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof loadingBubble !== 'undefined' && loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
       if (!concluida) {
         parcial.remove();
-        adicionarRespostaIA(texto, prompt, htmlParcial ? { corpo_html: htmlParcial } : null,
-          veredito || { code: "INCONCLUSIVO", metrics: [] });
+        if (texto.trim()) {
+          const incompleta = document.createElement("div");
+          incompleta.className = "resposta-ia resposta-incompleta";
+          const aviso = document.createElement("p");
+          aviso.textContent = "Resposta interrompida — análise não concluída.";
+          const corpo = document.createElement("div");
+          corpo.className = "resposta-corpo";
+          if (typeof htmlParcial === "string") corpo.innerHTML = htmlParcial;
+          else preencherTexto(corpo, texto);
+          incompleta.appendChild(aviso);
+          incompleta.appendChild(corpo);
+          areaConversa.appendChild(incompleta);
+        }
       }
       adicionarBolha(err.message || "Não foi possível obter resposta. Tente novamente.", "sistema");
     } finally {

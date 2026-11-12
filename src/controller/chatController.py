@@ -12,6 +12,9 @@ from src.models.userModel import UserModel
 from src.services.markdown_service import formatar_resposta_ia, renderizar_markdown
 from src.services.openai_services import obter_resposta, transmitir_resposta
 from src.services.chat_events import separar_veredito, etapa
+from src.services.analysis_service import UsageLedger
+from src.services.analysis_errors import operational_error
+from src.core.input_gate import is_noise
 from src.utils.auth import obter_uid_do_token_firebase
 
 
@@ -56,27 +59,37 @@ class ChatController:
                 return jsonify(code='rate_limited', message='Aguarde antes de enviar outra pergunta.', error='Aguarde antes de enviar outra pergunta.'), 429
             limite = usuario.get("limite_diario_perguntas", 10) if usuario else 10
             return jsonify({"error": "limite_diario_excedido", "limite": limite}), 429
+        # Noise still traverses authenticated, atomic traffic reservation. It is
+        # refunded as an analysis, but its minute rate count is never refunded.
+        local = is_noise(prompt)
+        ledger = UsageLedger(lambda tokens: self.user_model.registrar_tokens_usados(
+            uid, tokens, dia=usuario.get('reservation_day')))
         historico = [item for mensagem in mensagens_anteriores for item in (
             {"role": "user", "content": mensagem["prompt"]},
             {"role": "assistant", "content": mensagem["resposta"]},
         )]
         if request.accept_mimetypes.best == "text/event-stream":
-            return self._transmitir(uid, conversa_id, prompt, historico, usuario)
+            return self._transmitir(uid, conversa_id, prompt, historico, usuario, ledger, local)
         try:
-            texto_resposta, tokens_gastos = obter_resposta(prompt, historico)
-        except RuntimeError:
-            self._finalizar(uid, usuario, False)
-            return jsonify(code='ai_unavailable', message='Não foi possível concluir a resposta da IA.', error='Não foi possível concluir a resposta da IA.'), 502
-        self._finalizar(uid, usuario, True)
+            resultado = obter_resposta(prompt, historico, ledger=ledger)
+            texto_resposta, tokens_gastos = resultado
+        except RuntimeError as exc:
+            self._finalizar(uid, usuario, ledger.attempted)
+            falha = operational_error(exc)
+            return jsonify(code=falha.code, message=falha.message, error=falha.message), 502
+        self._finalizar(uid, usuario, not local)
+        veredito = getattr(resultado, 'verdict', None) or separar_veredito(texto_resposta)[1]
         try:
-            chat_salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto_resposta)
-            self.user_model.registrar_tokens_usados(uid, tokens_gastos)
+            chat_salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto_resposta,
+                                                      veredito, audit=getattr(resultado, 'audit', None))
+            if not ledger.total and tokens_gastos:
+                self.user_model.registrar_tokens_usados(uid, tokens_gastos)
         except (RuntimeError, PyMongoError):
             return jsonify(code="database_unavailable", message="Banco de dados indisponível. Tente novamente.", error="Banco de dados indisponível."), 503
         return jsonify({
             "resposta": texto_resposta,
             "resposta_formatada": formatar_resposta_ia(texto_resposta),
-            "veredito": separar_veredito(texto_resposta)[1],
+            "veredito": veredito,
             "chat": chat_salvo,
         }), 200
 
@@ -86,13 +99,13 @@ class ChatController:
         except (RuntimeError, PyMongoError):
             logging.getLogger(__name__).error('quota_finalize_failed success=%s', sucesso)
 
-    def _transmitir(self, uid, conversa_id, prompt, historico, reserva):
+    def _transmitir(self, uid, conversa_id, prompt, historico, reserva, ledger, local=False):
         def serializar(evento):
             return f"data: {json.dumps(evento, ensure_ascii=False)}\n\n"
 
         @stream_with_context
         def gerar():
-            resposta = transmitir_resposta(prompt, historico)
+            resposta = transmitir_resposta(prompt, historico, ledger=ledger)
             texto_parcial = ""
             concluido = False
             inicio = perf_counter()
@@ -107,25 +120,28 @@ class ChatController:
                         continue
                     concluido = True
                     texto = evento["text"]
-                    veredito = separar_veredito(texto)[1]
-                    # O fallback também fica no histórico e no contexto seguinte.
-                    corpo, _ = separar_veredito(texto)
-                    texto = f"{corpo}\n\n**Veredicto:** {veredito['code']}"
+                    veredito = evento.get('veredito') or separar_veredito(texto)[1]
+                    if veredito.get('version') != 2:
+                        corpo, _ = separar_veredito(texto)
+                        texto = f"{corpo}\n\n**Veredicto:** {veredito['code']}"
                     yield serializar({"type": "verdict", "veredito": veredito})
                     yield serializar(etapa("saving", "Salvando a conversa..."))
-                    salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto, veredito)
-                    self.user_model.registrar_tokens_usados(uid, evento["tokens"])
+                    salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto, veredito,
+                                                          audit=evento.get('audit'))
+                    if not ledger.total and evento['tokens']:
+                        self.user_model.registrar_tokens_usados(uid, evento["tokens"])
                     yield serializar({"type": "done", "resposta": texto,
                                       "resposta_formatada": formatar_resposta_ia(texto),
                                       "veredito": veredito, "chat": salvo})
-            except Exception:
+            except Exception as exc:
                 logging.getLogger(__name__).error("chat_stream_failed request_id=%s", getattr(g, "request_id", "unknown"))
-                yield serializar({"type": "error", "message":
-                    "Não foi possível concluir ou salvar a resposta. Tente novamente.",
-                    "veredito": {"version": 1, "code": "INCONCLUSIVO", "metrics": []}})
+                falha = operational_error(exc)
+                yield serializar({'type': 'error', 'code': falha.code,
+                                  'message': falha.message,
+                                  'request_id': getattr(g, 'request_id', 'unknown')})
             finally:
                 resposta.close()
-                self._finalizar(uid, reserva, concluido)
+                self._finalizar(uid, reserva, not local and (concluido or ledger.attempted))
                 logging.getLogger(__name__).info('phase=stream duration_ms=%.1f request_id=%s', (perf_counter()-inicio)*1000, getattr(g, 'request_id', 'unknown'))
 
         response = Response(gerar(), mimetype="text/event-stream", headers={
@@ -133,7 +149,7 @@ class ChatController:
         })
         # Covers a response closed before the generator starts. The reservation
         # ID makes this a no-op after normal finalization.
-        response.call_on_close(lambda: self._finalizar(uid, reserva, False))
+        response.call_on_close(lambda: self._finalizar(uid, reserva, ledger.attempted and not local))
         return response
 
     @staticmethod
@@ -187,5 +203,5 @@ class ChatController:
             mensagem["resposta_formatada"] = formatar_resposta_ia(mensagem["resposta"])
             salvo = mensagem.get("veredito")
             # Corrige também históricos afetados pelo parser antigo sem perder métricas.
-            mensagem["veredito"] = salvo if salvo and salvo.get("metrics") else separar_veredito(mensagem["resposta"])[1]
+            mensagem["veredito"] = salvo if salvo and (salvo.get('version') == 2 or salvo.get("metrics")) else separar_veredito(mensagem["resposta"])[1]
         return jsonify({"mensagens": mensagens, "pagination": {**self._pagina(), "has_more": len(mensagens) == self._pagina()["limit"]}}), 200

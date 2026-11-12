@@ -6,7 +6,7 @@ usuário e a IA (prompt + resposta), agrupadas por conversa, usando uma
 coleção dedicada no MongoDB.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from src.utils.timing import timed
 from pymongo.database import Database
@@ -58,7 +58,7 @@ class ChatModel:
 
     @timed("save_mensagem")
     def save_mensagem(self, firebase_uid: str, conversa_id: str, prompt: str, resposta: str,
-                      veredito: dict | None = None) -> dict:
+                      veredito: dict | None = None, audit: dict | None = None) -> dict:
         """
         Salva uma troca completa (prompt do usuário + resposta da IA) no banco.
 
@@ -79,11 +79,16 @@ class ChatModel:
         }
         if veredito is not None:
             doc["veredito"] = veredito
+        if audit is not None:
+            doc['analysis_audit'] = audit
+            doc['audit_expires_at'] = datetime.utcnow() + timedelta(days=30)
         result = collection.insert_one(doc)
 
         doc["_id"] = str(result.inserted_id)
         doc["created_at"] = doc["created_at"].isoformat()
-        return doc
+        # Snapshots are private server records, never part of public chat payloads.
+        return {key: value for key, value in doc.items()
+                if key not in {'analysis_audit', 'audit_expires_at'}}
 
     @timed("get_mensagens_por_conversa")
     def get_mensagens_por_conversa(self, firebase_uid: str, conversa_id: str, limit=100, offset=0, recent=False) -> list:

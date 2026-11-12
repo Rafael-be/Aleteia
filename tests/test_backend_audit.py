@@ -46,7 +46,7 @@ class AuditTests(unittest.TestCase):
 
     def test_stream_disconnect_refunds_and_closes(self):
         client, controller = self.client()
-        def events(*args):
+        def events(*args, **kwargs):
             yield {'type':'delta', 'text':'partial'}
             yield {'type':'result', 'text':TEXTO, 'tokens':42}
         with patch('src.controller.chatController.transmitir_resposta', side_effect=events):

@@ -105,7 +105,7 @@ class UserModel:
                               'tokens_usados': {'$cond': [same_day, {'$ifNull': ['$uso_diario.tokens_usados', 0]}, 0]}},
                 'rate_minute': minute, 'rate_count': {'$add': [rate, 1]},
                 'reservation_id': reservation, 'reservation_day': today,
-                'lease_until': now + timedelta(seconds=180),
+                'lease_until': now + timedelta(seconds=240),
             }}], return_document=ReturnDocument.AFTER)
         if user is not None:
             return True, user
@@ -129,7 +129,9 @@ class UserModel:
         self._obter_colecao().update_one(query, update)
 
     @timed("registrar_tokens_usados")
-    def registrar_tokens_usados(self, firebase_uid: str, tokens_gastos: int) -> None:
+    def registrar_tokens_usados(self, firebase_uid: str, tokens_gastos: int, dia: str | None = None) -> None:
+        # An analysis crossing UTC midnight still belongs to its reserved day;
+        # its lease prevents another analysis from rolling the profile meanwhile.
         self._obter_colecao().update_one(
-            {'firebase_uid': firebase_uid, 'uso_diario.data': datetime.now(timezone.utc).date().isoformat()},
+            {'firebase_uid': firebase_uid, 'uso_diario.data': dia or datetime.now(timezone.utc).date().isoformat()},
             {'$inc': {'uso_diario.tokens_usados': max(0, int(tokens_gastos))}})
