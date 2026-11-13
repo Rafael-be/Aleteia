@@ -20,6 +20,9 @@
   --border-dark:         #222;
   --border-mid:          #3a3a3a;
   --verdade-vermelha:    #D94040;
+  --radius-sm:           6px;
+  --radius-md:           10px;
+  --radius-lg:           14px;
 }
 
 /* ── Reset base ── */
@@ -37,12 +40,26 @@ body {
   max-width: min(92vw, 420px); padding: .8rem 1rem; border-radius: .5rem;
   background: #222; color: #fff; box-shadow: 0 .4rem 1.5rem rgba(0,0,0,.3);
   opacity: 0; pointer-events: none; transform: translateY(8px);
-  transition: opacity .18s ease, transform .18s ease;
+  transition: opacity .15s ease-in, transform .15s ease-in;
 }
 .feedback-global[data-tipo="success"] { background: #187a35; }
-.feedback-global.visivel { opacity: 1; transform: translateY(0); }
+.feedback-global.visivel { opacity: 1; transform: translateY(0); transition-duration: .2s; transition-timing-function: ease-out; }
+.feedback-global.success-pulse { animation: feedback-success-pulse .36s ease-out; }
 button.is-loading { cursor: wait; opacity: .72; }
 button.is-loading::after { content: "…"; margin-left: .3rem; }
+
+@keyframes feedback-success-pulse {
+  50% { transform: translateY(0) scale(1.025); }
+}
+
+button:not(:disabled):active {
+  transform: scale(.97);
+  transition-duration: .08s;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(58, 156, 78, .7);
+  outline-offset: 2px;
+}
 
 /* ── Sidebar ── */
 .sidebar {
@@ -101,9 +118,9 @@ button.is-loading::after { content: "…"; margin-left: .3rem; }
   z-index: 100;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity .16s ease-in;
 }
-.popup-overlay.active { opacity: 1; pointer-events: all; }
+.popup-overlay.active { opacity: 1; pointer-events: all; transition-duration: .2s; transition-timing-function: ease-out; }
 
 /* ── Popup card ── */
 .popup-card {
@@ -113,19 +130,22 @@ button.is-loading::after { content: "…"; margin-left: .3rem; }
   transform: translate(-50%, -48%) scale(0.96);
   z-index: 101;
   background-color: var(--popup-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 2rem 2.5rem 1.75rem;
   width: 100%;
   max-width: 320px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transform-origin: center;
+  transition: opacity .16s ease-in, transform .16s ease-in;
 }
 .popup-card.active {
   opacity: 1;
   pointer-events: all;
   transform: translate(-50%, -50%) scale(1);
+  transition-duration: .2s;
+  transition-timing-function: ease-out;
 }
 
 .popup-avatar {
@@ -154,8 +174,8 @@ button.is-loading::after { content: "…"; margin-left: .3rem; }
   width: 100%; text-align: left;
   color: #d0d0d0; font-size: 0.95rem;
   font-family: 'Montserrat', sans-serif;
-  cursor: pointer; border-radius: 6px;
-  transition: background-color 0.15s, color 0.15s;
+  cursor: pointer; border-radius: var(--radius-sm);
+  transition: background-color .15s ease, color .15s ease, transform .15s ease;
 }
 .popup-menu-item:hover { background-color: rgba(255, 255, 255, 0.07); color: #fff; }
 .popup-menu-item.sair  { color: #e05555; }
@@ -340,10 +360,19 @@ body.drawer-open { overflow: hidden; }
   font-weight: 400;
   line-height: 1.35;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: normal;
+}
+.sidebar #listaConversas li.historico-entrada {
+  animation: historico-entrada .18s ease-out both;
+  animation-delay: var(--historico-atraso, 0ms);
+}
+
+@keyframes historico-entrada {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .sidebar #listaConversas li:hover {
@@ -388,6 +417,7 @@ body.drawer-open { overflow: hidden; }
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
+button.btn-excluir-conversa:active { transform: translateY(-50%) scale(.97); }
 
 .sidebar #listaConversas li:hover .btn-excluir-conversa,
 .sidebar #listaConversas li:focus-within .btn-excluir-conversa {
@@ -459,8 +489,12 @@ body.drawer-open { overflow: hidden; }
   .popup-card { max-width: min(320px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-drawer { transition: none; }
-  .feedback-global { transition: none; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Safe centering keeps the beginning of tall content reachable. */
@@ -468,6 +502,3 @@ body.drawer-open { overflow: hidden; }
 .brand-block { flex-wrap: wrap; }
 .brand-logo-img { max-width: 110px; max-height: 110px; object-fit: contain; }
 .sidebar-settings { flex-shrink: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .app-layout { transition: none; }
-}

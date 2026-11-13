@@ -31,7 +31,11 @@ export function mostrarFeedback(mensagem, tipo = "error") {
   regiao.textContent = mensagem;
   regiao.dataset.tipo = tipo;
   regiao.classList.remove("visivel");
-  requestAnimationFrame(() => regiao.classList.add("visivel"));
+  regiao.classList.remove("success-pulse");
+  requestAnimationFrame(() => {
+    regiao.classList.add("visivel");
+    if (tipo === "success") regiao.classList.add("success-pulse");
+  });
   clearTimeout(mostrarFeedback.timer);
   mostrarFeedback.timer = setTimeout(() => regiao.classList.remove("visivel"), 4200);
 }

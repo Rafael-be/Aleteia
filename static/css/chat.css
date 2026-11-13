@@ -32,7 +32,7 @@
 .chat-header {
   text-align: center;
   padding: 1.5rem 1rem 0.5rem;
-  transition: padding 0.2s ease;
+  transition: padding .2s ease-out;
 }
 
 .chat-header-logo {
@@ -244,7 +244,7 @@
 .input-box {
   width: 100%;
   background-color: #5a5a5a;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   padding: 1.25rem 1.25rem 1rem;
   display: flex;
   flex-direction: column;
@@ -311,6 +311,7 @@
 }
 .btn-send.active { background-color: var(--btn-green); color: #fff; }
 .btn-send.active:hover { background-color: var(--btn-green-dark); transform: scale(1.07); }
+.btn-send.active:active { transform: scale(.97); }
 .btn-send[aria-busy="true"] { background-color: #777; cursor: wait; }
 .btn-send svg { width: 18px; height: 18px; }
 

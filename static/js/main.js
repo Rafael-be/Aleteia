@@ -32,16 +32,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const feedbackReenvio = document.getElementById("feedbackReenvioVerificacao");
   const emailPendente = document.getElementById("emailVerificacaoPendente");
   const feedbackHistorico = document.getElementById("feedbackHistorico");
+  let focoAntesDoPopup = null;
   const atualizarFeedbackHistorico = (mensagem = "", tipo = "") => {
     if (!feedbackHistorico) return;
     feedbackHistorico.textContent = mensagem;
     feedbackHistorico.dataset.tipo = tipo;
   };
-  const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
-  const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
+  const abrir = () => {
+    focoAntesDoPopup = document.activeElement;
+    overlay?.classList.add("active");
+    popup?.classList.add("active");
+    document.getElementById("btnVoltar")?.focus({ preventScroll: true });
+  };
+  const fechar = (restaurarFoco = false) => {
+    overlay?.classList.remove("active");
+    popup?.classList.remove("active");
+    if (restaurarFoco) focoAntesDoPopup?.focus?.({ preventScroll: true });
+  };
 
-  overlay?.addEventListener("click", fechar);
-  document.getElementById("btnVoltar")?.addEventListener("click", fechar);
+  overlay?.addEventListener("click", () => fechar(true));
+  document.getElementById("btnVoltar")?.addEventListener("click", () => fechar(true));
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape" && popup?.classList.contains("active")) fechar(true);
+  });
   document.getElementById("btnSair")?.addEventListener("click", async () => {
     try {
       await signOut(auth);
@@ -87,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nome) nome.textContent = usuario ? `Olá, ${usuario.email || "usuário"}` : "Minha conta";
   });
 
-  window.adicionarItemNoAside = (chat) => {
+  window.adicionarItemNoAside = (chat, { animar = false, indice = 0, inserirNoTopo = true } = {}) => {
     const lista = document.getElementById("listaConversas");
     if (!lista) return;
     const item = document.createElement("li");
@@ -109,6 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
       </svg>`;
 
     item.dataset.id = chat._id;
+    if (animar && indice < 10) {
+      item.classList.add("historico-entrada");
+      item.style.setProperty("--historico-atraso", `${indice * 30}ms`);
+    }
     item.style.cursor = "pointer";
     item.addEventListener("click", () => {
       if (window.carregarConversa) {
@@ -136,7 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
     item.append(texto, botaoExcluir);
-    lista.prepend(item);
+    if (inserirNoTopo) lista.prepend(item);
+    else lista.append(item);
 
     // Mantém o cache local atualizado (evita duplicar quem já está nele).
     if (!conversasCompletas.some((c) => c._id === chat._id)) {
@@ -144,11 +162,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  const renderizarConversas = (conversas) => {
+  const renderizarConversas = (conversas, animar = false) => {
     const lista = document.getElementById("listaConversas");
     if (!lista) return;
     lista.replaceChildren();
-    conversas.forEach(window.adicionarItemNoAside);
+    conversas.forEach((chat, indice) => window.adicionarItemNoAside(chat, { animar, indice, inserirNoTopo: false }));
     atualizarFeedbackHistorico(conversas.length ? "" : "Nenhuma conversa encontrada.", conversas.length ? "" : "empty");
   };
 
@@ -187,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const resposta = await chamarApi("/api/chat/conversas");
       if (resposta?.ok) {
         conversasCompletas = (await resposta.json()).prompts || [];
-        renderizarConversas(conversasCompletas);
+        renderizarConversas(conversasCompletas, true);
       } else throw await lerErroDaResposta(resposta);
     } catch (erro) {
       console.error("Não foi possível preparar os dados da conta:", erro);
