@@ -5,4 +5,5 @@ pymongo==3.11.0
 dnspython==2.6.1
 openai==2.53.0
 firebase-admin==7.7.0
+bcrypt==4.3.0
 markdown-it-py==4.0.0

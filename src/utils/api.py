@@ -45,7 +45,7 @@ def configure_api(app):
             if response.is_json and response.status_code >= 400:
                 data = response.get_json()
                 data.setdefault('message', data.get('error', 'Falha na requisição.'))
-                data.setdefault('code', {400:'invalid_input', 401:'unauthorized', 403:'email_unverified', 404:'not_found', 429:'daily_quota_exceeded', 502:'ai_unavailable', 503:'database_unavailable'}.get(response.status_code, 'request_failed'))
+                data.setdefault('code', {400:'invalid_input', 401:'unauthorized', 403:'email_unverified', 404:'not_found', 409:'identity_recovery_required', 429:'daily_quota_exceeded', 500:'internal_error', 502:'ai_unavailable', 503:'database_unavailable'}.get(response.status_code, 'request_failed'))
                 data['request_id'] = g.request_id
                 response.set_data(app.json.dumps(data))
             if response.status_code == 429:

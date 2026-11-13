@@ -8,7 +8,7 @@ from pymongo.errors import PyMongoError
 from time import perf_counter
 
 from src.models.chatModel import ChatModel
-from src.models.userModel import UserModel
+from src.models.userModel import IdentityConflictError, UserModel
 from src.services.markdown_service import formatar_resposta_ia, renderizar_markdown
 from src.services.openai_services import obter_resposta, transmitir_resposta
 from src.services.chat_events import separar_veredito, etapa
@@ -47,7 +47,11 @@ class ChatController:
             self.user_model.sincronizar_usuario_firebase(uid, getattr(g, 'firebase_claims', {}).get('email'))
             mensagens_anteriores = self.chat_model.get_mensagens_por_conversa(uid, conversa_id, limit=12, recent=True)
             pode_usar, usuario = self.user_model.verificar_e_incrementar_uso(uid)
-        except (RuntimeError, PyMongoError):
+        except IdentityConflictError:
+            return jsonify(code="identity_recovery_required", message="Identity recovery is required.", error="Identity recovery is required."), 409
+        except (RuntimeError, PyMongoError) as exc:
+            logging.getLogger(__name__).warning("chat_database_failed request_id=%s operation=prepare error_type=%s error_code=%s",
+                getattr(g, "request_id", "unknown"), type(exc).__name__, getattr(exc, "code", None))
             return jsonify(code="database_unavailable", message="Banco de dados indisponível. Tente novamente.", error="Banco de dados indisponível."), 503
         if not pode_usar:
             if usuario is None:
@@ -71,7 +75,9 @@ class ChatController:
         try:
             chat_salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto_resposta)
             self.user_model.registrar_tokens_usados(uid, tokens_gastos)
-        except (RuntimeError, PyMongoError):
+        except (RuntimeError, PyMongoError) as exc:
+            logging.getLogger(__name__).warning("chat_database_failed request_id=%s operation=save error_type=%s error_code=%s",
+                getattr(g, "request_id", "unknown"), type(exc).__name__, getattr(exc, "code", None))
             return jsonify(code="database_unavailable", message="Banco de dados indisponível. Tente novamente.", error="Banco de dados indisponível."), 503
         return jsonify({
             "resposta": texto_resposta,

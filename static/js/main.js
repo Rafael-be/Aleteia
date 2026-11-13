@@ -1,5 +1,5 @@
 import { atualizarAvatares } from "./account-avatar.js";
-import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
+import { auth, chamarApi, migrarContaLegada, sincronizarComBackend } from "./firebase-init.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
@@ -19,6 +19,31 @@ async function emailEstaVerificado(usuario) {
   }
   return verificacaoEmAndamento;
 }
+
+function abrirRecuperacaoLegada(usuario) {
+  if (document.getElementById("recuperacaoLegada")) return;
+  const dialogo = document.createElement("dialog"); dialogo.id = "recuperacaoLegada";
+  const texto = document.createElement("p"); texto.textContent = "Confirme sua senha antiga para recuperar os dados da conta anterior.";
+  const formulario = document.createElement("form");
+  const senha = document.createElement("input"); senha.type = "password"; senha.autocomplete = "current-password"; senha.required = true; senha.placeholder = "Senha anterior";
+  const confirmar = document.createElement("button"); confirmar.type = "submit"; confirmar.textContent = "Confirmar";
+  const cancelar = document.createElement("button"); cancelar.type = "button"; cancelar.textContent = "Cancelar"; cancelar.onclick = () => dialogo.close();
+  const aviso = document.createElement("p"); formulario.append(senha, confirmar, cancelar, aviso); dialogo.append(texto, formulario);
+  formulario.onsubmit = async (evento) => {
+    evento.preventDefault(); confirmar.disabled = true;
+    try {
+      const resposta = await migrarContaLegada(usuario.email, senha.value);
+      if (!resposta.ok) throw new Error("recovery_failed");
+      window.location.reload();
+    } catch { aviso.textContent = "NÃ£o foi possÃ­vel confirmar a titularidade. Tente novamente ou procure suporte."; senha.value = ""; senha.focus(); }
+    finally { confirmar.disabled = false; }
+  };
+  document.body.append(dialogo); dialogo.showModal(); senha.focus();
+}
+
+window.addEventListener("aleteia:identity-recovery", () => {
+  if (auth.currentUser) abrirRecuperacaoLegada(auth.currentUser);
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   const conta = document.getElementById("btnConta");

@@ -1,12 +1,18 @@
 """Persistência dos dados de negócio vinculados a usuários do Firebase."""
 
 from datetime import datetime, timezone, timedelta
+import re
 from uuid import uuid4
 
+import bcrypt
 from src.utils.timing import timed
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pymongo.database import Database
+
+
+class IdentityConflictError(Exception):
+    """A Firebase identity cannot safely be associated with a Mongo profile."""
 
 
 class UserModel:
@@ -53,10 +59,143 @@ class UserModel:
             raise RuntimeError(self.db_error or "Banco de dados indisponível")
         return self.collection
 
+    @staticmethod
+    def normalizar_email(email: str | None) -> str | None:
+        if not isinstance(email, str):
+            return None
+        email = email.strip().lower()
+        return email or None
+
+    @staticmethod
+    def _email_filter(email: str) -> dict:
+        # Legacy records can have mixed-case email values. Escape input so it
+        # never becomes an executable regular expression.
+        return {"email": {"$regex": "^" + re.escape(email) + "$", "$options": "i"}}
+
+    @staticmethod
+    def _padronizar_uso(documento: dict) -> dict:
+        uso = documento.get("uso_diario")
+        if isinstance(uso, dict):
+            return {
+                "data": str(uso.get("data") or ""),
+                "perguntas_feitas": max(0, int(uso.get("perguntas_feitas") or 0)),
+                "tokens_usados": max(0, int(uso.get("tokens_usados") or 0)),
+            }
+        # Legacy counters remain in their original fields for audit. They must
+        # never become the current daily quota after a migration.
+        return {
+            "data": "",
+            "perguntas_feitas": 0,
+            "tokens_usados": 0,
+        }
+
+    @staticmethod
+    def _campos_padronizados(documento: dict, firebase_uid: str, email: str, metodo: str) -> dict:
+        limite = documento.get("limite_diario_perguntas", 10)
+        try:
+            limite = max(1, int(limite))
+        except (TypeError, ValueError):
+            limite = 10
+        return {
+            "firebase_uid": firebase_uid,
+            "email": email,
+            "plano": documento.get("plano") if isinstance(documento.get("plano"), str) else "gratuito",
+            "limite_diario_perguntas": limite,
+            "uso_diario": UserModel._padronizar_uso(documento),
+            "criado_em": documento.get("criado_em") or documento.get("created_at") or datetime.now(timezone.utc),
+            "schema_version": 2,
+            "migracao": {"status": "linked", "method": metodo, "linked_at": datetime.now(timezone.utc)},
+        }
+
+    def _encontrar_legado(self, email: str) -> dict | None:
+        return self._obter_colecao().find_one({
+            "$and": [
+                self._email_filter(email),
+                {"$or": [{"firebase_uid": {"$exists": False}}, {"firebase_uid": None}]},
+            ]
+        })
+
+    def validar_credenciais_legadas(self, email: str, senha: str) -> dict | None:
+        """Return a legacy document only after a bcrypt proof of possession."""
+        email = self.normalizar_email(email)
+        if not email or not isinstance(senha, str):
+            return None
+        documento = self._encontrar_legado(email)
+        password_hash = documento.get("password") if documento else None
+        if not isinstance(password_hash, str) or documento.get("is_active") is False:
+            return None
+        try:
+            return documento if bcrypt.checkpw(senha.encode("utf-8"), password_hash.encode("utf-8")) else None
+        except (ValueError, TypeError):
+            return None
+
+    def validar_prova_recuperacao(self, email: str, senha: str) -> dict | None:
+        """Find exactly one legacy-password match, even if it has an old UID."""
+        email = self.normalizar_email(email)
+        if not email or not isinstance(senha, str):
+            return None
+        documentos = list(self._obter_colecao().find(self._email_filter(email)).limit(3))
+        validos = []
+        for documento in documentos:
+            password_hash = documento.get("password")
+            if documento.get("is_active") is False or not isinstance(password_hash, str):
+                continue
+            try:
+                if bcrypt.checkpw(senha.encode("utf-8"), password_hash.encode("utf-8")):
+                    validos.append(documento)
+            except (ValueError, TypeError):
+                continue
+        return validos[0] if len(validos) == 1 else None
+
+    def vincular_usuario_legado(self, documento: dict, firebase_uid: str, email: str, metodo: str) -> dict | None:
+        """Atomically bind the exact legacy document after identity proofs."""
+        collection = self._obter_colecao()
+        password_hash = documento.get("password")
+        if not documento.get("_id") or not isinstance(password_hash, str):
+            return None
+        return collection.find_one_and_update(
+            {"_id": documento["_id"], "password": password_hash,
+             "$or": [{"firebase_uid": {"$exists": False}}, {"firebase_uid": None}]},
+            {"$set": self._campos_padronizados(documento, firebase_uid, email, metodo)},
+            return_document=ReturnDocument.AFTER,
+        )
+
+    def atualizar_uid_desatualizado(self, documento: dict, firebase_uid: str, email: str) -> dict | None:
+        """Replace a proven orphaned UID without touching histories or _id."""
+        antigo_uid = documento.get("firebase_uid")
+        password_hash = documento.get("password")
+        if not antigo_uid or not documento.get("_id") or not isinstance(password_hash, str):
+            return None
+        campos = self._campos_padronizados(documento, firebase_uid, email, "legacy_password_and_orphaned_uid")
+        campos["migracao"]["previous_firebase_uid"] = antigo_uid
+        try:
+            return self._obter_colecao().find_one_and_update(
+                {"_id": documento["_id"], "firebase_uid": antigo_uid, "password": password_hash},
+                {"$set": campos}, return_document=ReturnDocument.AFTER)
+        except DuplicateKeyError as exc:
+            raise IdentityConflictError("identity_constraint") from exc
+
     @timed("sincronizar_usuario_firebase")
     def sincronizar_usuario_firebase(self, firebase_uid: str, email: str | None) -> dict:
         """Cria, no primeiro login, o perfil de negócio do usuário Firebase."""
         collection = self._obter_colecao()
+        email = self.normalizar_email(email)
+        existente = collection.find_one({"firebase_uid": firebase_uid})
+        if existente is not None:
+            if not email:
+                return existente
+            return collection.find_one_and_update(
+                {"_id": existente["_id"]}, {"$set": {"email": email}},
+                return_document=ReturnDocument.AFTER)
+
+        # Email similarity deliberately starts a recovery flow; it never
+        # transfers a legacy profile to an unproven Firebase identity.
+        if email:
+            conflito = collection.find_one({
+                "$and": [self._email_filter(email), {"firebase_uid": {"$ne": firebase_uid}}]
+            })
+            if conflito is not None:
+                raise IdentityConflictError("identity_recovery_required")
 
         documento = {
             "firebase_uid": firebase_uid,
@@ -67,7 +206,7 @@ class UserModel:
         }
         update = {"$setOnInsert": documento}
         if email:
-            update['$set'] = {'email': email.strip().lower()}
+            update['$set'] = {'email': email}
         try:
             return collection.find_one_and_update(
                 {"firebase_uid": firebase_uid}, update,
@@ -76,7 +215,7 @@ class UserModel:
             # Concurrent first requests may race on the unique UID index.
             usuario = collection.find_one({'firebase_uid': firebase_uid})
             if usuario is None:
-                raise
+                raise IdentityConflictError("identity_constraint")
             return usuario
 
     @timed("verificar_e_incrementar_uso")
