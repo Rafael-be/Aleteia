@@ -19,4 +19,9 @@ for (let size = 1; size <= payload.length; size++) {
   assert.equal(received[1].text, "Olá");
 }
 await assert.rejects(consumirEventos(new Response('data: {"type":"done"}'), () => {}));
+const textoGrande = "resposta ".repeat(16_384);
+const recebidoGrande = [];
+await consumirEventos(new Response(`data: ${JSON.stringify({ type: "delta", text: textoGrande })}\n\ndata: {"type":"done"}\n\n`),
+  (evento) => recebidoGrande.push(evento));
+assert.equal(recebidoGrande[0].text, textoGrande);
 console.log("SSE: fragmentação, UTF-8, CRLF, múltiplos eventos e truncamento validados.");

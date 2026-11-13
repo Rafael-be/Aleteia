@@ -18,6 +18,11 @@ class Element {
   querySelector() { return new Element(); }
   focus() {}
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
+  replaceWith(child) {
+    const index = this.parentNode.children.indexOf(this);
+    child.parentNode = this.parentNode;
+    this.parentNode.children.splice(index, 1, child);
+  }
 }
 const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle"]
   .map((id) => [id, new Element()]));
@@ -41,7 +46,7 @@ vm.runInNewContext(source, {
   window: { location: { search: "" }, addEventListener() {} },
   sessionStorage: { getItem() {}, setItem() {} },
   crypto: { randomUUID() { return "conversa"; } },
-  URLSearchParams, AbortController, console,
+  URLSearchParams, AbortController, console, requestAnimationFrame: (callback) => callback(),
   chamarApi: async () => ({ ok: true }),
   consumirEventos: async (_, receber) => {
     receber({ type: "delta", text: "**Termo inicial**\n\n**Análise:** Outro **termo importante**.", html });

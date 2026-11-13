@@ -9,7 +9,7 @@ from flask import Flask
 
 from src.controller.chatController import ChatController
 from src.services.chat_events import FiltroVeredito, separar_veredito
-from src.services.markdown_service import formatar_resposta_ia
+from src.services.markdown_service import formatar_resposta_ia, renderizar_markdown
 from src.services.openai_services import transmitir_resposta
 
 
@@ -117,6 +117,26 @@ class StreamingTests(unittest.TestCase):
         self.assertLess(resto.index('"verdict"'), resto.index('"done"'))
         controller.user_model.registrar_tokens_usados.assert_called_once_with("uid", 42)
         self.assertEqual(controller.chat_model.save_mensagem.call_args.args[-1]["code"], "FALSO")
+
+    def test_markdown_incremental_e_limitado_em_deltas_rapidos(self):
+        client, _ = self.criar_cliente()
+        eventos = iter([
+            {"type": "delta", "text": "Primeira "},
+            {"type": "delta", "text": "segunda "},
+            {"type": "delta", "text": "terceira."},
+            {"type": "result", "text": TEXTO, "tokens": 1},
+        ])
+        with patch("src.controller.chatController.transmitir_resposta", return_value=(e for e in eventos)), \
+             patch("src.controller.chatController.perf_counter", return_value=1.0), \
+             patch("src.controller.chatController.renderizar_markdown", wraps=renderizar_markdown) as renderizar:
+            res = client.post("/mensagem", json={"prompt": "teste", "conversa_id": "c"},
+                              headers={"Accept": "text/event-stream"})
+            quadros = [json.loads(p.removeprefix("data: ")) for p in res.text.strip().split("\n\n")]
+        deltas = [quadro for quadro in quadros if quadro["type"] == "delta"]
+        self.assertEqual(len(deltas), 3)
+        self.assertIn("html", deltas[0])
+        self.assertNotIn("html", deltas[1])
+        self.assertEqual(renderizar.call_count, 1)
 
     def test_limite_permanece_json(self):
         client, controller = self.criar_cliente()
