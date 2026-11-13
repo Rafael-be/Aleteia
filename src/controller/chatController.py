@@ -96,12 +96,18 @@ class ChatController:
             texto_parcial = ""
             concluido = False
             inicio = perf_counter()
+            ultimo_markdown = 0.0
             try:
                 for evento in resposta:
                     if evento["type"] == "delta":
                         texto_parcial += evento["text"]
-                        # Mesmo renderizador seguro durante e depois da geração.
-                        evento = {**evento, "html": renderizar_markdown(texto_parcial)}
+                        # Renderizar Markdown completo a cada token custa caro em respostas
+                        # longas. O texto continua chegando em todos os deltas, mas o HTML
+                        # seguro é atualizado em intervalos curtos para manter a leitura fluida.
+                        agora = perf_counter()
+                        if agora - ultimo_markdown >= 0.075:
+                            evento = {**evento, "html": renderizar_markdown(texto_parcial)}
+                            ultimo_markdown = agora
                     if evento["type"] != "result":
                         yield serializar(evento)
                         continue

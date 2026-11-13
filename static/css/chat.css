@@ -190,6 +190,12 @@
 .resposta-stream .resposta-corpo {
   overflow-wrap: anywhere;
 }
+.resposta-incompleta { opacity: .78; }
+.resposta-interrompida {
+  margin-top: .75rem;
+  color: #f3c969;
+  font-size: .9rem;
+}
 
 .resposta-ia .veracidade-label {
   margin-top: 1rem;

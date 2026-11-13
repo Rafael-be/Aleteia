@@ -39,6 +39,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let conversaJaNaSidebar = false;
   let ultimoPromptEnviado = "";
   let requisicaoAtiva = null;
+  let acompanharFim = true;
+  let quadroDeRolagem = null;
+
+  function usuarioEstaNoFim() {
+    if (!areaConversa || !Number.isFinite(areaConversa.scrollHeight)) return true;
+    return areaConversa.scrollHeight - areaConversa.scrollTop - areaConversa.clientHeight < 48;
+  }
+
+  function rolarParaFimSeNecessario() {
+    if (!acompanharFim || quadroDeRolagem) return;
+    quadroDeRolagem = requestAnimationFrame(() => {
+      quadroDeRolagem = null;
+      if (acompanharFim) areaConversa.scrollTop = areaConversa.scrollHeight;
+    });
+  }
+
+  areaConversa?.addEventListener("scroll", () => {
+    acompanharFim = usuarioEstaNoFim();
+  }, { passive: true });
 
   function cancelarGeracao() {
     requisicaoAtiva?.abort();
@@ -115,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
     preencherTexto(bolha, texto);
 
     areaConversa.appendChild(bolha);
-    areaConversa.scrollTop = areaConversa.scrollHeight;
+    rolarParaFimSeNecessario();
     return bolha;
   }
 
@@ -138,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </svg>`;
 
   /* ── Resposta estruturada da IA: veredicto colorido + análise + fontes + ações ── */
-  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null, veredito = null) {
+  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null, veredito = null, substituir = null) {
     if (!areaConversa) return null;
 
     const dados = parseRespostaIA(textoCru);
@@ -226,8 +245,9 @@ document.addEventListener("DOMContentLoaded", () => {
       reenviarPrompt(promptOrigem);
     });
 
-    areaConversa.appendChild(bloco);
-    areaConversa.scrollTop = areaConversa.scrollHeight;
+    if (substituir) substituir.replaceWith(bloco);
+    else areaConversa.appendChild(bloco);
+    rolarParaFimSeNecessario();
     return bloco;
   }
 
@@ -277,6 +297,19 @@ document.addEventListener("DOMContentLoaded", () => {
     let concluida = false;
     let veredito = null;
     let htmlParcial = null;
+    let quadroDeRenderizacao = null;
+    let parcialAtiva = true;
+
+    const renderizarParcial = () => {
+      if (quadroDeRenderizacao) return;
+      quadroDeRenderizacao = requestAnimationFrame(() => {
+        quadroDeRenderizacao = null;
+        if (!parcialAtiva || controle.signal.aborted) return;
+        // O HTML é produzido e sanitizado pelo backend; atualizamos no máximo uma vez por quadro.
+        corpoParcial.innerHTML = htmlParcial || "";
+        rolarParaFimSeNecessario();
+      });
+    };
 
     try {
       const res = await chamarApi("/api/chat/mensagem", {
@@ -296,26 +329,40 @@ document.addEventListener("DOMContentLoaded", () => {
         throw erro;
       }
       await consumirEventos(res, (evento) => {
-        if (controle.signal.aborted) return;
-        if (evento.type === "stage") loadingBubble.textContent = evento.message;
+        if (controle.signal.aborted || concluida) return;
+        if (evento.type === "stage") {
+          loadingBubble.textContent = evento.message;
+          rolarParaFimSeNecessario();
+        }
         if (evento.type === "delta") {
           texto += evento.text;
           if (typeof evento.html === "string") {
             htmlParcial = evento.html;
-            corpoParcial.innerHTML = evento.html;
+            renderizarParcial();
           }
-          else corpoParcial.textContent = texto;
-          areaConversa.scrollTop = areaConversa.scrollHeight;
+          else if (!htmlParcial) {
+            // Compatibilidade com servidores antigos que ainda não enviam HTML incremental.
+            corpoParcial.textContent = texto;
+            rolarParaFimSeNecessario();
+          }
         }
         if (evento.type === "verdict") veredito = evento.veredito;
-        if (evento.type === "error") throw new Error(evento.message);
+        if (evento.type === "error") {
+          const erro = new Error();
+          erro.mensagemSegura = evento.message;
+          throw erro;
+        }
         if (evento.type === "done") {
           concluida = true;
-          parcial.remove();
-          adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito);
+          parcialAtiva = false;
+          adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito, parcial);
         }
       });
-      if (!concluida) throw new Error("A conexão foi interrompida antes de concluir a resposta.");
+      if (!concluida) {
+        const erro = new Error();
+        erro.mensagemSegura = "A conexão foi interrompida antes de concluir a resposta.";
+        throw erro;
+      }
 
       if (!conversaJaNaSidebar && window.adicionarItemNoAside) {
         window.adicionarItemNoAside({ _id: conversaId, prompt });
@@ -327,9 +374,19 @@ document.addEventListener("DOMContentLoaded", () => {
       // remove loading e exibe erro
       if (typeof loadingBubble !== 'undefined' && loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
       if (!concluida) {
-        parcial.remove();
-        adicionarRespostaIA(texto, prompt, htmlParcial ? { corpo_html: htmlParcial } : null,
-          veredito || { code: "INCONCLUSIVO", metrics: [] });
+        parcialAtiva = false;
+        if (texto) {
+          // Em uma conexão interrompida, preserva o texto recebido sem tratar
+          // Markdown incompleto como HTML concluído.
+          corpoParcial.textContent = texto;
+          parcial.classList.add("resposta-incompleta");
+          const avisoInterrupcao = document.createElement("p");
+          avisoInterrupcao.className = "resposta-interrompida";
+          avisoInterrupcao.textContent = "Resposta interrompida antes da conclusão.";
+          parcial.appendChild(avisoInterrupcao);
+        } else {
+          parcial.remove();
+        }
       }
       adicionarBolha(mensagemDeErro(err, "Não foi possível obter resposta. Tente novamente."), "sistema");
     } finally {
@@ -356,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const prompt = textarea.value.trim();
     if (!prompt) return;
 
+    acompanharFim = true;
     ativarLayoutDeConversa();
     adicionarBolha(prompt, "usuario");
     ultimoPromptEnviado = prompt;
@@ -371,6 +429,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!areaConversa) return;
     cancelarGeracao();
 
+    acompanharFim = true;
     try {
       const res = await chamarApi(`/api/chat/conversas/${idConversa}`);
       if (!res.ok) throw await lerErroDaResposta(res);
@@ -405,6 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
     conversaId = crypto.randomUUID();
     sessionStorage.setItem("conversaId", conversaId);
     conversaJaNaSidebar = false;
+    acompanharFim = true;
     if (areaConversa) areaConversa.innerHTML = "";
     resetarLayoutInicial();
     textarea.value = "";
