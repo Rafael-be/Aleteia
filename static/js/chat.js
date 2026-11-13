@@ -1,5 +1,6 @@
 import { chamarApi } from "./firebase-init.js";
 import { consumirEventos } from "./chat-stream.js";
+import { definirProcessamento, lerErroDaResposta, mensagemDeErro, mostrarFeedback } from "./feedback.js";
 
 /* =====================================================
    chat.js — Lógica exclusiva do chat
@@ -44,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     requisicaoAtiva = null;
     textarea.disabled = false;
     btnEnviar.disabled = !textarea.value.trim();
+    btnEnviar.setAttribute("aria-busy", "false");
   }
 
   /* =====================================================
@@ -197,8 +199,18 @@ document.addEventListener("DOMContentLoaded", () => {
     bloco.appendChild(acoes);
 
     // Ações: copiar / regenerar / falar
-    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
-      navigator.clipboard?.writeText(textoCru || "");
+    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", async (evento) => {
+      const botao = evento.currentTarget;
+      definirProcessamento(botao, true, "Copiando resposta");
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("A cópia não é compatível com este navegador.");
+        await navigator.clipboard.writeText(textoCru || "");
+        mostrarFeedback("Copiado!", "success");
+      } catch (erro) {
+        mostrarFeedback(mensagemDeErro(erro, "Não foi possível copiar a resposta. Verifique a permissão do navegador e tente novamente."));
+      } finally {
+        definirProcessamento(botao, false);
+      }
     });
 
     acoes.querySelector('[data-acao="falar"]').addEventListener("click", () => {
@@ -249,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const idDaConversa = conversaId;
     textarea.disabled = true;
     btnEnviar.disabled = true;
+    btnEnviar.setAttribute("aria-busy", "true");
     btnEnviar.classList.remove("active");
     // mostra feedback temporário enquanto a IA responde
     const loadingBubble = adicionarBolha("Preparando a consulta...", "sistema");
@@ -278,10 +291,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!res) throw new Error("Faça login para continuar.");
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(res.status === 429
-          ? "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã."
-          : data.error || "Não foi possível obter resposta.");
+        const erro = await lerErroDaResposta(res);
+        if (res.status === 429) erro.mensagemSegura = "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã.";
+        throw erro;
       }
       await consumirEventos(res, (evento) => {
         if (controle.signal.aborted) return;
@@ -319,13 +331,14 @@ document.addEventListener("DOMContentLoaded", () => {
         adicionarRespostaIA(texto, prompt, htmlParcial ? { corpo_html: htmlParcial } : null,
           veredito || { code: "INCONCLUSIVO", metrics: [] });
       }
-      adicionarBolha(err.message || "Não foi possível obter resposta. Tente novamente.", "sistema");
+      adicionarBolha(mensagemDeErro(err, "Não foi possível obter resposta. Tente novamente."), "sistema");
     } finally {
       loadingBubble.remove();
       if (requisicaoAtiva === controle) {
         requisicaoAtiva = null;
         textarea.disabled = false;
         btnEnviar.disabled = !textarea.value.trim();
+        btnEnviar.setAttribute("aria-busy", "false");
         btnEnviar.classList.toggle("active", !btnEnviar.disabled);
         textarea.focus();
       }
@@ -360,7 +373,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const res = await chamarApi(`/api/chat/conversas/${idConversa}`);
-      if (!res.ok) return;
+      if (!res.ok) throw await lerErroDaResposta(res);
 
       const data = await res.json();
 
@@ -377,6 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
       conversaJaNaSidebar = true;
     } catch (err) {
       console.error("Erro ao carregar conversa:", err);
+      mostrarFeedback(mensagemDeErro(err, "Não foi possível carregar esta conversa. Tente novamente."));
     }
   };
 

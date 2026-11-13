@@ -262,6 +262,7 @@
 .input-box textarea::placeholder { color: #bbb; }
 .input-box textarea::-webkit-scrollbar { width: 6px; }
 .input-box textarea::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+.upload-indisponivel { margin: -.3rem 0 0; color: #d0d0d0; font-size: .78rem; }
 
 .input-actions {
   display: flex;
@@ -304,6 +305,7 @@
 }
 .btn-send.active { background-color: var(--btn-green); color: #fff; }
 .btn-send.active:hover { background-color: var(--btn-green-dark); transform: scale(1.07); }
+.btn-send[aria-busy="true"] { background-color: #777; cursor: wait; }
 .btn-send svg { width: 18px; height: 18px; }
 
 /* ── Aviso ── */

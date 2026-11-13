@@ -1,5 +1,6 @@
 import { atualizarAvatares } from "./account-avatar.js";
 import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
+import { definirProcessamento, lerErroDaResposta, mensagemDeErro, mostrarFeedback } from "./feedback.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
@@ -30,26 +31,37 @@ document.addEventListener("DOMContentLoaded", () => {
   const corrigirEmail = document.getElementById("btnCorrigirEmailVerificacao");
   const feedbackReenvio = document.getElementById("feedbackReenvioVerificacao");
   const emailPendente = document.getElementById("emailVerificacaoPendente");
+  const feedbackHistorico = document.getElementById("feedbackHistorico");
+  const atualizarFeedbackHistorico = (mensagem = "", tipo = "") => {
+    if (!feedbackHistorico) return;
+    feedbackHistorico.textContent = mensagem;
+    feedbackHistorico.dataset.tipo = tipo;
+  };
   const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
   const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
 
   overlay?.addEventListener("click", fechar);
   document.getElementById("btnVoltar")?.addEventListener("click", fechar);
   document.getElementById("btnSair")?.addEventListener("click", async () => {
-    await signOut(auth);
-    window.location.href = "/";
+    try {
+      await signOut(auth);
+      window.location.href = "/";
+    } catch (erro) {
+      mostrarFeedback(mensagemDeErro(erro, "Não foi possível sair da conta. Tente novamente."));
+    }
   });
   reenviar?.addEventListener("click", async () => {
     const usuario = auth.currentUser;
     if (!usuario) return;
-    reenviar.disabled = true;
+    definirProcessamento(reenviar, true, "Reenviando e-mail de confirmação");
     try {
       await sendEmailVerification(usuario);
       if (feedbackReenvio) feedbackReenvio.textContent = "E-mail de confirmação reenviado.";
+      mostrarFeedback("E-mail de confirmação reenviado.", "success");
     } catch {
       if (feedbackReenvio) feedbackReenvio.textContent = "Não foi possível reenviar agora. Tente novamente mais tarde.";
     } finally {
-      reenviar.disabled = false;
+      definirProcessamento(reenviar, false);
     }
   });
   corrigirEmail?.addEventListener("click", () => {
@@ -107,18 +119,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     botaoExcluir.addEventListener("click", async (event) => {
       event.stopPropagation();
-      botaoExcluir.disabled = true;
+      definirProcessamento(botaoExcluir, true, "Excluindo conversa");
       try {
         const resposta = await chamarApi(`/api/chat/conversas/${chat._id}`, { method: "DELETE" });
-        if (!resposta?.ok) return;
+        if (!resposta?.ok) throw await lerErroDaResposta(resposta);
         item.remove();
         // Remove também do cache local, para não reaparecer ao limpar a busca.
         conversasCompletas = conversasCompletas.filter((c) => c._id !== chat._id);
         window.dispatchEvent(new CustomEvent("conversaApagada", { detail: chat._id }));
+        mostrarFeedback("Conversa excluída.", "success");
       } catch (erro) {
         console.error("Não foi possível excluir a conversa:", erro);
+        mostrarFeedback(mensagemDeErro(erro, "Não foi possível excluir a conversa. Tente novamente."));
       } finally {
-        if (item.isConnected) botaoExcluir.disabled = false;
+        if (item.isConnected) definirProcessamento(botaoExcluir, false);
       }
     });
     item.append(texto, botaoExcluir);
@@ -135,6 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!lista) return;
     lista.replaceChildren();
     conversas.forEach(window.adicionarItemNoAside);
+    atualizarFeedbackHistorico(conversas.length ? "" : "Nenhuma conversa encontrada.", conversas.length ? "" : "empty");
   };
 
   const inputPesquisarConversas = document.getElementById("inputPesquisarConversas");
@@ -154,10 +169,12 @@ document.addEventListener("DOMContentLoaded", () => {
     debouncePesquisaConversas = setTimeout(async () => {
       try {
         const resposta = await chamarApi(`/api/chat/pesquisar?q=${encodeURIComponent(termo)}`);
-        if (!resposta?.ok || inputPesquisarConversas.value.trim() !== termo) return;
-        renderizarConversas((await resposta.json()).prompts);
+        if (!resposta?.ok) throw await lerErroDaResposta(resposta);
+        if (inputPesquisarConversas.value.trim() !== termo) return;
+        renderizarConversas((await resposta.json()).prompts || []);
       } catch (erro) {
         console.error("Não foi possível pesquisar conversas:", erro);
+        atualizarFeedbackHistorico(mensagemDeErro(erro, "Não foi possível pesquisar conversas. Tente novamente."), "error");
       }
     }, 300);
   });
@@ -171,9 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (resposta?.ok) {
         conversasCompletas = (await resposta.json()).prompts || [];
         renderizarConversas(conversasCompletas);
-      }
+      } else throw await lerErroDaResposta(resposta);
     } catch (erro) {
       console.error("Não foi possível preparar os dados da conta:", erro);
+      atualizarFeedbackHistorico(mensagemDeErro(erro, "Não conseguimos carregar suas conversas agora. Tente novamente em alguns instantes."), "error");
     }
   });
 });

@@ -32,6 +32,18 @@ body {
   margin: 0;
 }
 
+.feedback-global {
+  position: fixed; right: 1rem; bottom: 1rem; z-index: 1200;
+  max-width: min(92vw, 420px); padding: .8rem 1rem; border-radius: .5rem;
+  background: #222; color: #fff; box-shadow: 0 .4rem 1.5rem rgba(0,0,0,.3);
+  opacity: 0; pointer-events: none; transform: translateY(8px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.feedback-global[data-tipo="success"] { background: #187a35; }
+.feedback-global.visivel { opacity: 1; transform: translateY(0); }
+button.is-loading { cursor: wait; opacity: .72; }
+button.is-loading::after { content: "…"; margin-left: .3rem; }
+
 /* ── Sidebar ── */
 .sidebar {
   background-color: var(--sidebar-bg);
@@ -314,6 +326,8 @@ body.drawer-open { overflow: hidden; }
   font-size: 16px;
   line-height: 24px;
 }
+.feedback-historico { margin: .5rem 0; color: var(--text-muted); font-size: .85rem; }
+.feedback-historico[data-tipo="error"] { color: #ffaaaa; }
 
 .sidebar #listaConversas li {
   display: block;
@@ -446,6 +460,7 @@ body.drawer-open { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar-drawer { transition: none; }
+  .feedback-global { transition: none; }
 }
 
 /* Safe centering keeps the beginning of tall content reachable. */

@@ -79,6 +79,7 @@
 
     <div class="flex-grow-1">
       <ul id="listaConversas" class="list-unstyled mb-0"></ul>
+      <p id="feedbackHistorico" class="feedback-historico" role="status" aria-live="polite"></p>
     </div>
   </aside>
 
@@ -113,8 +114,9 @@
     <div class="chat-input-wrap">
       <div class="input-box">
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
+        <p id="avisoUploadIndisponivel" class="upload-indisponivel">Anexos ainda não estão disponíveis.</p>
         <div class="input-actions">
-          <button class="btn-attach" title="Anexar arquivo">+</button>
+          <button class="btn-attach" type="button" title="Anexos ainda não estão disponíveis" aria-describedby="avisoUploadIndisponivel" disabled>+</button>
           <div class="input-right-btns">
             <button class="btn-mic" title="Falar">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -123,7 +125,7 @@
                 <line x1="12" y1="19" x2="12" y2="22"/>
               </svg>
             </button>
-            <button class="btn-send" id="btnEnviar" title="Enviar" disabled>
+            <button class="btn-send" id="btnEnviar" type="button" title="Enviar" aria-busy="false" disabled>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="19" x2="12" y2="5"/>
                 <polyline points="5 12 12 5 19 12"/>

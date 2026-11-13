@@ -37,8 +37,8 @@
     </div>
 
     <div class="field-gap mt-2">
-      <button class="btn-entrar" id="btnEntrar">Entrar</button>
-      <div id="loginFeedback" class="signup-text mt-2" style="display:none;"></div>
+      <button class="btn-entrar" id="btnEntrar" type="button">Entrar</button>
+      <div id="loginFeedback" class="signup-text mt-2" style="display:none;" aria-live="assertive"></div>
     </div>
 
     <p class="signup-text mb-3">
@@ -46,14 +46,14 @@
     </p>
 
     <div class="field-gap">
-      <button class="btn-social" data-firebase-provider="google">
+      <button class="btn-social" type="button" data-firebase-provider="google">
         <img src="{{ url_for('static', filename='images/google.png') }}" alt="google" style="height:auto;width:10%;">
         Continuar com Google
       </button>
     </div>
 
     <div class="field-gap mb-0">
-      <button class="btn-social" data-firebase-provider="microsoft">
+      <button class="btn-social" type="button" data-firebase-provider="microsoft">
         <img src="{{ url_for('static', filename='images/microsoft.png') }}" alt="microsoft" style="height:auto;width:10%;">
         Continuar com Microsoft
       </button>
