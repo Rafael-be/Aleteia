@@ -15,6 +15,7 @@
 
   <!-- Estilos globais -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_styles %}{% endblock %}
 </head>
 <body>
 
@@ -83,7 +84,7 @@
   <aside class="sidebar-rail" aria-label="Menu compacto"><div class="rail-controls">  <button id="btnAbrirSidebar" class="mobile-icon-btn sidebar-open-desktop" type="button" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="true">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button><button class="mobile-icon-btn sidebar-settings" type="button" aria-label="Configurações" title="Configurações"><img src="{{ url_for('static', filename='images/engrenagem.png') }}" alt="" width="22" height="22"></button></div><nav class="rail-nav" aria-label="Atalhos"><button type="button" class="mobile-icon-btn" data-sidebar-action="home" aria-label="Página inicial" title="Página inicial"><img src="{{ url_for('static', filename='images/home.png') }}" alt="" width="22" height="22"></button><button type="button" class="mobile-icon-btn" data-sidebar-action="new" aria-label="Nova conversa" title="Nova conversa"><img src="{{ url_for('static', filename='images/novaconversa.png') }}" alt="" width="22" height="22"></button><button type="button" class="mobile-icon-btn" data-sidebar-action="search" aria-label="Pesquisar conversas" title="Pesquisar conversas"><img src="{{ url_for('static', filename='images/lupa.png') }}" alt="" width="22" height="22"></button></nav></aside>
-    <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4">
+    <main class="main-content flex-grow-1 position-relative d-flex justify-content-center align-items-center p-4 {% block main_class %}{% endblock %}">
 
       <div class="position-absolute top-0 end-0 m-4 d-none d-md-flex align-items-center gap-2">
         {% include "components/extension-link.html" %}
@@ -92,7 +93,7 @@
         </button>
       </div>
 
-      <div style="max-width:650px;width:100%;">
+      <div class="page-content" style="max-width:{% block content_width %}650px{% endblock %};width:100%;">
         {% block page_content %}
 
         <div class="brand-block mb-5">

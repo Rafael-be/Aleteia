@@ -1,27 +1,50 @@
 {% extends "main/main-desktop.html" %}
 
 {% block title %}AleteIA — Extensão{% endblock %}
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/extension-page.css') }}">
+{% endblock %}
+{% block main_class %}extension-main{% endblock %}
+{% block content_width %}880px{% endblock %}
 
 {% block page_content %}
-<div class="brand-block mb-5">
-  <div class="text-start">
-    <h2 class="fw-light mb-1 fs-3">Extensão da</h2>
-    <h1 class="mb-0" style="font-size:3.5rem;letter-spacing:2px;font-family:'Lora',serif;font-weight:100;">
+<section class="extension-hero" aria-labelledby="extension-title">
+<div class="extension-brand">
+  <div>
+    <p class="extension-eyebrow">Seu chat, ao lado de qualquer leitura</p>
+    <h1 id="extension-title" class="extension-title">
       ALETE<span class="text-success fw-bold">IA</span>
     </h1>
+    <p class="extension-label">Extensão para o navegador</p>
   </div>
-  <div class="brand-logo-wrap">
-    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="brand-logo-img">
-  </div>
+  <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Símbolo da AleteIA" class="extension-logo" width="133" height="263">
 </div>
 
-<p class="fs-5 mb-4 text-light opacity-75">Com a extensão da Aleteia, você poderá “escanear” notícias diretamente no navegador.</p>
-<p class="fs-6 mb-4 text-light opacity-75">Bastará selecionar o texto da notícia, clicar com o botão direito e escolher a opção de enviar para a Aleteia. Ela analisará as informações em um painel lateral, sem você sair da página.</p>
+<p class="fs-5 mb-3 text-light">Uma informação chamou sua atenção? Leve a AleteIA com você enquanto navega.</p>
+<p class="fs-6 mb-4 text-light opacity-75">Analise notícias e afirmações em um chat ao lado da página que você está lendo. Converse, consulte seu histórico e tire dúvidas sem abrir outra aba.</p>
 
-<h2 class="fw-light fs-3 mb-3">Em breve</h2>
-<p class="fs-6 mb-5 text-light opacity-75">A extensão ainda não está disponível por aqui. Em breve, você encontrará o link nesta página, mas já pode <a href="/chat" class="text-light">utilizar a Aleteia pelo site!</a></p>
+<div class="extension-actions">
+  <a href="https://chromewebstore.google.com/detail/aleteia-%E2%80%94-chat-lateral/djooodejofbkmngaaaceooamlpihaeml?hl=pt-BR" class="btn btn-custom-green px-4 py-3" target="_blank" rel="noopener noreferrer">
+    Instalar extensão grátis
+    <svg class="ms-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+    <span class="visually-hidden">(abre a Chrome Web Store em uma nova aba)</span>
+  </a>
+  <span class="small text-light opacity-75">Disponível na Chrome Web Store para Chrome e outros navegadores.</span>
+</div>
+</section>
 
-<div class="text-center text-light opacity-50" style="font-size:0.85rem;">
+<section class="extension-guide" aria-labelledby="extension-guide-title">
+<h2 id="extension-guide-title">Do texto à conversa, em poucos passos</h2>
+<ol class="extension-steps">
+  <li><strong>Instale e fixe a extensão.</strong><p>Adicione a AleteIA pela loja. No menu de extensões do navegador, fixe o ícone na barra para ter o chat sempre à mão.</p></li>
+  <li><strong>Entre com sua conta.</strong><p>Clique no ícone para abrir o painel lateral e faça login com a mesma conta que você usa no site.</p></li>
+  <li><strong>Selecione e envie.</strong><p>Marque um trecho da página, clique com o botão direito e escolha “Enviar texto à AleteIA”. O trecho será enviado ao chat para análise.</p></li>
+</ol>
+<p class="fs-6 mb-4 text-light opacity-75">Prefere digitar? Abra o painel e escreva sua pergunta normalmente. Se quiser mais espaço, use o botão “Abrir site em nova aba” dentro da extensão.</p>
+</section>
+<aside class="extension-privacy"><p>Você escolhe o que compartilhar: o envio pelo menu usa apenas o trecho selecionado, sem ler automaticamente a página inteira. As análises seguem os limites da sua conta. Saiba mais na <a href="/privacidade" class="text-light">Política de Privacidade</a>.</p></aside>
+
+<div class="extension-disclaimer text-center text-light opacity-50">
   <p class="mb-0">Aviso: a Aleteia pode cometer erros.</p>
   <p>Considere verificar informações importantes</p>
 </div>
