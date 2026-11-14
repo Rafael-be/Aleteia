@@ -61,6 +61,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   outline-offset: 2px;
 }
 
+.privacy-consent {
+  position: fixed; left: 50%; bottom: 1rem; z-index: 1300; transform: translateX(-50%);
+  width: min(calc(100% - 2rem), 38rem);
+}
+.privacy-consent[hidden] { display: none; }
+.privacy-consent__panel {
+  padding: 1rem; border: 1px solid #666; border-radius: var(--radius-md);
+  background: #252525; color: var(--text-light); box-shadow: 0 .75rem 2rem rgba(0,0,0,.35);
+}
+.privacy-consent h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.privacy-consent p, .privacy-consent__details { margin: 0 0 .75rem; font-size: .9rem; line-height: 1.5; }
+.privacy-consent__details label { display: block; margin-top: .6rem; }
+.privacy-consent__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .7rem; }
+.privacy-consent button, .privacy-settings-toggle {
+  border: 1px solid #777; border-radius: var(--radius-sm); padding: .5rem .7rem;
+  background: transparent; color: var(--text-light); cursor: pointer;
+}
+.privacy-consent [data-accept] { background: var(--btn-green); border-color: var(--btn-green); color: #fff; }
+.privacy-settings-toggle { position: fixed; left: .75rem; bottom: .75rem; z-index: 1200; font-size: .75rem; }
+
 /* ── Sidebar ── */
 .sidebar {
   background-color: var(--sidebar-bg);

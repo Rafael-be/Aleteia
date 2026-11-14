@@ -186,6 +186,8 @@
   </div>
 
   <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
+  <script>window.GA_MEASUREMENT_ID = {{ ga_measurement_id | tojson }};</script>
+  <script type="module" src="{{ asset_url('js/privacy.js') }}"></script>
   <script type="module" src="{{ asset_url('js/main.js') }}"></script>
 <script src="{{ asset_url('js/sidebar.js') }}" defer></script>
 </body>
