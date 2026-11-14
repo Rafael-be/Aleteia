@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ seo.description }}">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" sizes="58x58" href="{{ asset_url('images/logoempretoaleteia.png') }}">
+  <title>{{ seo.title }}</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 1.5rem; background: #4b4b4b; color: #e0e0e0; font-family: Montserrat, Arial, sans-serif; }
+    main { width: min(100%, 38rem); padding: clamp(2rem, 7vw, 4rem); border-radius: 14px; background: #303030; text-align: center; box-shadow: 0 1.5rem 3.75rem rgba(0,0,0,.25); }
+    img { width: 4rem; height: auto; }
+    h1 { margin: 1rem 0 .75rem; font-family: Lora, Georgia, serif; font-size: clamp(2rem, 6vw, 3.25rem); }
+    p { margin: 0 auto 1.5rem; max-width: 31rem; line-height: 1.6; }
+    a { display: inline-block; border-radius: .4rem; padding: .75rem 1.1rem; background: #28a745; color: #fff; font-weight: 700; text-decoration: none; }
+    a:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="{{ asset_url('images/logo.png') }}" width="160" height="241" alt="AleteIA">
+    <p aria-hidden="true">Erro 404</p>
+    <h1>Página não encontrada</h1>
+    <p>Não encontramos a página que você está procurando. O endereço pode ter sido alterado ou não existir.</p>
+    <a href="/">Voltar ao início</a>
+  </main>
+</body>
+</html>
