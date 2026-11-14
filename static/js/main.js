@@ -33,6 +33,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
   const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
 
+  const chaveAvisoExtensao = "aleteiaExtensionPromoDismissed";
+  const ancorasAvisoExtensao = [...document.querySelectorAll("[data-extension-promo-anchor]")];
+  const avisoEstaVisivel = (elemento) => Boolean(elemento?.getClientRects().length);
+  const posicionarAvisoExtensao = (aviso, icone) => {
+    const iconeRect = icone.getBoundingClientRect();
+    const largura = aviso.offsetWidth;
+    const margem = 8;
+    const esquerda = Math.min(Math.max(margem, iconeRect.left + (iconeRect.width / 2) - (largura / 2)), window.innerWidth - largura - margem);
+    aviso.style.left = `${esquerda}px`;
+    aviso.style.top = `${iconeRect.bottom + margem}px`;
+    aviso.style.setProperty("--extension-promo-arrow-left", `${Math.min(Math.max(16, iconeRect.left + (iconeRect.width / 2) - esquerda), largura - 16)}px`);
+  };
+  const inicializarAvisoExtensao = () => {
+    if (window.location.pathname === "/extension" || sessionStorage.getItem(chaveAvisoExtensao)) return;
+    const ancoraAtiva = ancorasAvisoExtensao.find(avisoEstaVisivel);
+    const aviso = ancoraAtiva?.querySelector("[data-extension-promo]");
+    const icone = ancoraAtiva?.querySelector("a");
+    if (!aviso || !icone) return;
+    const atualizarPosicao = () => posicionarAvisoExtensao(aviso, icone);
+    const fecharAviso = () => {
+      aviso.hidden = true;
+      sessionStorage.setItem(chaveAvisoExtensao, "true");
+      window.removeEventListener("resize", atualizarPosicao);
+    };
+    aviso.hidden = false;
+    atualizarPosicao();
+    window.addEventListener("resize", atualizarPosicao);
+    aviso.querySelector("[data-extension-promo-close]")?.addEventListener("click", fecharAviso);
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && !aviso.hidden) fecharAviso();
+    });
+  };
+  inicializarAvisoExtensao();
+
   overlay?.addEventListener("click", fechar);
   document.getElementById("btnVoltar")?.addEventListener("click", fechar);
   document.getElementById("btnSair")?.addEventListener("click", async () => {
