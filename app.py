@@ -7,7 +7,7 @@ from pathlib import Path
 
 import firebase_admin
 from firebase_admin import credentials
-from flask import Flask, render_template
+from flask import Flask, render_template, request, url_for
 from src import config
 from src.utils.api import configure_api
 from src.database import MongoDatabaseProvider
@@ -51,18 +51,26 @@ app.register_blueprint(chat_routes(mongo_db))
 @app.context_processor
 def injetar_firebase_config():
     """Expõe o JSON público do Firebase para os templates que usam o SDK Web."""
+    def asset_url(filename):
+        """Versiona assets locais por mtime para permitir cache imutável com segurança."""
+        caminho = BASE_DIR / "static" / filename
+        versao = caminho.stat().st_mtime_ns if caminho.is_file() else None
+        return url_for("static", filename=filename, v=versao)
+
     return {
         "firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"),
         "chrome_extension_ids": os.getenv("CHROME_EXTENSION_IDS", "").split(","),
-        "chat_assets_version": max(
-            (BASE_DIR / arquivo).stat().st_mtime_ns
-            for arquivo in ("static/js/chat.js", "static/js/chat-stream.js", "static/css/chat.css")
-        ),
+        "asset_url": asset_url,
     }
 
 @app.after_request
 def add_coop_headers(response):
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = (
+            "public, max-age=31536000, immutable"
+            if request.args.get("v") else "public, max-age=3600, must-revalidate"
+        )
     return response
 
 

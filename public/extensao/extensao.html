@@ -2,7 +2,7 @@
 
 {% block title %}AleteIA — Extensão{% endblock %}
 {% block extra_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/extension-page.css') }}">
+<link rel="stylesheet" href="{{ asset_url('css/extension-page.css') }}">
 {% endblock %}
 {% block main_class %}extension-main{% endblock %}
 {% block content_width %}880px{% endblock %}
@@ -17,7 +17,7 @@
     </h1>
     <p class="extension-label">Extensão para o navegador</p>
   </div>
-  <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Símbolo da AleteIA" class="extension-logo" width="133" height="263">
+  <img src="{{ asset_url('images/logo.png') }}" alt="Símbolo da AleteIA" class="extension-logo" width="160" height="241">
 </div>
 
 <p class="fs-5 mb-3 text-light">Uma informação chamou sua atenção? Leve a AleteIA com você enquanto navega.</p>
