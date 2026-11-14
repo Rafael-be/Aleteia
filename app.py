@@ -13,6 +13,7 @@ from src.utils.api import configure_api
 from src.database import MongoDatabaseProvider
 from src.routes.authRoutes import auth_routes
 from src.routes.chatRoutes import chat_routes
+from src.utils.observability import configure_sentry
 
 BASE_DIR = Path(__file__).resolve().parent
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://aleteia.onrender.com").rstrip("/")
@@ -49,6 +50,7 @@ def inicializar_firebase_admin() -> None:
 inicializar_firebase_admin()
 
 app = Flask(__name__, template_folder="public", static_folder="static", static_url_path="/static")
+configure_sentry(app)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 configure_api(app)
@@ -78,6 +80,7 @@ def injetar_firebase_config():
         "asset_url": asset_url,
         "site_url": PUBLIC_BASE_URL,
         "search_console_verification": os.getenv("GOOGLE_SITE_VERIFICATION", "").strip(),
+        "ga_measurement_id": os.getenv("GA_MEASUREMENT_ID", "").strip(),
     }
 
 @app.after_request

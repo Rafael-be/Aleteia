@@ -13,6 +13,7 @@ from src.services.markdown_service import formatar_resposta_ia, renderizar_markd
 from src.services.openai_services import obter_resposta, transmitir_resposta
 from src.services.chat_events import separar_veredito, etapa
 from src.utils.auth import obter_uid_do_token_firebase
+from src.utils.observability import trace_span
 
 
 class ChatController:
@@ -119,8 +120,9 @@ class ChatController:
                     texto = f"{corpo}\n\n**Veredicto:** {veredito['code']}"
                     yield serializar({"type": "verdict", "veredito": veredito})
                     yield serializar(etapa("saving", "Salvando a conversa..."))
-                    salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto, veredito)
-                    self.user_model.registrar_tokens_usados(uid, evento["tokens"])
+                    with trace_span("chat.persistence"):
+                        salvo = self.chat_model.save_mensagem(uid, conversa_id, prompt, texto, veredito)
+                        self.user_model.registrar_tokens_usados(uid, evento["tokens"])
                     yield serializar({"type": "done", "resposta": texto,
                                       "resposta_formatada": formatar_resposta_ia(texto),
                                       "veredito": veredito, "chat": salvo})
