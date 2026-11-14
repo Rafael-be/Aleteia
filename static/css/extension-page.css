@@ -8,7 +8,7 @@
 .extension-main > .page-content { margin-inline: auto; min-width: 0; }
 .extension-main p { line-height: 1.8; }
 .extension-hero { margin-bottom: clamp(40px, 6vw, 72px); }
-.extension-brand { display: flex; align-items: center; justify-content: space-between; gap: clamp(16px, 4vw, 48px); margin-bottom: 32px; }
+.extension-brand { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 1.5vw, 16px); margin-bottom: 32px; text-align: left; }
 .extension-brand > div { min-width: 0; }
 .extension-eyebrow { margin: 0 0 12px; color: var(--text-muted); font-size: .8rem; letter-spacing: .08em; }
 .extension-title { margin: 0; font-family: 'Lora', Georgia, serif; font-weight: 400; font-size: clamp(2.2rem, 5vw, 4rem); letter-spacing: 2px; }
@@ -42,6 +42,7 @@
   .extension-steps li { padding: 20px; }
 }
 @media (max-width: 359px) {
-  .extension-brand { flex-direction: column-reverse; align-items: flex-start; }
+  .extension-brand { flex-direction: row; align-items: center; }
+  .extension-title { font-size: 2rem; }
   .extension-logo { width: 52px; }
 }
