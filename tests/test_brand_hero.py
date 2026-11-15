@@ -31,9 +31,16 @@ class BrandHeroTemplateTest(unittest.TestCase):
         )
 
         self.assertIn('<p class="brand-hero-eyebrow">Bem-vindo à</p>', home)
+        self.assertIn('<div class="brand-hero-main">', home)
         self.assertIn('<h1 class="brand-hero-title">', home)
         self.assertIn('id="extension-title" class="brand-hero-title"', extension)
         self.assertIn('Extensão para o navegador', extension)
+        eyebrow_start = extension.index('<p class="brand-hero-eyebrow">')
+        main_start = extension.index('<div class="brand-hero-main">')
+        label_start = extension.index('<p class="brand-hero-label">')
+        main_close = extension.rfind('</div>', 0, label_start)
+        self.assertLess(eyebrow_start, main_start, "o texto superior não deve expandir a linha título + logo")
+        self.assertLess(main_close, label_start, "o label não deve expandir a linha título + logo")
 
     def test_pages_include_the_shared_component(self):
         home = (TEMPLATES / "main" / "main-desktop.html").read_text(encoding="utf-8")

@@ -480,17 +480,21 @@ body.drawer-open { overflow: hidden; }
 
 /* Composição compartilhada pelos cabeçalhos da página inicial e da extensão. */
 .brand-hero {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
   width: fit-content;
   max-width: 100%;
   margin-inline: auto;
-  gap: clamp(8px, 1.5vw, 16px);
   text-align: left;
 }
-.brand-hero-copy { min-width: 0; }
+.brand-hero-main {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 16px);
+  max-width: 100%;
+}
 .brand-hero p.brand-hero-eyebrow {
+  justify-self: start;
   margin: 0 0 12px;
   color: var(--text-muted);
   font-size: .8rem;
@@ -511,6 +515,7 @@ body.drawer-open { overflow: hidden; }
   line-height: normal;
 }
 .brand-hero p.brand-hero-label {
+  justify-self: start;
   margin: 12px 0 0;
   color: var(--text-light);
   font-size: clamp(.9rem, 2vw, 1.1rem);
