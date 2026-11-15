@@ -521,6 +521,32 @@ body.drawer-open { overflow: hidden; }
   font-size: clamp(.9rem, 2vw, 1.1rem);
   line-height: 1.5;
 }
+.brand-hero--extension p.brand-hero-label {
+  justify-self: center;
+  text-align: center;
+}
+.brand-hero--home {
+  grid-template-columns: minmax(0, auto) auto;
+  grid-template-areas:
+    "eyebrow logo"
+    "title logo";
+  column-gap: .5rem;
+  align-items: center;
+}
+.brand-hero--home .brand-hero-main { display: contents; }
+.brand-hero--home p.brand-hero-eyebrow {
+  grid-area: eyebrow;
+  justify-self: start;
+  margin-bottom: .25rem;
+}
+.brand-hero--home .brand-hero-title {
+  grid-area: title;
+  justify-self: start;
+}
+.brand-hero--home .brand-hero-logo {
+  grid-area: logo;
+  align-self: center;
+}
 .brand-hero-logo {
   display: block;
   flex: 0 0 auto;
@@ -565,6 +591,7 @@ body.drawer-open { overflow: hidden; }
 }
 @media (max-width: 767px) {
   .home-brand { margin-top: 1rem; }
+  .brand-hero--home .brand-hero-logo { width: 70px; }
   .home-intro { line-height: 1.65; }
 }
 @media (max-width: 359px) {

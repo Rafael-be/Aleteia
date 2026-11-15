@@ -48,6 +48,7 @@ class BrandHeroTemplateTest(unittest.TestCase):
 
         self.assertIn('components/brand-hero.html', home)
         self.assertIn('components/brand-hero.html', extension)
+        self.assertIn("brand-hero--extension", extension)
         self.assertIn("Bem-vindo à", home)
 
 
