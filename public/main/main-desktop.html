@@ -96,33 +96,29 @@
       <div class="page-content" style="max-width:{% block content_width %}650px{% endblock %};width:100%;">
         {% block page_content %}
 
-        <div class="brand-block mb-5">
-          <div class="text-start">
-            <h2 class="fw-light mb-1 fs-3">Bem vindo à</h2>
-            <h1 class="mb-0" style="font-size:3.5rem;letter-spacing:2px;font-family:'Lora',serif;font-weight:100;">
-              ALETE<span class="text-success fw-bold">IA</span>
-            </h1>
-          </div>
-          <div class="brand-logo-wrap">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="brand-logo-img">
-          </div>
-        </div>
+        <section class="home-page">
+        {% set brand_hero_class = 'brand-hero--home home-brand' %}
+        {% set brand_hero_eyebrow = 'Bem-vindo à' %}
+        {% set brand_hero_label = none %}
+        {% set brand_hero_title_id = none %}
+        {% set brand_hero_logo_alt = 'ALETEIA' %}
+        {% include "components/brand-hero.html" %}
 
-        <p class="fs-5 mb-4 text-center text-light opacity-75">Este é o site oficial da inteligência artificial Aleteia.</p>
-        <p class="fs-5 mb-4 text-light">Aqui você pode:</p>
+        <p class="home-intro text-center text-light opacity-75">Este é o site oficial da inteligência artificial Aleteia.</p>
+        <p class="home-section-title text-light">Aqui você pode:</p>
 
-        <div class="d-flex flex-column mb-5 px-md-3">
-          <div class="d-flex align-items-center mb-3">
+        <div class="home-feature-list d-flex flex-column px-md-3">
+          <div class="home-feature d-flex mb-3">
             <img alt="checkbox" src="{{ url_for('static', filename='images/checkbox.png') }}" style="margin-right:2%;">
-            <span class="fs-6 text-light opacity-75">Verificar a veracidade de notícias da política, economia e saúde</span>
+            <span class="home-feature-text text-light opacity-75">Verificar a veracidade de notícias da política, economia e saúde</span>
           </div>
-          <div class="d-flex align-items-center mb-3">
+          <div class="home-feature d-flex mb-3">
             <img alt="interrogacao" src="{{ url_for('static', filename='images/interrogacao.png') }}" style="margin-right:2%;">
-            <span class="fs-6 text-light opacity-75">Fazer perguntas sobre acontecimentos no Brasil</span>
+            <span class="home-feature-text text-light opacity-75">Fazer perguntas sobre acontecimentos no Brasil</span>
           </div>
-          <div class="d-flex align-items-center mb-3">
+          <div class="home-feature d-flex mb-3">
             <img src="{{ url_for('static', filename='images/x.png') }}" alt="x" style="margin-right:2%;">
-            <span class="fs-6 text-light opacity-75">Desmentir <i>fake news</i> e mentiras espalhadas na web</span>
+            <span class="home-feature-text text-light opacity-75">Desmentir <i>fake news</i> e mentiras espalhadas na web</span>
           </div>
         </div>
 
@@ -132,10 +128,11 @@
           </button>
         </div>
 
-        <div class="text-center text-light opacity-50" style="font-size:0.85rem;">
+        <div class="home-disclaimer text-center text-light opacity-50">
           <p class="mb-0">Aviso: a Aleteia pode cometer erros.</p>
           <p>Considere verificar informações importantes</p>
         </div>
+        </section>
 
         {% endblock %}
       </div>
