@@ -97,17 +97,12 @@
         {% block page_content %}
 
         <section class="home-page">
-        <div class="brand-block home-brand">
-          <div class="text-start">
-            <h2 class="home-welcome">Bem vindo à</h2>
-            <h1 class="home-title">
-              ALETE<span class="text-success fw-bold">IA</span>
-            </h1>
-          </div>
-          <div class="brand-logo-wrap">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ALETEIA" class="brand-logo-img">
-          </div>
-        </div>
+        {% set brand_hero_class = 'home-brand' %}
+        {% set brand_hero_eyebrow = 'Bem vindo à' %}
+        {% set brand_hero_label = none %}
+        {% set brand_hero_title_id = none %}
+        {% set brand_hero_logo_alt = 'ALETEIA' %}
+        {% include "components/brand-hero.html" %}
 
         <p class="home-intro text-center text-light opacity-75">Este é o site oficial da inteligência artificial Aleteia.</p>
         <p class="home-section-title text-light">Aqui você pode:</p>

@@ -9,16 +9,12 @@
 
 {% block page_content %}
 <section class="extension-hero" aria-labelledby="extension-title">
-<div class="extension-brand">
-  <div>
-    <p class="extension-eyebrow">Seu chat, ao lado de qualquer leitura</p>
-    <h1 id="extension-title" class="extension-title">
-      ALETE<span class="text-success fw-bold">IA</span>
-    </h1>
-    <p class="extension-label">Extensão para o navegador</p>
-  </div>
-  <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Símbolo da AleteIA" class="extension-logo" width="133" height="263">
-</div>
+{% set brand_hero_class = 'extension-brand' %}
+{% set brand_hero_eyebrow = 'Seu chat, ao lado de qualquer leitura' %}
+{% set brand_hero_label = 'Extensão para o navegador' %}
+{% set brand_hero_title_id = 'extension-title' %}
+{% set brand_hero_logo_alt = 'Símbolo da AleteIA' %}
+{% include "components/brand-hero.html" %}
 
 <p class="fs-5 mb-3 text-light">Uma informação chamou sua atenção? Leve a AleteIA com você enquanto navega.</p>
 <p class="fs-6 mb-4 text-light opacity-75">Analise notícias e afirmações em um chat ao lado da página que você está lendo. Converse, consulte seu histórico e tire dúvidas sem abrir outra aba.</p>

@@ -8,12 +8,7 @@
 .extension-main > .page-content { margin-inline: auto; min-width: 0; }
 .extension-main p { line-height: 1.8; }
 .extension-hero { margin-bottom: clamp(40px, 6vw, 72px); }
-.extension-brand { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 1.5vw, 16px); margin-bottom: 32px; text-align: left; }
-.extension-brand > div { min-width: 0; }
-.extension-eyebrow { margin: 0 0 12px; color: var(--text-muted); font-size: .8rem; letter-spacing: .08em; }
-.extension-title { margin: 0; font-family: 'Lora', Georgia, serif; font-weight: 400; font-size: clamp(2.2rem, 5vw, 4rem); letter-spacing: 2px; }
-.extension-label { margin: 12px 0 0; color: var(--text-light); font-size: clamp(.9rem, 2vw, 1.1rem); }
-.extension-logo { display: block; flex: 0 0 auto; width: clamp(64px, 10vw, 96px); height: auto; object-fit: contain; }
+.extension-brand { margin-bottom: 32px; }
 .extension-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-top: 28px; }
 .extension-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; white-space: normal; }
 .extension-actions .btn svg { flex-shrink: 0; }
@@ -40,9 +35,4 @@
   .extension-actions .btn { width: 100%; }
   .extension-actions > span { flex-basis: 100%; font-size: .8rem; }
   .extension-steps li { padding: 20px; }
-}
-@media (max-width: 359px) {
-  .extension-brand { flex-direction: row; align-items: center; }
-  .extension-title { font-size: 2rem; }
-  .extension-logo { width: 52px; }
 }
