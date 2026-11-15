@@ -537,11 +537,13 @@ body.drawer-open { overflow: hidden; }
 .brand-hero--home p.brand-hero-eyebrow {
   grid-area: eyebrow;
   justify-self: start;
-  margin-bottom: .25rem;
+  margin-bottom: 0;
 }
 .brand-hero--home .brand-hero-title {
   grid-area: title;
   justify-self: start;
+  position: relative;
+  top: -.25rem;
 }
 .brand-hero--home .brand-hero-logo {
   grid-area: logo;
