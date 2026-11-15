@@ -483,6 +483,9 @@ body.drawer-open { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
   gap: clamp(8px, 1.5vw, 16px);
   text-align: left;
 }
@@ -494,6 +497,10 @@ body.drawer-open { overflow: hidden; }
   font-weight: 400;
   letter-spacing: .08em;
   line-height: 1.5;
+}
+.brand-hero--home p.brand-hero-eyebrow {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 400;
 }
 .brand-hero-title {
   margin: 0;

@@ -36,6 +36,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const chaveAvisoExtensao = "aleteiaExtensionPromoDismissed";
   const ancorasAvisoExtensao = [...document.querySelectorAll("[data-extension-promo-anchor]")];
   const avisoEstaVisivel = (elemento) => Boolean(elemento?.getClientRects().length);
+  const avisoFoiDispensado = () => {
+    try {
+      return sessionStorage.getItem(chaveAvisoExtensao) === "true";
+    } catch {
+      return false;
+    }
+  };
+  const registrarDispensaAviso = () => {
+    try {
+      sessionStorage.setItem(chaveAvisoExtensao, "true");
+    } catch {
+      // O aviso continua funcional quando o armazenamento não está disponível.
+    }
+  };
   const posicionarAvisoExtensao = (aviso, icone) => {
     const iconeRect = icone.getBoundingClientRect();
     const largura = aviso.offsetWidth;
@@ -46,24 +60,38 @@ document.addEventListener("DOMContentLoaded", () => {
     aviso.style.setProperty("--extension-promo-arrow-left", `${Math.min(Math.max(16, iconeRect.left + (iconeRect.width / 2) - esquerda), largura - 16)}px`);
   };
   const inicializarAvisoExtensao = () => {
-    if (window.location.pathname === "/extension" || sessionStorage.getItem(chaveAvisoExtensao)) return;
-    const ancoraAtiva = ancorasAvisoExtensao.find(avisoEstaVisivel);
-    const aviso = ancoraAtiva?.querySelector("[data-extension-promo]");
-    const icone = ancoraAtiva?.querySelector("a");
-    if (!aviso || !icone) return;
-    const atualizarPosicao = () => posicionarAvisoExtensao(aviso, icone);
-    const fecharAviso = () => {
-      aviso.hidden = true;
-      sessionStorage.setItem(chaveAvisoExtensao, "true");
-      window.removeEventListener("resize", atualizarPosicao);
+    if (window.location.pathname === "/extension" || avisoFoiDispensado()) return;
+    let avisoAtivo = null;
+    let foiFechado = false;
+    const atualizarPosicao = () => {
+      if (foiFechado) return;
+      const ancoraAtiva = ancorasAvisoExtensao.find(avisoEstaVisivel);
+      const aviso = ancoraAtiva?.querySelector("[data-extension-promo]");
+      const icone = ancoraAtiva?.querySelector("a");
+      if (!aviso || !icone) return;
+      if (avisoAtivo && avisoAtivo !== aviso) avisoAtivo.hidden = true;
+      avisoAtivo = aviso;
+      avisoAtivo.hidden = false;
+      posicionarAvisoExtensao(avisoAtivo, icone);
     };
-    aviso.hidden = false;
+    const fecharAviso = () => {
+      if (foiFechado) return;
+      foiFechado = true;
+      if (avisoAtivo) avisoAtivo.hidden = true;
+      registrarDispensaAviso();
+      window.removeEventListener("resize", atualizarPosicao);
+      document.removeEventListener("keydown", fecharComEscape);
+    };
+    const fecharComEscape = (evento) => {
+      if (evento.key === "Escape") fecharAviso();
+    };
     atualizarPosicao();
+    if (!avisoAtivo) return;
     window.addEventListener("resize", atualizarPosicao);
-    aviso.querySelector("[data-extension-promo-close]")?.addEventListener("click", fecharAviso);
-    document.addEventListener("keydown", (evento) => {
-      if (evento.key === "Escape" && !aviso.hidden) fecharAviso();
+    ancorasAvisoExtensao.forEach((ancora) => {
+      ancora.querySelector("[data-extension-promo-close]")?.addEventListener("click", fecharAviso);
     });
+    document.addEventListener("keydown", fecharComEscape);
   };
   inicializarAvisoExtensao();
 
