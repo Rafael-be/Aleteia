@@ -62,7 +62,7 @@ def public_url(url):
 
 
 def resolve_public(host, port, timeout):
-    if not _DNS_SLOTS.acquire(blocking=False):
+    if not _DNS_SLOTS.acquire(timeout=max(.01, min(3, timeout))):
         raise ValueError('DNS busy')
     try:
         task = _DNS.submit(socket.getaddrinfo, host, port, 0, socket.SOCK_STREAM)
@@ -165,21 +165,21 @@ def fetch_document(url, deadline):
                 if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
                     raise ValueError('Compressed content rejected')
                 length = response.getheader('Content-Length')
-                if length and (not length.isdigit() or int(length) > MAX_BYTES):
-                    raise ValueError('Source too large')
+                if length and not length.isdigit():
+                    raise ValueError('Invalid source length')
+                body_truncated = bool(length and int(length) > MAX_BYTES)
                 data = bytearray()
-                while len(data) <= MAX_BYTES:
+                while len(data) < MAX_BYTES:
                     remaining = min(3, deadline-monotonic())
                     if remaining <= 0:
                         raise TimeoutError('Read deadline')
                     if connection.sock:
                         connection.sock.settimeout(remaining)
-                    part = response.read1(min(16384, MAX_BYTES+1-len(data)))
+                    part = response.read1(min(16384, MAX_BYTES-len(data)))
                     if not part:
                         break
                     data.extend(part)
-                if len(data) > MAX_BYTES:
-                    raise ValueError('Source too large')
+                body_truncated = body_truncated or len(data) >= MAX_BYTES
             finally:
                 connection.close()
             charset = re.search(r'charset=["\']?([\w-]+)', content_type)
@@ -202,7 +202,7 @@ def fetch_document(url, deadline):
                 except ValueError:
                     pass
             document = {'url': original, 'final_url': current, 'title': ''.join(parser.title)[:200],
-                        'text': text[:MAX_TEXT], 'truncated': len(text) > MAX_TEXT,
+                        'text': text[:MAX_TEXT], 'truncated': body_truncated or len(text) > MAX_TEXT,
                         'hash': sha256(text[:MAX_TEXT].encode()).hexdigest(),
                         'raw_hash': sha256(data).hexdigest(), 'links': sorted(set(links)),
                         'retrieved_at': datetime.now(timezone.utc).isoformat(), 'cache_hit': False}

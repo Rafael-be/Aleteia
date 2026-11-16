@@ -32,6 +32,9 @@ class Claim(StrictModel):
     high_risk: bool
     elements: list[str] = Field(min_length=1, max_length=8)
     queries: list[str] = Field(min_length=4, max_length=4)
+    investigative: bool = False
+    verification_target: bool = False
+    relation_type: Literal['categorical', 'attribution', 'statistical', 'causal'] = 'categorical'
 
 
 class Extraction(StrictModel):
@@ -39,6 +42,7 @@ class Extraction(StrictModel):
     claims: list[Claim] = Field(max_length=4)
     omitted_material: bool
     decomposition_complete: bool
+    risk_requires_review: bool = False
 
 
 class EvidenceAnnotation(StrictModel):
@@ -50,6 +54,8 @@ class EvidenceAnnotation(StrictModel):
     relevance: ContextValue | None
     context_fit: ContextValue | None
     covered_elements: list[int] = Field(max_length=8)
+    refutes_elements: list[int] = Field(default_factory=list, max_length=8)
+    refutation_kind: Literal['none', 'explicit_contradiction'] = 'none'
     primary: bool
     origin_source_id: str | None
     origin_quote: str | None = Field(max_length=1200)
@@ -75,11 +81,25 @@ class ClaimReview(StrictModel):
     context_complete: bool
     decomposition_faithful: bool
     causal_overreach: bool
+    assessment: str = Field(default='', max_length=1200)
+    resolved_claim: str | None = Field(default=None, max_length=1500)
+    resolution_source_ids: list[str] = Field(default_factory=list, max_length=12)
+
+
+class ResolvedScope(StrictModel):
+    id: str = Field(min_length=1, max_length=32)
+    parent_claim_id: str = Field(max_length=32)
+    text: str = Field(min_length=1, max_length=1500)
+    context: str = Field(min_length=1, max_length=500)
+    elements: list[str] = Field(min_length=1, max_length=8)
+    source_ids: list[str] = Field(min_length=1, max_length=12)
+    relation_type: Literal['categorical', 'attribution', 'statistical', 'causal'] = 'categorical'
 
 
 class Qualification(StrictModel):
     evidence: list[EvidenceAnnotation] = Field(max_length=12)
-    reviews: list[ClaimReview] = Field(max_length=4)
+    reviews: list[ClaimReview] = Field(max_length=8)
+    resolved_scopes: list[ResolvedScope] = Field(default_factory=list, max_length=8)
 
 
 STATES = {
@@ -88,6 +108,7 @@ STATES = {
     'STRONGLY_CONTRADICTED': 'Fortemente contraditada',
     'PREDOMINANTLY_CONTRADICTED': 'Predominantemente contraditada',
     'CONTESTED': 'Evidências em conflito',
+    'MIXED': 'Parcialmente sustentada; contextos distintos',
     'INCONCLUSIVE': 'Inconclusiva',
     'NOT_VERIFIABLE': 'Não verificável',
     'HUMAN_REVIEW_REQUIRED': 'Requer revisão humana',

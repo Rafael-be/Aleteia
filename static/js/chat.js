@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "STRONGLY_CONTRADICTED": { label: "Fortemente contraditada", classe: "veracidade-vermelha" },
     "PREDOMINANTLY_CONTRADICTED": { label: "Predominantemente contraditada", classe: "veracidade-vermelha" },
     "CONTESTED": { label: "Evidências em conflito", classe: "veracidade-amarela" },
+    "MIXED": { label: "Parcialmente sustentada · contextos distintos", classe: "veracidade-amarela" },
     "INCONCLUSIVE": { label: "Inconclusiva", classe: "veracidade-neutra" },
     "NOT_VERIFIABLE": { label: "Não verificável", classe: "veracidade-neutra" },
     "HUMAN_REVIEW_REQUIRED": { label: "Requer revisão humana", classe: "veracidade-amarela" },
@@ -82,52 +83,68 @@ document.addEventListener("DOMContentLoaded", () => {
     NOT_VERIFIABLE: "alegação não verificável",
     LOW_ACS: "qualidade do processo abaixo do limiar de decisão",
     HUMAN_REVIEW_REQUIRED: "revisão humana necessária",
+    DIRECT_EVIDENCE_REQUIRED: "faltam trechos de documentos inspecionados diretamente",
+    PROVIDER_EXCERPT_ONLY: "apenas sínteses citadas da busca; páginas não inspecionadas",
+    PARTIAL_PROVIDER_EXCERPTS: "parte do material é síntese citada da busca",
+    LIMITED_INDEPENDENT_SOURCES: "poucas fontes independentes",
+    QUESTION_NOT_RESOLVED: "a pesquisa ainda não delimitou uma proposição única para calcular o ESS",
   };
 
   function adicionarMetricas(container, metricas) {
+    const grupo = document.createElement("div"); grupo.className = "metricas-circulares";
     for (const m of (Array.isArray(metricas) ? metricas : []).slice(0, 2)) {
       if (!["ESS", "ACS"].includes(m.id)) continue;
-      const linha = document.createElement("div");
-      linha.className = "veredito-metrica";
       const valido = m.valid === true && typeof m.value === "number" && Number.isFinite(m.value) && m.value >= 0 && m.value <= 100;
-      const rotulo = document.createElement("p");
-      rotulo.className = "metrica-rotulo";
-      rotulo.textContent = `${m.id} · ${m.id === "ESS" ? "Sustentação das evidências" : "Qualidade da análise"}`;
-      const valor = document.createElement("strong");
-      valor.textContent = valido ? `${m.value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}/100` : "Indisponível";
-      rotulo.appendChild(valor);
-      linha.appendChild(rotulo);
-      if (valido) {
-        const barra = document.createElement("meter");
-        barra.className = `metrica-barra metrica-${m.id.toLowerCase()}`;
-        barra.min = 0; barra.max = 100; barra.value = m.value;
-        barra.setAttribute("aria-label", `${m.id}: ${m.value} de 100`);
-        barra.textContent = `${m.value}/100`;
-        const trilho = document.createElement("div");
-        trilho.className = "metrica-trilho";
-        trilho.appendChild(barra);
-        if (m.id === "ESS") {
-          const centro = document.createElement("span");
-          centro.className = "metrica-centro";
-          centro.setAttribute("aria-hidden", "true");
-          trilho.appendChild(centro);
-        }
-        linha.appendChild(trilho);
-        if (m.id === "ESS") {
-          const eixo = document.createElement("p");
-          eixo.className = "metrica-eixo";
-          for (const texto of ["Contradiz", "50 · equilíbrio", "Sustenta"]) {
-            const item = document.createElement("span"); item.textContent = texto; eixo.appendChild(item);
-          }
-          linha.appendChild(eixo);
-        }
-      } else {
-        const motivo = document.createElement("small");
-        motivo.textContent = MOTIVOS[m.reason] || "medição não disponível";
-        linha.appendChild(motivo);
+      const limite = !valido && m.id === "ACS" && m.measurement === "upper_bound" && typeof m.upper_bound === "number" && Number.isFinite(m.upper_bound) && m.upper_bound >= 0 && m.upper_bound <= 100;
+      const n = limite ? m.upper_bound : valido ? m.value : null;
+      const item = document.createElement("div"); item.className = "veredito-metrica";
+      const circulo = document.createElement("div");
+      circulo.className = `metrica-circulo metrica-${m.id.toLowerCase()}${n === null ? " metrica-indisponivel" : ""}`;
+      circulo.value = n;
+      const cor = n === null ? "#94a3b8" : n < 40 ? "#dc4b4b" : n < 70 ? "#b88312" : "#26845b";
+      circulo.style.background = `conic-gradient(${cor} ${(n ?? 0) * 3.6}deg, rgba(148,163,184,.22) 0deg)`;
+      circulo.setAttribute("role", n === null ? "img" : "meter");
+      circulo.setAttribute("aria-label", `${m.id}: ${n === null ? "indisponível" : `${limite ? "no máximo " : ""}${n} de 100`}`);
+      if (n !== null) {
+        circulo.setAttribute("aria-valuemin", "0"); circulo.setAttribute("aria-valuemax", "100"); circulo.setAttribute("aria-valuenow", String(n));
       }
-      container.appendChild(linha);
+      const valor = document.createElement("strong");
+      valor.textContent = n === null ? "—" : `${limite ? "≤ " : ""}${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`;
+      const centro = document.createElement("div"); centro.className = "metrica-circulo-centro";
+      centro.appendChild(valor);
+      const escala = document.createElement("small"); escala.textContent = n === null ? "Indisponível" : "/100";
+      centro.appendChild(escala); circulo.appendChild(centro); item.appendChild(circulo);
+      const rotulo = document.createElement("strong"); rotulo.textContent = m.id; item.appendChild(rotulo);
+      const ajuda = document.createElement("small");
+      ajuda.textContent = n === null ? (MOTIVOS[m.reason] || "medição não disponível") : limite ? "Limite superior; dimensões não medidas" : m.id === "ACS" ? "Qualidade da análise" : n < 40 ? "Evidências contrárias" : n < 60 ? "Evidências divididas" : "Evidências favoráveis";
+      item.appendChild(ajuda); grupo.appendChild(item);
     }
+    container.appendChild(grupo);
+  }
+
+  function adicionarFontes(container, veredito) {
+    if (!Array.isArray(veredito.source_details) || !veredito.source_details.length) return;
+    const detalhes = document.createElement("details"); detalhes.className = "analise-fontes";
+    const titulo = document.createElement("summary"); titulo.textContent = "Análise das fontes";
+    detalhes.appendChild(titulo);
+    for (const fonte of veredito.source_details.slice(0, 24)) {
+      const item = document.createElement("article"); item.className = "fonte-avaliada";
+      const rotulo = document.createElement("strong");
+      rotulo.textContent = fonte.retrieval_kind === "provider_excerpt" ? "Síntese citada da busca" : fonte.stance > 0 ? "Sustenta" : fonte.stance < 0 ? "Contradiz" : "Neutra";
+      item.appendChild(rotulo);
+      try {
+        const url = new URL(fonte.url);
+        if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password) {
+          const link = document.createElement("a"); link.href = url.href; link.textContent = fonte.title || url.hostname;
+          link.target = "_blank"; link.rel = "noopener noreferrer"; item.appendChild(link);
+        }
+      } catch (_) { /* Invalid URLs are never rendered as links. */ }
+      for (const texto of [fonte.quote, fonte.rationale]) {
+        const p = document.createElement("p"); p.textContent = texto || ""; item.appendChild(p);
+      }
+      detalhes.appendChild(item);
+    }
+    container.appendChild(detalhes);
   }
 
   /* ── Liga/desliga o layout "conversa ativa" (header compacto + input fixo embaixo) ── */
@@ -212,6 +229,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const dados = parseRespostaIA(textoCru);
     const info = MAPA_VEREDICTO[veredito?.code];
     if (info) Object.assign(dados, info);
+    if (veredito?.code === "INCONCLUSIVE" && veredito?.assessment_level === "preliminary") {
+      dados.label = "Análise preliminar · evidências limitadas";
+    }
     const bloco = document.createElement("div");
     bloco.className = "resposta-ia";
 
@@ -254,24 +274,44 @@ document.addEventListener("DOMContentLoaded", () => {
       const painel = document.createElement("section");
       painel.className = "painel-indicadores";
       painel.setAttribute("aria-label", "Indicadores da análise");
-      adicionarMetricas(painel, veredito.metrics);
+      if (veredito.retrieval) {
+        const pesquisa = document.createElement('p'); pesquisa.className = 'pesquisa-resumo';
+        const r = veredito.retrieval;
+        const numero = (n) => Number.isInteger(n) && n >= 0 ? n : 0;
+        pesquisa.textContent = `Pesquisa realizada: ${numero(r.queries_executed)} consultas · ${numero(r.sources_found)} fontes localizadas · ${numero(r.documents_available)} materiais avaliados`;
+        painel.appendChild(pesquisa);
+      }
+      if (veredito.scoped_metrics && veredito.claim_details?.length > 1) {
+        for (const claim of veredito.claim_details.slice(0, 8)) {
+          const escopo = document.createElement('div'); escopo.className = 'metricas-escopo';
+          const titulo = document.createElement('p'); titulo.textContent = claim.text;
+          escopo.appendChild(titulo); adicionarMetricas(escopo, claim.metrics); painel.appendChild(escopo);
+        }
+      } else adicionarMetricas(painel, veredito.metrics);
       const nota = document.createElement("p");
       nota.className = "metrica-nota";
       nota.textContent = "Índices experimentais: não são probabilidades de verdade ou acerto.";
       painel.appendChild(nota);
+      adicionarFontes(painel, veredito);
       if (veredito.claim_details?.length) {
         const detalhes = document.createElement("details");
         const resumo = document.createElement("summary");
         resumo.textContent = "Alegações e limites da análise";
         detalhes.appendChild(resumo);
-        for (const claim of veredito.claim_details.slice(0, 4)) {
+        for (const claim of veredito.claim_details.slice(0, 8)) {
           const item = document.createElement("div"); item.className = "metrica-alegacao";
           const titulo = document.createElement("p"); titulo.textContent = claim.text;
           item.appendChild(titulo);
           const estado = document.createElement("p");
-          estado.textContent = MAPA_VEREDICTO[claim.state]?.label || "Inconclusiva";
+          estado.textContent = claim.preliminary ? "Análise preliminar · evidências limitadas" :
+            MAPA_VEREDICTO[claim.state]?.label || "Inconclusiva";
           item.appendChild(estado);
-          if (veredito.claim_details.length > 1) adicionarMetricas(item, claim.metrics);
+          if (claim.proof_basis === 'necessary_element_refuted') {
+            const prova = document.createElement('p'); prova.className = 'metrica-nota';
+            prova.textContent = 'Uma condição necessária da alegação foi diretamente contraditada. Não é preciso comprovar todos os detalhes históricos para refutá-la.';
+            item.appendChild(prova);
+          }
+          if (!veredito.scoped_metrics && veredito.claim_details.length > 1) adicionarMetricas(item, claim.metrics);
           if (claim.reasons?.length) {
             const motivos = document.createElement("p"); motivos.className = "metrica-nota";
             motivos.textContent = claim.reasons.map((r) => MOTIVOS[r] || "requisito pendente").join("; ");
@@ -301,7 +341,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ações: copiar / regenerar / falar
     acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
       const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
-        `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}/100` : "indisponível"}`).join("\n") +
+        `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}/100` :
+          m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}/100 (limite superior)` : "indisponível"}`).join("\n") +
         "\nÍndices experimentais; não são probabilidades." : "";
       navigator.clipboard?.writeText((textoCru || "") + indicadores);
     });
