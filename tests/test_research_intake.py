@@ -34,8 +34,9 @@ class ResearchIntakeTests(unittest.TestCase):
     def test_hard_limits_scope_and_risk_survive_recovery(self):
         self.assertEqual(recover_research_task(self.pending(kind='OUT_OF_SCOPE'), 'oi', []).kind, 'OUT_OF_SCOPE')
         self.assertEqual(recover_research_task(self.pending(kind='NOT_VERIFIABLE'), 'Eu gosto de cinema', []).kind, 'NOT_VERIFIABLE')
-        result = recover_research_task(self.pending(risk_requires_review=True), 'Qual remédio tomar?', [])
+        result = recover_research_task(self.pending(risk_requires_review=True, personal_advice=True), 'Qual remédio tomar?', [])
         self.assertTrue(result.claims[0].high_risk)
+        self.assertTrue(result.claims[0].personal_advice)
 
     def test_question_remains_investigative_if_model_rephrases_it_as_a_statement(self):
         question = 'a redação do enem foi sobre cinema brasileiro?'

@@ -7,17 +7,26 @@ from flask import g, has_request_context
 from src import config
 from src.services.analysis_service import analyze, CompleteAnswer, UsageLedger
 from src.services.analysis_errors import log_failure
+from src.services.standard_service import standard_answer
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or 'not-configured',
                 timeout=30.0, max_retries=0)
 MODEL_NAME = os.getenv('OPENAI_MODEL', 'gpt-5-mini')
 
 
-def transmitir_resposta(mensagem, historico=None, ledger=None):
+def transmitir_resposta(mensagem, historico=None, ledger=None, *, mode='standard'):
     inicio = perf_counter()
     ledger = ledger or UsageLedger()
     try:
-        yield from analyze(client, MODEL_NAME, mensagem, historico, ledger)
+        if mode == 'standard':
+            yield from standard_answer(client, MODEL_NAME, mensagem, historico, ledger)
+        elif mode == 'experimental':
+            for event in analyze(client, MODEL_NAME, mensagem, historico, ledger):
+                if event['type'] == 'result':
+                    event['veredito']['mode'] = 'experimental'
+                yield event
+        else:
+            raise ValueError('Invalid response mode')
     except Exception as exc:
         raise log_failure(exc, 'pipeline') from exc
     finally:
@@ -29,8 +38,8 @@ def transmitir_resposta(mensagem, historico=None, ledger=None):
             max(0, ledger.calls-len(ledger.records)), ledger.failed_accounting)
 
 
-def obter_resposta(mensagem, historico=None, ledger=None):
-    resposta = transmitir_resposta(mensagem, historico, ledger)
+def obter_resposta(mensagem, historico=None, ledger=None, *, mode='standard'):
+    resposta = transmitir_resposta(mensagem, historico, ledger, mode=mode)
     try:
         for evento in resposta:
             if evento['type'] == 'result':

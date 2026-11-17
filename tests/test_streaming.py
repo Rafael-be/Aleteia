@@ -75,7 +75,7 @@ class StreamingTests(unittest.TestCase):
         client.responses.create.return_value = Obj(status='completed', output_text=json.dumps({
             'kind': 'NEEDS_CONTEXT', 'claims': [], 'omitted_material': False,
             'decomposition_complete': False}), usage=Obj(total_tokens=42))
-        resultado = list(transmitir_resposta("isso é verdade?"))
+        resultado = list(transmitir_resposta("isso é verdade?", mode='experimental'))
         self.assertEqual(resultado[-1]["tokens"], 42)
         self.assertNotIn("Veredicto", "".join(e["text"] for e in resultado if e["type"] == "delta"))
         self.assertEqual(resultado[-1]['veredito']['version'], 2)

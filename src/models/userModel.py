@@ -105,7 +105,7 @@ class UserModel:
                               'tokens_usados': {'$cond': [same_day, {'$ifNull': ['$uso_diario.tokens_usados', 0]}, 0]}},
                 'rate_minute': minute, 'rate_count': {'$add': [rate, 1]},
                 'reservation_id': reservation, 'reservation_day': today,
-                'lease_until': now + timedelta(seconds=240),
+                'lease_until': now + timedelta(seconds=360),
             }}], return_document=ReturnDocument.AFTER)
         if user is not None:
             return True, user

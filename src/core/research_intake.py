@@ -28,17 +28,41 @@ def has_topic(text):
     return any(w not in _REFERENTIAL for w in words)
 
 
+def open_question(message):
+    return bool(re.match(r'^(quem|qual|quais|quando|onde|como|quanto|quantos|por\s*qu[eê]|o\s+que)\b',
+                         message.strip().casefold()))
+
+
 def verification_question(message):
-    open_question = bool(re.match(r'^(quem|qual|quais|quando|onde|como|quanto|quantos|por\s*qu[eê]|o\s+que)\b', message.strip().casefold()))
-    return '?' in message and not open_question and len(re.findall(r'\w+', message)) > 2
+    return '?' in message and not open_question(message) and len(re.findall(r'\w+', message)) > 2
 
 
 def recover_research_task(extraction, message, context):
     if extraction.kind == 'FACTUAL' and extraction.claims:
         yes_no = verification_question(message)
-        tasks = [c.model_copy(update={'investigative': True, 'verification_target': yes_no or c.verification_target,
-                                      'critical': c.critical or len(extraction.claims) == 1})
-                 if '?' in message or '?' in c.text or len(re.findall(r'\w+', c.text)) <= 2 else c for c in extraction.claims]
+        tasks = []
+        for claim in extraction.claims:
+            assertion = (not claim.investigative and not open_question(message)
+                         and len(re.findall(r'\w+', claim.text)) > 2)
+            target = yes_no or claim.verification_target or assertion
+            # Extraction is not an evidence source. Do not promote a model's
+            # guessed civil name, date or identity into established context.
+            prior_user = '\n'.join(h['content'][-140:] for h in context[-2:]
+                                    if h.get('role') == 'user')
+            literal_context = 'Entrada do usuário: '+message[:650]
+            if prior_user:
+                literal_context += '\nContexto anterior do usuário: '+prior_user
+            updates = {'personal_advice': claim.personal_advice or extraction.personal_advice,
+                       'context': literal_context[:1000]}
+            if '?' in message or '?' in claim.text or len(re.findall(r'\w+', claim.text)) <= 2:
+                updates.update(investigative=True, verification_target=target,
+                               critical=claim.critical or len(extraction.claims) == 1)
+            if target:
+                # Never let semantic extraction replace the submitted hypothesis
+                # with its answer. Preserve negation, typos and stated context;
+                # only the later assessment may explain or correct the wording.
+                updates.update(text=claim.original_span, verification_target=True)
+            tasks.append(claim.model_copy(update=updates))
         return extraction.model_copy(update={'claims': tasks})
     if extraction.kind not in {'NEEDS_CONTEXT', 'FACTUAL', 'NOT_VERIFIABLE'}:
         return extraction
@@ -52,6 +76,8 @@ def recover_research_task(extraction, message, context):
         return extraction
     span = topic[:1500]
     query = re.sub(r'\s+', ' ', span).strip()[:400]
+    target = verification_question(span) or (not open_question(span) and '?' not in span
+                                            and len(re.findall(r'\w+', span)) > 2)
     risk = extraction.risk_requires_review or any(c.high_risk for c in extraction.claims)
     pending = extraction.omitted_material or len(topic) > 1500
     task = Claim(id='research1', text=span, original_span=span,
@@ -61,6 +87,8 @@ def recover_research_task(extraction, message, context):
                  elements=['resposta à questão pesquisada', 'origem e condições de validade'],
                  queries=[query+' evidências estudos', query+' refutação checagem controvérsias',
                           query, query+' origem fonte primária documentação'], investigative=True,
-                 verification_target=verification_question(message))
+                 verification_target=target)
+    task = task.model_copy(update={'personal_advice': extraction.personal_advice or any(c.personal_advice for c in extraction.claims)})
     return Extraction(kind='FACTUAL', claims=[task], omitted_material=pending,
-                      decomposition_complete=not pending, risk_requires_review=risk)
+                      decomposition_complete=not pending, risk_requires_review=risk,
+                      research_depth=extraction.research_depth, personal_advice=task.personal_advice)

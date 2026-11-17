@@ -40,6 +40,9 @@ class ChatController:
         if not isinstance(data, dict) or any(not isinstance(data.get(k), str) for k in ('prompt', 'conversa_id')):
             return jsonify(code='invalid_payload', message='Envie prompt e conversa_id como texto.', error='Payload inválido.'), 400
         prompt, conversa_id = data['prompt'].strip(), data['conversa_id'].strip()
+        mode = data.get('mode', 'standard')
+        if mode not in ('standard', 'experimental'):
+            return jsonify(code='invalid_mode', message='Modo de resposta inválido.', error='Modo inválido.'), 400
         if len(prompt) > 12000 or len(conversa_id) > 128:
             return jsonify(code='invalid_payload', message='Texto ou ID excede o limite.', error='Entrada muito longa.'), 400
         if not prompt:
@@ -61,7 +64,7 @@ class ChatController:
             return jsonify({"error": "limite_diario_excedido", "limite": limite}), 429
         # Noise still traverses authenticated, atomic traffic reservation. It is
         # refunded as an analysis, but its minute rate count is never refunded.
-        local = is_noise(prompt)
+        local = mode == 'experimental' and is_noise(prompt)
         ledger = UsageLedger(lambda tokens: self.user_model.registrar_tokens_usados(
             uid, tokens, dia=usuario.get('reservation_day')))
         historico = [item for mensagem in mensagens_anteriores for item in (
@@ -69,9 +72,9 @@ class ChatController:
             {"role": "assistant", "content": mensagem["resposta"]},
         )]
         if request.accept_mimetypes.best == "text/event-stream":
-            return self._transmitir(uid, conversa_id, prompt, historico, usuario, ledger, local)
+            return self._transmitir(uid, conversa_id, prompt, historico, usuario, ledger, local, mode)
         try:
-            resultado = obter_resposta(prompt, historico, ledger=ledger)
+            resultado = obter_resposta(prompt, historico, ledger=ledger, mode=mode)
             texto_resposta, tokens_gastos = resultado
         except RuntimeError as exc:
             self._finalizar(uid, usuario, ledger.attempted)
@@ -99,13 +102,13 @@ class ChatController:
         except (RuntimeError, PyMongoError):
             logging.getLogger(__name__).error('quota_finalize_failed success=%s', sucesso)
 
-    def _transmitir(self, uid, conversa_id, prompt, historico, reserva, ledger, local=False):
+    def _transmitir(self, uid, conversa_id, prompt, historico, reserva, ledger, local=False, mode='standard'):
         def serializar(evento):
             return f"data: {json.dumps(evento, ensure_ascii=False)}\n\n"
 
         @stream_with_context
         def gerar():
-            resposta = transmitir_resposta(prompt, historico, ledger=ledger)
+            resposta = transmitir_resposta(prompt, historico, ledger=ledger, mode=mode)
             texto_parcial = ""
             concluido = False
             inicio = perf_counter()
@@ -203,5 +206,5 @@ class ChatController:
             mensagem["resposta_formatada"] = formatar_resposta_ia(mensagem["resposta"])
             salvo = mensagem.get("veredito")
             # Corrige também históricos afetados pelo parser antigo sem perder métricas.
-            mensagem["veredito"] = salvo if salvo and (salvo.get('version') == 2 or salvo.get("metrics")) else separar_veredito(mensagem["resposta"])[1]
+            mensagem["veredito"] = salvo if salvo and (salvo.get('version') == 2 or salvo.get("metrics") or salvo.get('mode') == 'standard') else separar_veredito(mensagem["resposta"])[1]
         return jsonify({"mensagens": mensagens, "pagination": {**self._pagina(), "has_more": len(mensagens) == self._pagina()["limit"]}}), 200

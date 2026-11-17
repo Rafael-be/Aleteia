@@ -34,7 +34,27 @@ def qualification():
                          'rationale': 'O relatório documenta o valor e o período.'}],
             'reviews': [{'claim_id': 'c1', 'context_complete': True,
                          'decomposition_faithful': True, 'causal_overreach': False,
+                         'evaluated_target': claim().text, 'conclusion': 'supports',
                          'assessment': 'O relatório indica o valor 20 em 2025. Há apenas uma fonte, portanto a avaliação é preliminar.'}]}
+
+
+def semantic_fixture(payload, qualified):
+    """Mirror configured fixture judgments; adversarial tests override this reader."""
+    relations = {1.0: 'supports_direct', .5: 'supports_partial', 0.0: 'neutral',
+                 -.5: 'refutes_partial', -1.0: 'refutes_direct'}
+    reviews = {r['claim_id']: r for r in qualified['reviews']}
+    evidence = {(e['claim_id'], e['source_id']): e for e in qualified['evidence']}
+    targets = []
+    for target in payload['targets']:
+        identifier = target['claim_id']
+        review = reviews[identifier]
+        targets.append({'claim_id': identifier, 'evaluated_target': target['evaluated_target'],
+            'conclusion': review['conclusion'], 'assessment': review['assessment'],
+            'evidence': [{'source_id': item['source_id'],
+                'relation': relations[evidence[identifier, item['source_id']]['stance']],
+                'reason': 'Leitura independente configurada para o documento de teste.'}
+                for item in target['evidence']]})
+    return {'targets': targets}
 
 
 def response(text='', output=None):
@@ -70,20 +90,24 @@ class PipelineTests(unittest.TestCase):
                 data = qualification()
                 data['evidence'][0].update(stance=-1.0, quote=passage, origin_quote=passage,
                     covered_elements=[0], refutes_elements=[0], refutation_kind='explicit_contradiction')
-                data['reviews'][0].update(assessment='Não: o valor oficial para 2025 foi 30, e não 20.', resolved_claim=None)
+                data['reviews'][0].update(assessment='Não: o valor oficial para 2025 foi 30, e não 20.',
+                    evaluated_target=question, conclusion='refutes', resolved_claim=None)
                 data['resolved_scopes'] = [{'id': 'corrected', 'parent_claim_id': 'c1',
                     'text': 'O indicador oficial de 2025 foi 30.', 'context': 'Correção documental',
                     'elements': ['valor oficial'], 'source_ids': ['s1']}]
                 background = {**data['evidence'][0], 'claim_id': 'corrected', 'stance': 1.0,
                               'refutes_elements': [], 'refutation_kind': 'none'}
                 data['evidence'].append(background)
-                data['reviews'].append({**data['reviews'][0], 'claim_id': 'corrected', 'assessment': 'O valor oficial foi 30.'})
+                data['reviews'].append({**data['reviews'][0], 'claim_id': 'corrected',
+                    'evaluated_target': 'O indicador oficial de 2025 foi 30.', 'conclusion': 'supports',
+                    'assessment': 'O valor oficial foi 30.'})
+                client.fixture_qualification = data
                 return response(json.dumps(data))
             return original(**kwargs)
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': passage}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 6)
+        self.assertEqual(client.responses.create.call_count, 5)
         self.assertEqual(result['veredito']['code'], 'STRONGLY_CONTRADICTED')
         self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
         self.assertEqual(result['audit']['scores'][0]['proof_basis'], 'necessary_element_refuted')
@@ -122,19 +146,20 @@ class PipelineTests(unittest.TestCase):
                     ev.update(claim_id=identifier, quote=passages[index], origin_quote=passages[index], covered_elements=[0])
                     data['evidence'].append(ev)
                     review = qualification()['reviews'][0]
-                    review.update(claim_id=identifier, assessment=passages[index])
+                    review.update(claim_id=identifier, assessment=passages[index], evaluated_target=passages[index])
                     data['reviews'].append(review)
                 if parent_annotations and qualification_count == 1:
                     for item in data['evidence'] + data['reviews']:
                         item['claim_id'] = 'c1'
                 if qualification_count > 1:
                     data['resolved_scopes'] = []
+                client.fixture_qualification = data
                 return response(json.dumps(data))
             return original(**kwargs)
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': ' '.join(passages)}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 7 if parent_annotations else 6)
+        self.assertEqual(client.responses.create.call_count, 6 if parent_annotations else 5)
         self.assertTrue(result['veredito']['scoped_metrics'])
         self.assertEqual(len(result['veredito']['claim_details']), 2)
         for detail in result['veredito']['claim_details']:
@@ -157,16 +182,20 @@ class PipelineTests(unittest.TestCase):
             if stage == 'qualification':
                 data = qualification()
                 data['evidence'][0].update(claim_id='research1', quote=passage, origin_quote=passage)
-                data['reviews'][0].update(claim_id='research1', resolved_claim=passage,
-                    resolution_source_ids=['s1'],
+                data['reviews'][0].update(claim_id='research1', resolved_claim=None,
+                    evaluated_target=question, conclusion='supports', resolution_source_ids=[],
                     assessment='Em 2019, o tema foi o acesso ao cinema no Brasil. A pergunta não informa a edição do exame.')
+                client.fixture_qualification = data
                 return response(json.dumps(data))
             return original(**kwargs)
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': passage}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 6)
-        self.assertEqual(result['veredito']['retrieval']['queries_executed'], 4)
+        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(result['veredito']['retrieval']['queries_executed'], 2)
+        self.assertEqual({objective for search in result['audit']['searches']
+                          for objective in search['objectives']},
+                         {'support', 'contradiction', 'neutral', 'primary'})
         self.assertTrue(result['audit']['research_recovery'])
         self.assertIn('Em 2019', result['text'])
         self.assertIn('A pergunta não informa a edição', result['text'])
@@ -182,9 +211,16 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(kwargs['tool_choice'], 'required')
                 self.assertFalse(kwargs['store'])
                 return response(output=[{'type': 'web_search_call', 'status': 'completed',
-                    'action': {'type': 'search', 'query': 'indicador 2025', 'sources': [{'url': URL}]}}])
+                    'action': {'type': 'search', 'query': 'indicador 2025', 'sources': [{'url': URL},
+                        {'url': 'https://auxiliary.example/report'}, {'url': 'https://another.example/report'}]}}])
             stage = kwargs['text']['format']['name']
-            return response(json.dumps(extraction if stage == 'extraction' else qualification()))
+            if stage == 'extraction':
+                return response(json.dumps(extraction))
+            if stage == 'semantic_alignment':
+                return response(json.dumps(semantic_fixture(json.loads(kwargs['input']),
+                                                           client.fixture_qualification)))
+            client.fixture_qualification = qualification()
+            return response(json.dumps(client.fixture_qualification))
         client.responses.create.side_effect = create
         return client
 
@@ -198,7 +234,7 @@ class PipelineTests(unittest.TestCase):
         events = self.run_pipeline(client, UsageLedger(usage.append))
         result = events[-1]
         self.assertEqual(result['type'], 'result')
-        self.assertEqual(client.responses.create.call_count, 6)  # extract + 4 searches + qualify; no writer
+        self.assertEqual(client.responses.create.call_count, 5)  # extract + 2 balanced searches + qualify + independent reading
         self.assertEqual(result['tokens'], sum(usage))
         self.assertEqual(result['veredito']['version'], 2)
         self.assertFalse(result['veredito']['calibrated'])
@@ -206,10 +242,14 @@ class PipelineTests(unittest.TestCase):
         self.assertGreaterEqual(result['veredito']['metrics'][1]['value'], 65)
         self.assertIn('O relatório indica o valor 20', result['text'])
         self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
-        self.assertEqual(len(result['audit']['searches']), 4)
+        self.assertEqual(len(result['audit']['searches']), 2)
+        self.assertEqual({objective for search in result['audit']['searches']
+                          for objective in search['objectives']},
+                         {'support', 'contradiction', 'neutral', 'primary'})
         self.assertEqual(result['audit']['documents'][0]['text'], TEXT)
         self.assertEqual(result['audit']['evidence'][0]['offset'], 0)
-        self.assertIn(f']({URL})', result['text'])
+        self.assertIn(f']({URL} "aleteia-source")', result['text'])
+        self.assertNotIn('[fonte s', result['text'])
         self.assertEqual(''.join(e['text'] for e in events if e['type'] == 'delta'), result['text'])
 
     def test_noise_uses_no_provider_and_short_reply(self):
@@ -254,13 +294,30 @@ class PipelineTests(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(rejected[0]['reason'], 'INVALID_REFUTATION')
 
-    def test_no_snapshots_means_no_qualification_and_no_score(self):
+    def test_no_snapshots_still_gets_independent_response_with_neutral_indices(self):
         client = self.setup_provider()
+        client.fixture_qualification = qualification()
         with patch('src.services.analysis_service.fetch_document', side_effect=ValueError('blocked')):
             result = list(analyze(client, 'gpt-5-mini', claim().text))[-1]
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 4)
         self.assertEqual(result['veredito']['code'], 'INCONCLUSIVE')
-        self.assertTrue(all(m['value'] is None for m in result['veredito']['metrics']))
+        self.assertEqual([m['value'] for m in result['veredito']['metrics']], [50, 0])
+        self.assertEqual(result['veredito']['metrics'][0]['measurement'], 'undetermined_support')
+
+    def test_unreadable_qualification_is_recovered_by_planned_independent_reader(self):
+        client = self.setup_provider()
+        client.fixture_qualification = qualification()
+        original = client.responses.create.side_effect
+        def create(**kwargs):
+            if kwargs.get('text', {}).get('format', {}).get('name') == 'qualification':
+                return response('{"unexpected": true}')
+            return original(**kwargs)
+        client.responses.create.side_effect = create
+        result = self.run_pipeline(client)[-1]
+        self.assertTrue(result['audit']['qualification_recovered'])
+        self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
+        self.assertLessEqual(result['veredito']['metrics'][1]['value'], 25)
+        self.assertEqual(client.responses.create.call_count, 5)
 
     def test_provider_link_text_is_not_source_authority(self):
         client = MagicMock()
@@ -295,9 +352,9 @@ class PipelineTests(unittest.TestCase):
         with patch('src.services.analysis_service.fetch_document', side_effect=ValueError('blocked')):
             result = list(analyze(client, 'gpt-5-mini', claim().text))[-1]
         self.assertEqual(result['veredito']['assessment_level'], 'preliminary')
-        self.assertIsNone(result['veredito']['metrics'][0]['value'])
+        self.assertIsNotNone(result['veredito']['metrics'][0]['value'])
         self.assertIsNotNone(result['veredito']['metrics'][1]['value'])
-        self.assertLessEqual(result['veredito']['metrics'][1]['value'], 25)
+        self.assertLessEqual(result['veredito']['metrics'][1]['value'], 35)
         self.assertIn('O relatório indica o valor 20', result['text'])
         self.assertEqual(result['veredito']['source_details'][0]['retrieval_kind'], 'provider_excerpt')
         self.assertNotIn('Síntese citada da busca — página não inspecionada', result['text'])
@@ -374,7 +431,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_disconnect_after_provider_use_keeps_quota_and_records_spent_tokens(self):
         client, controller = test_streaming.StreamingTests().criar_cliente()
-        def events(*args, ledger=None):
+        def events(*args, ledger=None, mode='experimental'):
             ledger.start()
             ledger.record(response(), 'extraction')
             yield {'type': 'delta', 'text': 'Parcial'}
@@ -389,7 +446,7 @@ class PipelineTests(unittest.TestCase):
     def test_local_noise_refunds_analysis_quota_without_model_usage(self):
         client, controller = test_streaming.StreamingTests().criar_cliente()
         with patch('src.services.openai_services.client') as provider:
-            response_data = client.post('/mensagem', json={'prompt': 'asdfghjkl', 'conversa_id': 'c'})
+            response_data = client.post('/mensagem', json={'prompt': 'asdfghjkl', 'conversa_id': 'c', 'mode': 'experimental'})
         self.assertEqual(response_data.status_code, 200)
         provider.responses.create.assert_not_called()
         self.assertFalse(controller.user_model.finalizar_reserva.call_args.args[-1])

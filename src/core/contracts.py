@@ -35,6 +35,7 @@ class Claim(StrictModel):
     investigative: bool = False
     verification_target: bool = False
     relation_type: Literal['categorical', 'attribution', 'statistical', 'causal'] = 'categorical'
+    personal_advice: bool = False
 
 
 class Extraction(StrictModel):
@@ -43,6 +44,8 @@ class Extraction(StrictModel):
     omitted_material: bool
     decomposition_complete: bool
     risk_requires_review: bool = False
+    research_depth: Literal['standard', 'debated', 'obscure'] = 'standard'
+    personal_advice: bool = False
 
 
 class EvidenceAnnotation(StrictModel):
@@ -50,6 +53,8 @@ class EvidenceAnnotation(StrictModel):
     source_id: str = Field(max_length=32)
     quote: str = Field(min_length=20, max_length=800)
     stance: StanceValue
+    decision_scope: Literal['applicable', 'indirect', 'different_context', 'mere_mention', 'unclear'] = 'applicable'
+    contribution: Literal['decision', 'explanation', 'incidental'] = 'decision'
     source_quality: SourceQualityValue | None
     relevance: ContextValue | None
     context_fit: ContextValue | None
@@ -81,6 +86,14 @@ class ClaimReview(StrictModel):
     context_complete: bool
     decomposition_faithful: bool
     causal_overreach: bool
+    analysis_overreach: bool = False
+    # The reviewed target is distinct from the factual answer/correction. The
+    # qualification validator requires this exact binding before using stance.
+    evaluated_target: str = Field(default='', max_length=1500)
+    conclusion: Literal['supports', 'refutes', 'mixed', 'insufficient'] = 'insufficient'
+    search_finding: Literal['no_support_found', 'unclear_mentions', 'not_assessed'] = 'not_assessed'
+    entity_resolved: bool = False
+    absence_weakens_claim: bool = False
     assessment: str = Field(default='', max_length=1200)
     resolved_claim: str | None = Field(default=None, max_length=1500)
     resolution_source_ids: list[str] = Field(default_factory=list, max_length=12)
@@ -97,12 +110,13 @@ class ResolvedScope(StrictModel):
 
 
 class Qualification(StrictModel):
-    evidence: list[EvidenceAnnotation] = Field(max_length=12)
+    evidence: list[EvidenceAnnotation] = Field(max_length=32)
     reviews: list[ClaimReview] = Field(max_length=8)
     resolved_scopes: list[ResolvedScope] = Field(default_factory=list, max_length=8)
 
 
 STATES = {
+    'NO_SUPPORT_FOUND': 'Sem sustentação nas fontes consultadas',
     'STRONGLY_SUPPORTED': 'Fortemente sustentada',
     'PREDOMINANTLY_SUPPORTED': 'Predominantemente sustentada',
     'STRONGLY_CONTRADICTED': 'Fortemente contraditada',

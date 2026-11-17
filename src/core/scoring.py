@@ -3,13 +3,13 @@ from dataclasses import asdict, dataclass
 from collections import Counter
 import math
 
-METHOD_VERSION = 'core-v2.4-candidate'
+METHOD_VERSION = 'core-v5.0-candidate'
 
 
 @dataclass(frozen=True)
 class Parameters:
     # Engineering baseline, deliberately not claimed to be empirically calibrated.
-    version: str = 'directional-sufficiency-2026-11-v4'
+    version: str = 'contextual-decision-2026-11-v9'
     alpha: float = 1/3
     beta: float = 1/3
     delta: float = 1/3
@@ -149,10 +149,10 @@ def score_claim(claim, evidence, searches, review, decomposition_complete, p=DEF
     context = bool(review and (review.context_complete or refutation_sufficient) and not causal_failure)
     decomposition = bool(decomposition_complete and review and review.decomposition_faithful)
     provenance = bool(direct) and all(e['origin_verified'] for e in direct)
-    decisive_primary = any(e.get('primary') and e['origin_verified'] and e['source_quality'] >= .75
+    decisive_primary = any(e.get('primary') and e['origin_verified'] and e['source_quality'] is not None and e['source_quality'] >= .75
                            and e['relevance'] == 1 and e['context_fit'] == 1 for e in direct)
     direct_sufficient = decision_coverage == 1 and m['mass'] >= p.minimum_mass
-    decisive_document = direct_sufficient and any(e['source_quality'] >= .75 and
+    decisive_document = direct_sufficient and any(e['source_quality'] is not None and e['source_quality'] >= .75 and
                         e['relevance'] == 1 and e['context_fit'] == 1 for e in direct)
     process_qualified = direct if direct_sufficient else qualified
     excerpts_needed = not direct_sufficient and any(e.get('retrieval_kind') == 'provider_excerpt' for e in evidence)
@@ -244,13 +244,20 @@ def score_claim(claim, evidence, searches, review, decomposition_complete, p=DEF
             'reasons': reasons, 'dimensions': dimensions, **m}
 
 
-def metric(identifier, value, reason=None, upper_bound=None):
+def metric(identifier, value, reason=None, upper_bound=None, measurement=None):
     result = {'id': identifier, 'label': 'Sustentação das evidências' if identifier == 'ESS' else 'Qualidade da análise',
+            'unit': '%',
             'value': round(value, 1) if value is not None else None, 'min': 0, 'max': 100,
             'valid': value is not None, 'reason': reason if value is None else None}
     if value is None and upper_bound is not None:
         result['upper_bound'] = round(upper_bound, 1)
         result['measurement'] = 'upper_bound'
+    if measurement == 'observed_support' and identifier == 'ESS':
+        result.update(measurement=measurement, label='Sustentação encontrada na pesquisa')
+    if measurement == 'undetermined_support' and identifier == 'ESS':
+        result.update(measurement=measurement, label='Sustentação indeterminada · ponto neutro da escala')
+    if measurement == 'provisional_direction' and identifier == 'ESS':
+        result.update(measurement=measurement, label='Sustentação provisória · atributos incompletos')
     return result
 
 
@@ -261,10 +268,10 @@ def verdict(claims, results, incomplete=False, p=DEFAULTS):
     if results and not incomplete:
         if all(r['state'] == 'NOT_VERIFIABLE' for r in results):
             state = 'NOT_VERIFIABLE'
-        elif any(r['state'] == 'HUMAN_REVIEW_REQUIRED' for r in results):
-            state = 'HUMAN_REVIEW_REQUIRED'
         elif len(results) == 1:
             state, ess, acs = results[0]['state'], results[0]['ess'], results[0]['acs']
+        elif any(r['state'] == 'HUMAN_REVIEW_REQUIRED' for r in results):
+            state = 'HUMAN_REVIEW_REQUIRED'
         else:
             # Averages across dependent/heterogeneous propositions are intentionally withheld.
             states = {r['state'] for r in results}
@@ -287,9 +294,10 @@ def verdict(claims, results, incomplete=False, p=DEFAULTS):
     if state == 'HUMAN_REVIEW_REQUIRED':
         reason = 'HUMAN_REVIEW_REQUIRED'
     return {'version': 2, 'code': state, 'method_version': METHOD_VERSION,
-            'assessment_level': 'preliminary' if state == 'INCONCLUSIVE' and any(r.get('preliminary') for r in results) else 'standard',
+            'assessment_level': 'preliminary' if any(r.get('preliminary') for r in results) else 'standard',
             'parameter_version': p.version, 'calibrated': False,
             'scope': 'claim' if len(results) == 1 else 'analysis',
-            'metrics': [metric('ESS', ess, reason), metric('ACS', acs, reason,
+            'metrics': [metric('ESS', ess, reason, measurement=results[0].get('ess_measurement')
+                               if len(results) == 1 else None), metric('ACS', acs, reason,
                         upper_bound=results[0].get('acs_upper_bound') if len(results) == 1 and not incomplete else None)],
             'claims': [{k: r[k] for k in ('claim_id', 'state', 'ess', 'acs', 'reasons')} for r in results]}

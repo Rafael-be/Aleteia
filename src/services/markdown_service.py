@@ -28,6 +28,19 @@ def _link_seguro(url):
 _MARKDOWN.validateLink = _link_seguro
 
 
+def _source_link(tokens, idx, options, env):
+    token = tokens[idx]
+    if token.attrGet('title') == 'aleteia-source':
+        token.attrs.pop('title', None)
+        token.attrSet('class', 'citacao-fonte')
+        token.attrSet('target', '_blank')
+        token.attrSet('rel', 'noopener noreferrer')
+    return _MARKDOWN.renderer.renderToken(tokens, idx, options, env)
+
+
+_MARKDOWN.renderer.rules['link_open'] = _source_link
+
+
 def renderizar_markdown(texto: str) -> str:
     """Converte markdown em HTML sem permitir HTML bruto na resposta."""
     texto = str(texto or "")

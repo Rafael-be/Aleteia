@@ -110,7 +110,28 @@
       <div class="input-box">
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
         <div class="input-actions">
-          <button class="btn-attach" title="Anexar arquivo">+</button>
+          <div class="input-left-btns">
+            <button class="btn-attach" title="Anexar arquivo">+</button>
+            <div class="seletor-modelo" id="seletorModelo">
+              <button type="button" id="botaoModelo" class="botao-modelo" aria-haspopup="menu" aria-expanded="false" aria-controls="menuModelos">
+                <span class="modelo-prefixo">Modelo</span>
+                <strong id="nomeModelo">Básico</strong>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div id="menuModelos" class="menu-modelos" role="menu" aria-label="Escolher modelo de resposta" hidden>
+                <p class="menu-modelos-titulo" role="presentation">Escolha como a Aleteia responde</p>
+                <button type="button" id="modeloBasico" class="opcao-modelo" role="menuitemradio" aria-checked="true">
+                  <span class="opcao-modelo-titulo">Básico <span class="modelo-selo">Padrão</span><span class="modelo-check" aria-hidden="true">✓</span></span>
+                  <span class="opcao-modelo-descricao">Resposta direta com análise e fontes, sem os indicadores ESS e ACS.</span>
+                </button>
+                <button type="button" id="modeloExperimental" class="opcao-modelo" role="menuitemradio" aria-checked="false" aria-describedby="descricaoExperimental riscoExperimental">
+                  <span class="opcao-modelo-titulo">Experimental <span class="modelo-selo">Em desenvolvimento</span><span class="modelo-check" aria-hidden="true">✓</span></span>
+                  <span id="descricaoExperimental" class="opcao-modelo-descricao">Analisa as evidências em etapas e mostra sustentação (ESS) e qualidade da análise (ACS). Pode levar mais tempo.</span>
+                  <span id="riscoExperimental" class="opcao-modelo-risco">Pode gerar erros e respostas inconsistentes.</span>
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="input-right-btns">
             <button class="btn-mic" title="Falar">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -128,6 +149,10 @@
           </div>
         </div>
       </div>
+
+      <p id="avisoModoExperimental" class="aviso-modo-experimental" role="status" aria-live="polite" hidden>
+        O algoritmo experimental está em fase de desenvolvimento e pode gerar erros e respostas inconsistentes.
+      </p>
 
       <p class="aviso">
         Aviso: a Aleteia pode cometer erros.<br>
