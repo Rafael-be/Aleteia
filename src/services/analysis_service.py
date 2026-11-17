@@ -592,6 +592,11 @@ def _explanation(claims, results, evidence, documents, incomplete, reviews=None,
     for claim, result in zip(claims, results):
         if len(claims) > 1:
             sections.append('### Resposta à pergunta\n' if claim.verification_target else '### Contexto adicional\n')
+        if not result.get('research_complete', True):
+            missing = ', '.join(result.get('missing_research_objectives', []))
+            sections.append('A pesquisa necessária para uma conclusão definitiva não foi concluída'
+                            + (f' (objetivos pendentes: {missing})' if missing else '')
+                            + '. As evidências abaixo são apenas preliminares.')
         matched = [e for e in evidence if e['claim_id'] == claim.id]
         review = reviews.get(claim.id)
         if review and review.assessment.strip():
@@ -801,7 +806,8 @@ def _analyze(client, model, message, history=None, ledger=None):
     results = [score_answer(c, [e for e in evidence if e['claim_id'] == c.id],
                           [s for s in searches if s['claim_id'] == audit.get('scope_lineage', {}).get(c.id, c.id)], reviews.get(c.id),
                           extraction.decomposition_complete and not extraction.omitted_material) for c in claims]
-    incomplete = extraction.omitted_material or not extraction.decomposition_complete
+    incomplete = (extraction.omitted_material or not extraction.decomposition_complete
+                  or any(not result.get('research_complete', True) for result in results))
     target_pairs = [(c, r) for c, r in zip(claims, results) if c.verification_target]
     # Historical corrections explain the answer; they cannot dilute the verdict
     # on the proposition actually submitted for verification.

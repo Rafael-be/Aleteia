@@ -8,9 +8,51 @@ from collections import Counter
 from src.core.scoring import DEFAULTS, geometric, masses, robustness, score_claim as strict_score
 
 
+REQUIRED_OBJECTIVES = frozenset({'support', 'contradiction', 'neutral', 'primary'})
+
+
 def search_objectives(search):
-    return set(search.get('objectives', [search.get('intent')])) & {
-        'support', 'contradiction', 'neutral', 'primary'}
+    return set(search.get('objectives', [search.get('intent')])) & REQUIRED_OBJECTIVES
+
+
+def research_completion(searches):
+    """Return planned objectives that did not complete with usable search output.
+
+    The planner records every required objective, including those skipped by a
+    budget cap.  A provider action is not enough: an explicitly failed,
+    unobserved, or source-less action cannot justify a directional verdict.
+    Minimal legacy fixtures omit status/source fields and remain accepted as a
+    completed search when they explicitly set ``executed``.
+    """
+    planned = set().union(*(search_objectives(search) for search in searches)) if searches else set()
+    missing = set()
+    for objective in planned:
+        candidates = [search for search in searches if objective in search_objectives(search)]
+        completed = False
+        for search in candidates:
+            if not search.get('executed') or search.get('status') in {'failed', 'unobserved', 'budget_skipped'}:
+                continue
+            has_observed_sources = 'sources' not in search and 'excerpts' not in search
+            has_usable_output = bool(search.get('sources') or search.get('excerpts'))
+            if has_observed_sources or has_usable_output:
+                completed = True
+                break
+        if not completed:
+            missing.add(objective)
+    return {'complete': not missing, 'required': planned, 'missing': missing}
+
+
+def apply_research_gate(result, searches):
+    """Keep measured indices but never publish direction from incomplete research."""
+    completion = research_completion(searches)
+    result['research_complete'] = completion['complete']
+    result['missing_research_objectives'] = sorted(completion['missing'])
+    if not completion['complete']:
+        result['state'] = 'INCONCLUSIVE'
+        result['preliminary'] = True
+        if 'RETRIEVAL_INCOMPLETE' not in result['reasons']:
+            result['reasons'].append('RETRIEVAL_INCOMPLETE')
+    return result
 
 
 def attribute_stability(evidence, p=DEFAULTS):
@@ -104,8 +146,8 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
     if not usable or not claim.verifiable:
         if claim.verifiable and claim.high_risk and not claim.personal_advice:
             result['state'] = 'INCONCLUSIVE'
-        return score_search_finding(claim, evidence, searches, review,
-                                    decomposition_complete, result, p)
+        return apply_research_gate(score_search_finding(claim, evidence, searches, review,
+                                                        decomposition_complete, result, p), searches)
     weighted = []
     for e in usable:
         # Discount derived synthesis in the mass, without pretending its text
@@ -125,7 +167,7 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
     basis = direct if direct_sufficient else weighted
     m = masses(basis, p)
     if m['mass'] <= 0:
-        return result
+        return apply_research_gate(result, searches)
     executed = {intent for s in searches if s.get('executed') for intent in search_objectives(s)}
     retrieval = len(executed & {'support', 'contradiction', 'neutral', 'primary'})/4
     covered = {i for e in basis for i in e['covered_elements']}
@@ -195,4 +237,4 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
                   scoring_source_ids=[e['source_id'] for e in basis],
                   evidential_capacity=capacity,
                   scoring_policy='anchored-economical-v2')
-    return result
+    return apply_research_gate(result, searches)

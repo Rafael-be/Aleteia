@@ -1,6 +1,7 @@
 """Production answer-first policy, distinct from strict proof diagnostics."""
 import json
 import unittest
+from copy import deepcopy
 from unittest.mock import patch
 from src.core.contracts import ClaimReview, Extraction
 from src.core.answer_policy import score_answer
@@ -55,6 +56,41 @@ class AnswerPolicyTests(unittest.TestCase):
     def test_no_qualified_material_does_not_fabricate_truth_percentage(self):
         r = score_answer(claim(), [], SEARCHES, review(), True)
         self.assertIsNone(r['ess'])
+
+    def test_complete_required_research_keeps_directional_result(self):
+        result = score_answer(claim(), [evidence()], SEARCHES, review(), True)
+        self.assertTrue(result['research_complete'])
+        self.assertEqual(result['missing_research_objectives'], [])
+        self.assertEqual(result['state'], 'STRONGLY_SUPPORTED')
+
+    def test_failed_required_search_blocks_directional_result(self):
+        searches = [
+            {'intent': 'support', 'executed': True, 'status': 'completed', 'sources': ['https://example.org/support']},
+            {'intent': 'contradiction', 'executed': True, 'status': 'failed', 'sources': []},
+            {'intent': 'neutral', 'executed': True, 'status': 'completed', 'sources': ['https://example.org/neutral']},
+            {'intent': 'primary', 'executed': True, 'status': 'completed', 'sources': ['https://example.org/primary']},
+        ]
+        result = score_answer(claim(), [evidence()], searches, review(), True)
+        self.assertFalse(result['research_complete'])
+        self.assertEqual(result['missing_research_objectives'], ['contradiction'])
+        self.assertEqual(result['state'], 'INCONCLUSIVE')
+        self.assertIn('RETRIEVAL_INCOMPLETE', result['reasons'])
+
+    def test_mixed_claim_completeness_cannot_upgrade_public_verdict(self):
+        complete = score_answer(claim('complete'), [evidence()], SEARCHES,
+                                review(claim_id='complete'), True)
+        partial_searches = [
+            {'objectives': ['primary', 'neutral'], 'executed': True, 'status': 'completed',
+             'sources': ['https://example.org/primary']},
+            {'objectives': ['contradiction', 'support'], 'executed': False, 'status': 'budget_skipped',
+             'sources': []},
+        ]
+        partial_claim = claim('partial', critical=False)
+        partial = score_answer(partial_claim, [evidence()], partial_searches,
+                               review(claim_id='partial'), True)
+        self.assertEqual(complete['state'], 'STRONGLY_SUPPORTED')
+        self.assertEqual(partial['state'], 'INCONCLUSIVE')
+        self.assertEqual(verdict([claim('complete'), partial_claim], [complete, partial])['code'], 'INCONCLUSIVE')
 
     def test_research_reserves_budget_for_scoring(self):
         ledger = UsageLedger(); ledger.total = 46000
@@ -118,6 +154,17 @@ class AnswerPolicyTests(unittest.TestCase):
             if kwargs.get('text', {}).get('format', {}).get('name') == 'extraction':
                 return fixtures.response(json.dumps({'kind': 'FACTUAL', 'claims': [c.model_dump() for c in claims],
                     'omitted_material': False, 'decomposition_complete': True, 'research_depth': 'obscure'}))
+            if kwargs.get('text', {}).get('format', {}).get('name') == 'qualification':
+                data = {'evidence': [], 'reviews': [], 'resolved_scopes': []}
+                for current in claims:
+                    item = deepcopy(fixtures.qualification()['evidence'][0])
+                    item['claim_id'] = current.id
+                    data['evidence'].append(item)
+                    item = deepcopy(fixtures.qualification()['reviews'][0])
+                    item.update(claim_id=current.id, evaluated_target=current.text)
+                    data['reviews'].append(item)
+                client.fixture_qualification = data
+                return fixtures.response(json.dumps(data))
             return original(**kwargs)
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value=fixtures.document()):
@@ -131,6 +178,10 @@ class AnswerPolicyTests(unittest.TestCase):
                               for objective in s['objectives']},
                              {'support', 'contradiction', 'neutral', 'primary'})
         self.assertTrue(result['audit']['research_budget']['budget_limited'])
+        self.assertEqual(result['veredito']['code'], 'INCONCLUSIVE')
+        self.assertTrue(all(detail['state'] == 'INCONCLUSIVE'
+                            for detail in result['veredito']['claim_details']))
+        self.assertIn('pesquisa necessária para uma conclusão definitiva', result['text'])
 
     def test_scarcity_does_not_trigger_more_paid_searches(self):
         client = fixtures.PipelineTests().setup_provider()
