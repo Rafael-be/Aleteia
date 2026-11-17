@@ -33,6 +33,68 @@ document.addEventListener("DOMContentLoaded", () => {
   const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
   const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
 
+  const chaveAvisoExtensao = "aleteiaExtensionPromoDismissed";
+  const ancorasAvisoExtensao = [...document.querySelectorAll("[data-extension-promo-anchor]")];
+  const avisoEstaVisivel = (elemento) => Boolean(elemento?.getClientRects().length);
+  const avisoFoiDispensado = () => {
+    try {
+      return sessionStorage.getItem(chaveAvisoExtensao) === "true";
+    } catch {
+      return false;
+    }
+  };
+  const registrarDispensaAviso = () => {
+    try {
+      sessionStorage.setItem(chaveAvisoExtensao, "true");
+    } catch {
+      // O aviso continua funcional quando o armazenamento não está disponível.
+    }
+  };
+  const posicionarAvisoExtensao = (aviso, icone) => {
+    const iconeRect = icone.getBoundingClientRect();
+    const largura = aviso.offsetWidth;
+    const margem = 8;
+    const esquerda = Math.min(Math.max(margem, iconeRect.left + (iconeRect.width / 2) - (largura / 2)), window.innerWidth - largura - margem);
+    aviso.style.left = `${esquerda}px`;
+    aviso.style.top = `${iconeRect.bottom + margem}px`;
+    aviso.style.setProperty("--extension-promo-arrow-left", `${Math.min(Math.max(16, iconeRect.left + (iconeRect.width / 2) - esquerda), largura - 16)}px`);
+  };
+  const inicializarAvisoExtensao = () => {
+    if (window.location.pathname === "/extension" || avisoFoiDispensado()) return;
+    let avisoAtivo = null;
+    let foiFechado = false;
+    const atualizarPosicao = () => {
+      if (foiFechado) return;
+      const ancoraAtiva = ancorasAvisoExtensao.find(avisoEstaVisivel);
+      const aviso = ancoraAtiva?.querySelector("[data-extension-promo]");
+      const icone = ancoraAtiva?.querySelector("a");
+      if (!aviso || !icone) return;
+      if (avisoAtivo && avisoAtivo !== aviso) avisoAtivo.hidden = true;
+      avisoAtivo = aviso;
+      avisoAtivo.hidden = false;
+      posicionarAvisoExtensao(avisoAtivo, icone);
+    };
+    const fecharAviso = () => {
+      if (foiFechado) return;
+      foiFechado = true;
+      if (avisoAtivo) avisoAtivo.hidden = true;
+      registrarDispensaAviso();
+      window.removeEventListener("resize", atualizarPosicao);
+      document.removeEventListener("keydown", fecharComEscape);
+    };
+    const fecharComEscape = (evento) => {
+      if (evento.key === "Escape") fecharAviso();
+    };
+    atualizarPosicao();
+    if (!avisoAtivo) return;
+    window.addEventListener("resize", atualizarPosicao);
+    ancorasAvisoExtensao.forEach((ancora) => {
+      ancora.querySelector("[data-extension-promo-close]")?.addEventListener("click", fecharAviso);
+    });
+    document.addEventListener("keydown", fecharComEscape);
+  };
+  inicializarAvisoExtensao();
+
   overlay?.addEventListener("click", fechar);
   document.getElementById("btnVoltar")?.addEventListener("click", fechar);
   document.getElementById("btnSair")?.addEventListener("click", async () => {

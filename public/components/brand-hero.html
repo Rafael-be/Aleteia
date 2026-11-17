@@ -1,0 +1,10 @@
+<div class="brand-hero {{ brand_hero_class | default('') }}">
+  <p class="brand-hero-eyebrow">{{ brand_hero_eyebrow }}</p>
+  <div class="brand-hero-main">
+    <h1{% if brand_hero_title_id %} id="{{ brand_hero_title_id }}"{% endif %} class="brand-hero-title">
+      ALETE<span class="text-success fw-bold">IA</span>
+    </h1>
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="{{ brand_hero_logo_alt }}" class="brand-hero-logo">
+  </div>
+  {% if brand_hero_label %}<p class="brand-hero-label">{{ brand_hero_label }}</p>{% endif %}
+</div>
