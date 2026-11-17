@@ -72,16 +72,15 @@ class StreamingTests(unittest.TestCase):
 
     @patch("src.services.openai_services.client")
     def test_eventos_sdk_e_tokens(self, client):
-        eventos = [Obj(type="response.web_search_call.searching"),
-                   Obj(type="response.web_search_call.completed")]
-        eventos += [Obj(type="response.output_text.delta", delta=c) for c in TEXTO]
-        eventos += [Obj(type="response.completed", response=Obj(output_text=TEXTO, usage=Obj(total_tokens=42)))]
-        client.responses.create.return_value.__enter__.return_value = iter(eventos)
-        resultado = list(transmitir_resposta("teste"))
+        client.responses.create.return_value = Obj(status='completed', output_text=json.dumps({
+            'kind': 'NEEDS_CONTEXT', 'claims': [], 'omitted_material': False,
+            'decomposition_complete': False}), usage=Obj(total_tokens=42))
+        resultado = list(transmitir_resposta("isso é verdade?", mode='experimental'))
         self.assertEqual(resultado[-1]["tokens"], 42)
         self.assertNotIn("Veredicto", "".join(e["text"] for e in resultado if e["type"] == "delta"))
-        self.assertIn("searching", [e["stage"] for e in resultado if e["type"] == "stage"])
-        self.assertTrue(client.responses.create.call_args.kwargs["stream"])
+        self.assertEqual(resultado[-1]['veredito']['version'], 2)
+        self.assertEqual(client.responses.create.call_args.kwargs['text']['format']['type'], 'json_schema')
+        self.assertFalse(client.responses.create.call_args.kwargs['store'])
 
     @patch("src.services.openai_services.client")
     def test_stream_incompleto_nao_e_sucesso(self, client):
@@ -162,7 +161,7 @@ class StreamingTests(unittest.TestCase):
 
     def test_falha_emite_erro_e_fallback(self):
         client, _ = self.criar_cliente()
-        def falhar(*args):
+        def falhar(*args, **kwargs):
             yield {"type": "delta", "text": "Parcial"}
             raise RuntimeError("falha simulada")
         with patch("src.controller.chatController.transmitir_resposta", side_effect=falhar):
@@ -171,7 +170,8 @@ class StreamingTests(unittest.TestCase):
                                   headers={"Accept": "text/event-stream"})
                 eventos = [json.loads(p.removeprefix("data: ")) for p in res.text.strip().split("\n\n")]
         self.assertEqual(eventos[-1]["type"], "error")
-        self.assertEqual(eventos[-1]["veredito"]["code"], "INCONCLUSIVO")
+        self.assertEqual(eventos[-1]['code'], 'analysis_unavailable')
+        self.assertNotIn('veredito', eventos[-1])
 
 
 if __name__ == "__main__":
