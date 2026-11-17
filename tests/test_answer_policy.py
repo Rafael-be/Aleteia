@@ -20,6 +20,18 @@ def review(**updates):
 SEARCHES = [{'intent': i, 'executed': True} for i in ('support', 'contradiction', 'neutral', 'primary')]
 
 
+def recovered_searches(*, unavailable=(), extra_urls=False):
+    """Provider URLs plus the material that _documents actually recovered."""
+    return [
+        {'intent': intent, 'executed': True, 'status': 'completed',
+         'sources': [f'https://example.org/{intent}', f'https://backup.example/{intent}'] if extra_urls
+                    else [f'https://example.org/{intent}'],
+         'excerpts': [],
+         'usable_sources': [] if intent in unavailable else [f'https://example.org/{intent}']}
+        for intent in ('support', 'contradiction', 'neutral', 'primary')
+    ]
+
+
 class AnswerPolicyTests(unittest.TestCase):
     def test_general_medical_causal_question_gets_answer_and_both_indices(self):
         c = claim(high_risk=True, personal_advice=False, relation_type='causal')
@@ -58,9 +70,21 @@ class AnswerPolicyTests(unittest.TestCase):
         self.assertIsNone(r['ess'])
 
     def test_complete_required_research_keeps_directional_result(self):
-        result = score_answer(claim(), [evidence()], SEARCHES, review(), True)
+        result = score_answer(claim(), [evidence()], recovered_searches(), review(), True)
         self.assertTrue(result['research_complete'])
         self.assertEqual(result['missing_research_objectives'], [])
+        self.assertEqual(result['state'], 'STRONGLY_SUPPORTED')
+
+    def test_provider_urls_without_recovered_documents_block_directional_result(self):
+        result = score_answer(claim(), [evidence()], recovered_searches(unavailable=('contradiction',)), review(), True)
+        self.assertFalse(result['research_complete'])
+        self.assertEqual(result['missing_research_objectives'], ['contradiction'])
+        self.assertEqual(result['state'], 'INCONCLUSIVE')
+        self.assertIn('RETRIEVAL_INCOMPLETE', result['reasons'])
+
+    def test_one_recovered_source_is_enough_when_other_urls_from_same_objective_fail(self):
+        result = score_answer(claim(), [evidence()], recovered_searches(extra_urls=True), review(), True)
+        self.assertTrue(result['research_complete'])
         self.assertEqual(result['state'], 'STRONGLY_SUPPORTED')
 
     def test_failed_required_search_blocks_directional_result(self):
@@ -77,13 +101,13 @@ class AnswerPolicyTests(unittest.TestCase):
         self.assertIn('RETRIEVAL_INCOMPLETE', result['reasons'])
 
     def test_mixed_claim_completeness_cannot_upgrade_public_verdict(self):
-        complete = score_answer(claim('complete'), [evidence()], SEARCHES,
+        complete = score_answer(claim('complete'), [evidence()], recovered_searches(),
                                 review(claim_id='complete'), True)
         partial_searches = [
             {'objectives': ['primary', 'neutral'], 'executed': True, 'status': 'completed',
-             'sources': ['https://example.org/primary']},
+             'sources': ['https://example.org/primary'], 'usable_sources': ['https://example.org/primary']},
             {'objectives': ['contradiction', 'support'], 'executed': False, 'status': 'budget_skipped',
-             'sources': []},
+             'sources': [], 'usable_sources': []},
         ]
         partial_claim = claim('partial', critical=False)
         partial = score_answer(partial_claim, [evidence()], partial_searches,
@@ -235,3 +259,32 @@ class AnswerPolicyTests(unittest.TestCase):
         self.assertTrue(all(not d['url'].endswith('.pdf') for d in docs))
         self.assertLessEqual(sum(len(d['text']) for d in docs), 20000)
         self.assertEqual(len({d['url'].split('/')[2] for d in docs[:4]}), 4)
+
+    def test_document_recovery_marks_only_the_search_that_produced_usable_material(self):
+        available, blocked = 'https://available.example/report', 'https://blocked.example/report'
+        searches = [
+            {'sources': [available], 'excerpts': []},
+            {'sources': [blocked], 'excerpts': []},
+        ]
+
+        def fetch(url, deadline):
+            if url == blocked:
+                raise ValueError('blocked')
+            return {**fixtures.document(), 'url': url, 'final_url': url, 'hash': url}
+
+        with patch('src.services.analysis_service.fetch_document', side_effect=fetch):
+            docs, failures = _documents(searches, 999999999, [claim()])
+        self.assertEqual([doc['url'] for doc in docs], [available])
+        self.assertEqual(searches[0]['usable_sources'], [available])
+        self.assertEqual(searches[1]['usable_sources'], [])
+        self.assertEqual(failures[0]['url'], blocked)
+
+    def test_recoverable_cited_excerpt_counts_as_usable_material(self):
+        url = 'https://blocked.example/report'
+        searches = [{'sources': [url], 'excerpts': [{'url': url, 'title': 'Relatório', 'text': fixtures.TEXT}]}]
+        with patch('src.services.analysis_service.fetch_document', side_effect=ValueError('blocked')):
+            docs, failures = _documents(searches, 999999999, [claim()])
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]['retrieval_kind'], 'provider_excerpt')
+        self.assertEqual(searches[0]['usable_sources'], [url])
+        self.assertEqual(failures[0]['url'], url)

@@ -19,8 +19,9 @@ def research_completion(searches):
     """Return planned objectives that did not complete with usable search output.
 
     The planner records every required objective, including those skipped by a
-    budget cap.  A provider action is not enough: an explicitly failed,
-    unobserved, or source-less action cannot justify a directional verdict.
+    budget cap. A provider URL is not enough: production searches carry
+    ``usable_sources`` only after a document snapshot or cited excerpt was
+    recovered for that exact search record.
     Minimal legacy fixtures omit status/source fields and remain accepted as a
     completed search when they explicitly set ``executed``.
     """
@@ -32,8 +33,10 @@ def research_completion(searches):
         for search in candidates:
             if not search.get('executed') or search.get('status') in {'failed', 'unobserved', 'budget_skipped'}:
                 continue
-            has_observed_sources = 'sources' not in search and 'excerpts' not in search
-            has_usable_output = bool(search.get('sources') or search.get('excerpts'))
+            has_observed_sources = ('sources' not in search and 'excerpts' not in search
+                                    and 'usable_sources' not in search)
+            has_usable_output = (bool(search['usable_sources']) if 'usable_sources' in search
+                                 else bool(search.get('sources') or search.get('excerpts')))
             if has_observed_sources or has_usable_output:
                 completed = True
                 break
@@ -51,7 +54,7 @@ def apply_research_gate(result, searches):
         result['state'] = 'INCONCLUSIVE'
         result['preliminary'] = True
         if 'RETRIEVAL_INCOMPLETE' not in result['reasons']:
-            result['reasons'].append('RETRIEVAL_INCOMPLETE')
+            result['reasons'].insert(0, 'RETRIEVAL_INCOMPLETE')
     return result
 
 

@@ -470,6 +470,12 @@ def _documents(searches, deadline, claims=None, limit=MAX_DOCUMENTS):
                          'snapshot_hash': sha256(text.encode()).hexdigest(),
                          'truncated': doc['truncated'] or len(text) < len(doc['text'])})
         remaining -= len(text)
+    # A provider URL is merely a retrieval candidate. Keep the outcome tied to
+    # the objective that returned it so another objective's document cannot
+    # silently satisfy this one's completeness gate.
+    recovered_urls = {doc['url'] for doc in selected if doc.get('text')}
+    for search in searches:
+        search['usable_sources'] = [url for url in search['sources'] if url in recovered_urls]
     return selected, failures
 
 
@@ -806,8 +812,10 @@ def _analyze(client, model, message, history=None, ledger=None):
     results = [score_answer(c, [e for e in evidence if e['claim_id'] == c.id],
                           [s for s in searches if s['claim_id'] == audit.get('scope_lineage', {}).get(c.id, c.id)], reviews.get(c.id),
                           extraction.decomposition_complete and not extraction.omitted_material) for c in claims]
-    incomplete = (extraction.omitted_material or not extraction.decomposition_complete
-                  or any(not result.get('research_complete', True) for result in results))
+    # Research incompleteness is already represented by each result's public
+    # INCONCLUSIVE state. Keep its measured ESS/ACS visible; this global flag
+    # remains reserved for a structurally incomplete claim extraction.
+    incomplete = extraction.omitted_material or not extraction.decomposition_complete
     target_pairs = [(c, r) for c, r in zip(claims, results) if c.verification_target]
     # Historical corrections explain the answer; they cannot dilute the verdict
     # on the proposition actually submitted for verification.
