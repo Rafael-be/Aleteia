@@ -1,5 +1,13 @@
 # AleteIA
 
+## Algoritmo de verificação
+
+O chat utiliza o Aleteia Core V2: triagem local, buscas em quatro direções,
+evidências rastreáveis e cálculo determinístico de ESS/ACS, apresentados em
+barras separadas do Markdown. Os indicadores são experimentais e não são
+probabilidades de verdade/acerto. Consulte [implementação, limites e operação](docs/CORE_V2_IMPLEMENTACAO.md)
+e o [projeto metodológico](docs/ALGORITMO_ALETEIA_CORE_V2.md).
+
 ## Extensão para Chrome
 
 O chat também pode ser aberto no painel lateral, mantendo a aba atual visível.

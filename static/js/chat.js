@@ -18,8 +18,68 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnNovaConversa  = document.getElementById("btnNovaConversa");
   const mainContent      = document.getElementById("mainContent");
   const chatSubtitle     = document.getElementById("chatSubtitle");
+  const seletorModelo = document.getElementById('seletorModelo');
+  const botaoModelo = document.getElementById('botaoModelo');
+  const nomeModelo = document.getElementById('nomeModelo');
+  const menuModelos = document.getElementById('menuModelos');
+  const opcoesModelo = [document.getElementById('modeloBasico'), document.getElementById('modeloExperimental')];
+  const avisoModoExperimental = document.getElementById("avisoModoExperimental");
 
   if (!textarea || !btnEnviar) return;
+  let modeloSelecionado = 'standard';
+
+  function fecharModelos(devolverFoco = false) {
+    if (menuModelos) menuModelos.hidden = true;
+    botaoModelo?.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) botaoModelo?.focus();
+  }
+
+  function selecionarModelo(mode) {
+    modeloSelecionado = mode;
+    const experimental = mode === 'experimental';
+    if (nomeModelo) nomeModelo.textContent = experimental ? 'Experimental' : 'Básico';
+    botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Experimental' : 'Básico'}. Escolher modelo.`);
+    opcoesModelo.forEach((opcao, index) => opcao?.setAttribute('aria-checked', String(experimental === (index === 1))));
+    if (avisoModoExperimental) avisoModoExperimental.hidden = !experimental;
+  }
+
+  function abrirModelos() {
+    if (!botaoModelo || botaoModelo.disabled || !menuModelos) return;
+    menuModelos.hidden = false;
+    botaoModelo.setAttribute('aria-expanded', 'true');
+    opcoesModelo[modeloSelecionado === 'experimental' ? 1 : 0]?.focus();
+  }
+
+  function bloquearModelo(bloqueado) {
+    if (botaoModelo) botaoModelo.disabled = bloqueado;
+    opcoesModelo.forEach((opcao) => { if (opcao) opcao.disabled = bloqueado; });
+    if (bloqueado) fecharModelos();
+  }
+
+  selecionarModelo('standard');
+  fecharModelos();
+  botaoModelo?.addEventListener('click', () => menuModelos?.hidden ? abrirModelos() : fecharModelos());
+  botaoModelo?.addEventListener('keydown', (event) => {
+    if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); abrirModelos(); }
+    if (event.key === 'Escape') fecharModelos();
+  });
+  opcoesModelo.forEach((opcao, index) => opcao?.addEventListener('click', () => {
+    if (botaoModelo?.disabled) return;
+    selecionarModelo(index === 1 ? 'experimental' : 'standard');
+    fecharModelos(true);
+  }));
+  menuModelos?.addEventListener('keydown', (event) => {
+    const index = event.target === opcoesModelo[1] ? 1 : 0;
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape', 'Tab'].includes(event.key)) {
+      if (event.key === 'Tab') { fecharModelos(true); return; }
+      event.preventDefault();
+      if (event.key === 'Escape') { fecharModelos(true); return; }
+      opcoesModelo[event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1-index]?.focus();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (seletorModelo && !seletorModelo.contains(event.target)) fecharModelos();
+  });
 
   /* ── ID da conversa: persiste enquanto a aba estiver aberta. ── */
   let conversaId = sessionStorage.getItem("conversaId");
@@ -44,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     requisicaoAtiva = null;
     textarea.disabled = false;
     btnEnviar.disabled = !textarea.value.trim();
+    bloquearModelo(false);
   }
 
   /* =====================================================
@@ -58,7 +119,141 @@ document.addEventListener("DOMContentLoaded", () => {
     "FALSO":                   { label: "Desmentida",  classe: "veracidade-vermelha"  },
     "PARCIALMENTE VERDADEIRO": { label: "Parcial",     classe: "veracidade-amarela"   },
     "INCONCLUSIVO":            { label: "Inconclusivo", classe: "veracidade-neutra"   },
+    "STRONGLY_SUPPORTED": { label: "Fortemente sustentada", classe: "veracidade-verde" },
+    "PREDOMINANTLY_SUPPORTED": { label: "Predominantemente sustentada", classe: "veracidade-verde" },
+    "STRONGLY_CONTRADICTED": { label: "Fortemente contraditada", classe: "veracidade-vermelha" },
+    "PREDOMINANTLY_CONTRADICTED": { label: "Predominantemente contraditada", classe: "veracidade-vermelha" },
+    "CONTESTED": { label: "Evidências em conflito", classe: "veracidade-amarela" },
+    "NO_SUPPORT_FOUND": { label: "Sem sustentação nas fontes consultadas", classe: "veracidade-amarela" },
+    "MIXED": { label: "Parcialmente sustentada · contextos distintos", classe: "veracidade-amarela" },
+    "INCONCLUSIVE": { label: "Inconclusiva", classe: "veracidade-neutra" },
+    "NOT_VERIFIABLE": { label: "Não verificável", classe: "veracidade-neutra" },
+    "HUMAN_REVIEW_REQUIRED": { label: "Requer revisão humana", classe: "veracidade-amarela" },
   };
+
+  const MOTIVOS = {
+    SEARCH_WITHOUT_SUPPORT: "nenhuma confirmação localizada; isso não prova que o fato nunca ocorreu",
+    DIRECTION_UNDETERMINED: "o ESS está no ponto neutro; o material não permite determinar uma direção",
+    PROVISIONAL_DIRECTION: "direção provisória das evidências; atributos incompletos reduzem a qualidade da avaliação",
+    INSUFFICIENT_EVIDENCE: "evidências insuficientes",
+    MATERIAL_COVERAGE_INCOMPLETE: "faltam elementos materiais",
+    ATTRIBUTES_MISSING: "atributos não observados",
+    CONTEXT_INCOMPLETE: "contexto incompleto",
+    DECOMPOSITION_INCOMPLETE: "alegações incompletas",
+    PROVENANCE_UNCERTAIN: "origem das evidências incerta",
+    RETRIEVAL_INCOMPLETE: "busca incompleta",
+    REQUIREMENTS_NOT_MET: "requisitos não atendidos",
+    DIMENSIONS_MISSING: "dimensões não medidas",
+    MULTIPLE_CLAIMS: "consulte cada alegação",
+    NOT_VERIFIABLE: "alegação não verificável",
+    LOW_ACS: "qualidade limitada nos aspectos medidos",
+    HUMAN_REVIEW_REQUIRED: "revisão humana necessária",
+    DIRECT_EVIDENCE_REQUIRED: "faltam trechos de documentos inspecionados diretamente",
+    PROVIDER_EXCERPT_ONLY: "apenas sínteses citadas da busca; páginas não inspecionadas",
+    PARTIAL_PROVIDER_EXCERPTS: "parte do material é síntese citada da busca",
+    LIMITED_INDEPENDENT_SOURCES: "poucas fontes independentes",
+    QUESTION_NOT_RESOLVED: "a pesquisa ainda não delimitou uma proposição única para calcular o ESS",
+    PARTIAL_COVERAGE: "resposta baseada nos elementos verificados; há detalhes adicionais não cobertos",
+    ANSWER_OVERREACH: "a formulação da resposta exige cautela adicional",
+    UNVERIFIED_COUNTEREVIDENCE: "há contraponto em síntese cuja página não pôde ser verificada",
+    TARGET_ALIGNMENT: "o alvo avaliado não coincidiu com a afirmação enviada",
+    CONCLUSION_ALIGNMENT: "a conclusão e a direção das evidências precisam de revisão",
+  };
+
+  function adicionarMetricas(container, metricas, alvo = "") {
+    const grupo = document.createElement("div"); grupo.className = "metricas-circulares";
+    for (const m of (Array.isArray(metricas) ? metricas : []).slice(0, 2)) {
+      if (!["ESS", "ACS"].includes(m.id)) continue;
+      const valido = m.valid === true && typeof m.value === "number" && Number.isFinite(m.value) && m.value >= 0 && m.value <= 100;
+      const limite = !valido && m.id === "ACS" && m.measurement === "upper_bound" && typeof m.upper_bound === "number" && Number.isFinite(m.upper_bound) && m.upper_bound >= 0 && m.upper_bound <= 100;
+      const n = limite ? m.upper_bound : valido ? m.value : null;
+      const item = document.createElement("div"); item.className = "veredito-metrica";
+      const circulo = document.createElement("div");
+      circulo.className = `metrica-circulo metrica-${m.id.toLowerCase()}${n === null ? " metrica-indisponivel" : ""}`;
+      circulo.value = n;
+      const cor = n === null ? "#94a3b8" : n < 40 ? "#dc4b4b" : n < 70 ? "#b88312" : "#26845b";
+      circulo.style.background = `conic-gradient(${cor} ${(n ?? 0) * 3.6}deg, rgba(148,163,184,.22) 0deg)`;
+      circulo.setAttribute("role", n === null ? "img" : "meter");
+      const observado = m.id === "ESS" && m.measurement === "observed_support";
+      const indeterminado = m.id === "ESS" && m.measurement === "undetermined_support";
+      const provisorio = m.id === "ESS" && m.measurement === "provisional_direction";
+      const significado = observado ? "sustentação encontrada nas fontes consultadas; não é probabilidade de falsidade" : m.id === "ESS" ? `sustentação da afirmação${alvo ? `: ${alvo}` : " avaliada"}` : "qualidade da análise";
+      circulo.setAttribute("aria-label", `${m.id}, ${significado}: ${n === null ? "indisponível" : `${limite ? "no máximo " : ""}${n} de 100`}`);
+      if (n !== null) {
+        circulo.setAttribute("aria-valuemin", "0"); circulo.setAttribute("aria-valuemax", "100"); circulo.setAttribute("aria-valuenow", String(n));
+      }
+      const valor = document.createElement("strong");
+      valor.textContent = n === null ? "—" : `${limite ? "≤ " : ""}${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`;
+      const centro = document.createElement("div"); centro.className = "metrica-circulo-centro";
+      centro.appendChild(valor);
+      const escala = document.createElement("small"); escala.textContent = n === null ? "Indisponível" : "%";
+      centro.appendChild(escala); circulo.appendChild(centro); item.appendChild(circulo);
+      const rotulo = document.createElement("strong"); rotulo.textContent = m.id; item.appendChild(rotulo);
+      const ajuda = document.createElement("small");
+      ajuda.textContent = n === null ? (MOTIVOS[m.reason] || "medição não disponível") : indeterminado ? "Ponto neutro da escala; sustentação indeterminada" : provisorio ? "Direção provisória; atributos incompletos" : observado ? "Nenhuma sustentação localizada; não significa falsidade comprovada" : limite ? "Limite superior; dimensões não medidas" : m.id === "ACS" ? "Qualidade da análise" : n < 40 ? "Evidências contrárias à afirmação" : n < 60 ? "Suporte intermediário à afirmação" : "Evidências favoráveis à afirmação";
+      item.appendChild(ajuda); grupo.appendChild(item);
+    }
+    container.appendChild(grupo);
+  }
+
+  function adicionarFontes(container, veredito) {
+    if (!Array.isArray(veredito.source_details) || !veredito.source_details.length) return;
+    const detalhes = document.createElement("details"); detalhes.className = "analise-fontes";
+    const titulo = document.createElement("summary"); titulo.textContent = "Análise das fontes";
+    detalhes.appendChild(titulo);
+    for (const fonte of veredito.source_details.slice(0, 32)) {
+      const item = document.createElement("article"); item.className = "fonte-avaliada";
+      const rotulo = document.createElement("strong");
+      const direcao = fonte.stance > 0 ? "Sustenta a afirmação" : fonte.stance < 0 ? "Contradiz a afirmação" : "Neutra";
+      rotulo.textContent = fonte.retrieval_kind === "provider_excerpt" ? `Síntese citada da busca · ${direcao}` : direcao;
+      item.appendChild(rotulo);
+      try {
+        const url = new URL(fonte.url);
+        if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password) {
+          const link = document.createElement("a"); link.href = url.href; link.textContent = fonte.title || url.hostname;
+          link.target = "_blank"; link.rel = "noopener noreferrer"; item.appendChild(link);
+        }
+      } catch (_) { /* Invalid URLs are never rendered as links. */ }
+      for (const texto of [fonte.quote, fonte.rationale]) {
+        const p = document.createElement("p"); p.textContent = texto || ""; item.appendChild(p);
+      }
+      detalhes.appendChild(item);
+    }
+    container.appendChild(detalhes);
+  }
+
+  function adicionarCatalogo(container, fontes) {
+    if (!Array.isArray(fontes) || !fontes.length) return;
+    const vistos = new Set();
+    fontes = fontes.filter((fonte) => {
+      if (!['qualified', 'qualified_excerpt', 'cited'].includes(fonte.status)) return false;
+      try {
+        const url = new URL(fonte.url);
+        for (const key of [...url.searchParams.keys()]) if (/^utm_/i.test(key) || ['fbclid','gclid','msclkid'].includes(key)) url.searchParams.delete(key);
+        url.hash = ''; url.searchParams.sort();
+        const key = url.hostname.replace(/^www\./, '') + url.pathname.replace(/\/$/, '') + url.search;
+        if (vistos.has(key)) return false;
+        vistos.add(key); return true;
+      } catch (_) { return false; }
+    }).slice(0, 12);
+    if (!fontes.length) return;
+    const gaveta = document.createElement('details'); gaveta.className = 'catalogo-fontes';
+    const titulo = document.createElement('summary'); titulo.textContent = `Principais fontes (${fontes.length})`;
+    gaveta.appendChild(titulo);
+    const estados = { qualified: 'Trecho avaliado', qualified_excerpt: 'Síntese avaliada · página não inspecionada', cited: 'Citada na resposta' };
+    for (const fonte of fontes) {
+      try {
+        const url = new URL(fonte.url);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) continue;
+        const linha = document.createElement('p'); linha.className = 'fonte-catalogo';
+        const link = document.createElement('a'); link.href = url.href; link.textContent = fonte.title || url.hostname;
+        link.target = '_blank'; link.rel = 'noopener noreferrer'; linha.appendChild(link);
+        const estado = document.createElement('small'); estado.textContent = estados[fonte.status] || 'Fonte localizada';
+        linha.appendChild(estado); gaveta.appendChild(linha);
+      } catch (_) { /* No links from invalid schemes. */ }
+    }
+    container.appendChild(gaveta);
+  }
 
   /* ── Liga/desliga o layout "conversa ativa" (header compacto + input fixo embaixo) ── */
   function ativarLayoutDeConversa() {
@@ -142,6 +337,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const dados = parseRespostaIA(textoCru);
     const info = MAPA_VEREDICTO[veredito?.code];
     if (info) Object.assign(dados, info);
+    if (veredito?.code === "INCONCLUSIVE" && veredito?.assessment_level === "preliminary") {
+      dados.label = "Análise preliminar · evidências limitadas";
+    }
     const bloco = document.createElement("div");
     bloco.className = "resposta-ia";
 
@@ -155,6 +353,10 @@ document.addEventListener("DOMContentLoaded", () => {
       preencherTexto(corpo, dados.analise);
     }
     bloco.appendChild(corpo);
+    if (veredito?.mode === 'experimental' || veredito?.version === 2) {
+      const modo = document.createElement('small'); modo.className = 'resposta-modo';
+      modo.textContent = 'Modo experimental'; bloco.appendChild(modo);
+    }
 
     if (dados.fontes && typeof respostaFormatada?.corpo_html !== "string") {
       const fontesEl = document.createElement("p");
@@ -174,17 +376,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const linhaVeracidade = document.createElement("p");
     linhaVeracidade.className = "veracidade-label";
-    linhaVeracidade.append("Veracidade: ");
+    linhaVeracidade.append(veredito?.version === 2 ? "Avaliação: " : "Veracidade: ");
     const valorVeredito = document.createElement("span");
     valorVeredito.className = `veracidade-valor ${dados.classe}`;
     valorVeredito.textContent = dados.label;
     linhaVeracidade.appendChild(valorVeredito);
     bloco.appendChild(linhaVeracidade);
-    for (const metrica of veredito?.metrics || []) {
-      const linha = document.createElement("p");
-      linha.className = "veredito-metrica";
-      linha.textContent = `${metrica.label}: ${metrica.value}${metrica.unit || ""}`;
-      bloco.appendChild(linha);
+    if (veredito?.version === 2) {
+      const painel = document.createElement("section");
+      painel.className = "painel-indicadores";
+      painel.setAttribute("aria-label", "Indicadores da análise");
+      if (veredito.retrieval) {
+        const pesquisa = document.createElement('p'); pesquisa.className = 'pesquisa-resumo';
+        const r = veredito.retrieval;
+        const numero = (n) => Number.isInteger(n) && n >= 0 ? n : 0;
+        pesquisa.textContent = `Pesquisa realizada: ${numero(r.queries_executed)} consultas · ${numero(r.sources_found)} fontes localizadas · ${numero(r.documents_available)} materiais avaliados`;
+        painel.appendChild(pesquisa);
+      }
+      if (veredito.scoped_metrics && veredito.claim_details?.length > 1) {
+        for (const claim of veredito.claim_details.slice(0, 8)) {
+          const escopo = document.createElement('div'); escopo.className = 'metricas-escopo';
+          const titulo = document.createElement('p'); titulo.textContent = claim.text;
+          escopo.appendChild(titulo); adicionarMetricas(escopo, claim.metrics, claim.text); painel.appendChild(escopo);
+        }
+      } else adicionarMetricas(painel, veredito.metrics, veredito.claim_details?.length === 1 ? veredito.claim_details[0].text : promptOrigem);
+      const nota = document.createElement("p");
+      nota.className = "metrica-nota";
+      nota.textContent = "ESS mede a sustentação da afirmação avaliada; ACS, a qualidade da análise. Não são probabilidades calibradas.";
+      painel.appendChild(nota);
+      adicionarFontes(painel, veredito);
+      adicionarCatalogo(painel, veredito.source_catalog);
+      if (veredito.claim_details?.length) {
+        const detalhes = document.createElement("details");
+        const resumo = document.createElement("summary");
+        resumo.textContent = "Alegações e limites da análise";
+        detalhes.appendChild(resumo);
+        for (const claim of veredito.claim_details.slice(0, 8)) {
+          const item = document.createElement("div"); item.className = "metrica-alegacao";
+          const titulo = document.createElement("p"); titulo.textContent = claim.text;
+          item.appendChild(titulo);
+          const estado = document.createElement("p");
+          estado.textContent = (MAPA_VEREDICTO[claim.state]?.label || "Inconclusiva") +
+            (claim.preliminary ? " · conclusão provisória" : "");
+          item.appendChild(estado);
+          if (claim.proof_basis === 'necessary_element_refuted') {
+            const prova = document.createElement('p'); prova.className = 'metrica-nota';
+            prova.textContent = 'Uma condição necessária da alegação foi diretamente contraditada. Não é preciso comprovar todos os detalhes históricos para refutá-la.';
+            item.appendChild(prova);
+          }
+          if (!veredito.scoped_metrics && veredito.claim_details.length > 1) adicionarMetricas(item, claim.metrics, claim.text);
+          if (claim.reasons?.length) {
+            const motivos = document.createElement("p"); motivos.className = "metrica-nota";
+            motivos.textContent = claim.reasons.map((r) => MOTIVOS[r] || "requisito pendente").join("; ");
+            item.appendChild(motivos);
+          }
+          detalhes.appendChild(item);
+        }
+        painel.appendChild(detalhes);
+      }
+      bloco.appendChild(painel);
+    } else if (veredito?.mode !== 'standard') {
+      const nota = document.createElement("small");
+      nota.className = "metrica-nota";
+      nota.textContent = "ESS e ACS não foram calculados nesta versão da resposta.";
+      bloco.appendChild(nota);
     }
 
     const acoes = document.createElement("div");
@@ -198,7 +453,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ações: copiar / regenerar / falar
     acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
-      navigator.clipboard?.writeText(textoCru || "");
+      const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
+        `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}%` :
+          m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}% (limite superior)` : "indisponível"}`).join("\n") +
+        "\nESS: sustentação da afirmação avaliada. ACS: qualidade da análise. Não são probabilidades." : "";
+      navigator.clipboard?.writeText((textoCru || "") + indicadores);
     });
 
     acoes.querySelector('[data-acao="falar"]').addEventListener("click", () => {
@@ -246,6 +505,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (requisicaoAtiva) return;
     const controle = new AbortController();
     requisicaoAtiva = controle;
+    const mode = modeloSelecionado;
+    bloquearModelo(true);
     const idDaConversa = conversaId;
     textarea.disabled = true;
     btnEnviar.disabled = true;
@@ -272,7 +533,7 @@ document.addEventListener("DOMContentLoaded", () => {
           "Content-Type": "application/json",
           "Accept": "text/event-stream"
         },
-        body: JSON.stringify({ conversa_id: idDaConversa, prompt }),
+        body: JSON.stringify({ conversa_id: idDaConversa, prompt, mode }),
         signal: controle.signal
       });
 
@@ -280,7 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) {
         const data = await res.json();
         throw new Error(res.status === 429
-          ? "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã."
+          ? (data.code === "rate_limited" ? "Aguarde antes de enviar outra pergunta." : "Você atingiu o limite diário de uso da Aleteia. Tente novamente amanhã.")
           : data.error || "Não foi possível obter resposta.");
       }
       await consumirEventos(res, (evento) => {
@@ -296,7 +557,10 @@ document.addEventListener("DOMContentLoaded", () => {
           areaConversa.scrollTop = areaConversa.scrollHeight;
         }
         if (evento.type === "verdict") veredito = evento.veredito;
-        if (evento.type === "error") throw new Error(evento.message);
+        if (evento.type === "error") {
+          veredito = null;
+          throw new Error(evento.message);
+        }
         if (evento.type === "done") {
           concluida = true;
           parcial.remove();
@@ -316,8 +580,19 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof loadingBubble !== 'undefined' && loadingBubble && loadingBubble.parentNode) loadingBubble.remove();
       if (!concluida) {
         parcial.remove();
-        adicionarRespostaIA(texto, prompt, htmlParcial ? { corpo_html: htmlParcial } : null,
-          veredito || { code: "INCONCLUSIVO", metrics: [] });
+        if (texto.trim()) {
+          const incompleta = document.createElement("div");
+          incompleta.className = "resposta-ia resposta-incompleta";
+          const aviso = document.createElement("p");
+          aviso.textContent = "Resposta interrompida — análise não concluída.";
+          const corpo = document.createElement("div");
+          corpo.className = "resposta-corpo";
+          if (typeof htmlParcial === "string") corpo.innerHTML = htmlParcial;
+          else preencherTexto(corpo, texto);
+          incompleta.appendChild(aviso);
+          incompleta.appendChild(corpo);
+          areaConversa.appendChild(incompleta);
+        }
       }
       adicionarBolha(err.message || "Não foi possível obter resposta. Tente novamente.", "sistema");
     } finally {
@@ -325,6 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (requisicaoAtiva === controle) {
         requisicaoAtiva = null;
         textarea.disabled = false;
+        bloquearModelo(false);
         btnEnviar.disabled = !textarea.value.trim();
         btnEnviar.classList.toggle("active", !btnEnviar.disabled);
         textarea.focus();
