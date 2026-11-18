@@ -1,5 +1,6 @@
 import { chamarApi } from "./firebase-init.js";
 import { consumirEventos } from "./chat-stream.js";
+import { mostrarFeedback } from "./feedback.js";
 
 /* =====================================================
    chat.js — Lógica exclusiva do chat
@@ -452,12 +453,18 @@ document.addEventListener("DOMContentLoaded", () => {
     bloco.appendChild(acoes);
 
     // Ações: copiar / regenerar / falar
-    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
+    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", async () => {
       const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
         `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}%` :
           m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}% (limite superior)` : "indisponível"}`).join("\n") +
         "\nESS: sustentação da afirmação avaliada. ACS: qualidade da análise. Não são probabilidades." : "";
-      navigator.clipboard?.writeText((textoCru || "") + indicadores);
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard indisponível");
+        await navigator.clipboard.writeText((textoCru || "") + indicadores);
+        mostrarFeedback("Resposta copiada.", "success");
+      } catch {
+        mostrarFeedback("Não foi possível copiar a resposta. Verifique a permissão do navegador e tente novamente.");
+      }
     });
 
     acoes.querySelector('[data-acao="falar"]').addEventListener("click", () => {
