@@ -81,7 +81,7 @@ vm.runInNewContext(source, {
   window,
   sessionStorage, chaveRascunhoLogin, authPronta: Promise.resolve({}),
   crypto: { randomUUID() { return "conversa"; } },
-  URL, URLSearchParams, AbortController, Event, console,
+  URL, URLSearchParams, AbortController, Event, console, setTimeout, clearTimeout,
   chamarApi: async (_, options) => {
     if (options?.body) requests.push(JSON.parse(options.body));
     sinalDaRequisicao = options?.signal;
@@ -159,7 +159,6 @@ vm.runInNewContext(source, {
   },
 });
 initialize();
-await Promise.resolve();
 assert.equal(ids.nomeModelo.textContent, 'Básico', 'O seletor deve iniciar no modelo básico');
 assert.equal(ids.modeloBasico.attributes['aria-checked'], 'true');
 assert.equal(ids.menuModelos.hidden, true);
@@ -273,7 +272,7 @@ assert.equal(ids.botaoModelo.attributes['aria-expanded'], 'true');
 ids.menuModelos.listeners.keydown({ key: 'ArrowDown', target: ids.modeloBasico, preventDefault() {} });
 assert.equal(ids.modeloExperimental.focused, true);
 ids.modeloExperimental.listeners.click();
-assert.equal(ids.nomeModelo.textContent, 'Experimental');
+assert.equal(ids.nomeModelo.textContent, 'Complexo');
 assert.equal(ids.modeloExperimental.attributes['aria-checked'], 'true');
 assert.equal(ids.modeloBasico.attributes['aria-checked'], 'false');
 assert.equal(ids.menuModelos.hidden, true);
@@ -283,19 +282,19 @@ ids.promptInput.value = 'Verificar no modo experimental'; ids.btnEnviar.disabled
 ids.btnEnviar.listeners.click(); await new Promise(setImmediate);
 assert.equal(requests.at(-1).mode, 'experimental');
 assert.ok(descendants(area.children.filter((c) => c.className === 'resposta-ia').at(-1))
-  .some((n) => n.className === 'resposta-modo' && n.textContent === 'Modo experimental'));
+  .some((n) => n.className === 'resposta-modo' && n.textContent === 'Modo complexo'));
 
 ids.botaoModelo.listeners.click();
 ids.menuModelos.listeners.keydown({ key: 'Escape', target: ids.modeloExperimental, preventDefault() {} });
 assert.equal(ids.menuModelos.hidden, true);
-assert.equal(ids.nomeModelo.textContent, 'Experimental', 'Escape fecha sem alterar a escolha');
+assert.equal(ids.nomeModelo.textContent, 'Complexo', 'Escape fecha sem alterar a escolha');
 ids.botaoModelo.listeners.click();
 documentListeners.click({ target: ids.promptInput });
 assert.equal(ids.menuModelos.hidden, true, 'Clique fora deve fechar o seletor');
 ids.botaoModelo.listeners.click();
 ids.modeloBasico.listeners.click();
-assert.equal(ids.nomeModelo.textContent, 'Básico');
-assert.equal(ids.avisoModoExperimental.hidden, true);
+assert.equal(ids.nomeModelo.textContent, 'Rápido');
+assert.equal(ids.avisoModoExperimental.classList.contains('visivel'), false);
 scenario = 'standard';
 ids.promptInput.value = 'Voltar ao modo padrão'; ids.btnEnviar.disabled = false;
 ids.btnEnviar.listeners.click(); await new Promise(setImmediate);
