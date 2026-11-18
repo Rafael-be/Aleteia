@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AleteIA — Chat</title>
+  <title>{{ seo.title }}</title>
+  <meta name="description" content="{{ seo.description }}">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" sizes="512x512" href="{{ asset_url('images/logo-favicon.png') }}">
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -111,6 +114,17 @@
 
     <!-- Input: sempre fixo na parte inferior da área principal -->
     <div class="chat-input-wrap">
+      <section id="avisoModoExperimental" class="aviso-modo-experimental" role="status" aria-live="polite" hidden>
+        <div class="aviso-modo-experimental-conteudo">
+          <span class="aviso-modo-experimental-icone" aria-hidden="true">i</span>
+          <div>
+            <strong class="aviso-modo-experimental-titulo">Modo experimental</strong>
+            <p>O algoritmo experimental está em fase de desenvolvimento e pode gerar erros e respostas inconsistentes.</p>
+          </div>
+          <button type="button" class="aviso-modo-experimental-fechar" aria-label="Fechar aviso do modo experimental">×</button>
+        </div>
+        <span class="aviso-modo-experimental-progresso" aria-hidden="true"></span>
+      </section>
       <div class="input-box">
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
         <div class="input-actions">
@@ -119,17 +133,17 @@
             <div class="seletor-modelo" id="seletorModelo">
               <button type="button" id="botaoModelo" class="botao-modelo" aria-haspopup="menu" aria-expanded="false" aria-controls="menuModelos">
                 <span class="modelo-prefixo">Modelo</span>
-                <strong id="nomeModelo">Básico</strong>
+                <strong id="nomeModelo">Rápido</strong>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
               </button>
               <div id="menuModelos" class="menu-modelos" role="menu" aria-label="Escolher modelo de resposta" hidden>
                 <p class="menu-modelos-titulo" role="presentation">Escolha como a Aleteia responde</p>
                 <button type="button" id="modeloBasico" class="opcao-modelo" role="menuitemradio" aria-checked="true">
-                  <span class="opcao-modelo-titulo">Básico <span class="modelo-selo">Padrão</span><span class="modelo-check" aria-hidden="true">✓</span></span>
-                  <span class="opcao-modelo-descricao">Resposta direta com análise e fontes, sem os indicadores ESS e ACS.</span>
+                  <span class="opcao-modelo-titulo">Rápido <span class="modelo-selo">Padrão</span><span class="modelo-check" aria-hidden="true">✓</span></span>
+                  <span class="opcao-modelo-descricao">Modelo padrão para respostas mais rápidas e diretas, com análises e fontes.</span>
                 </button>
                 <button type="button" id="modeloExperimental" class="opcao-modelo" role="menuitemradio" aria-checked="false" aria-describedby="descricaoExperimental riscoExperimental">
-                  <span class="opcao-modelo-titulo">Experimental <span class="modelo-selo">Em desenvolvimento</span><span class="modelo-check" aria-hidden="true">✓</span></span>
+                  <span class="opcao-modelo-titulo">Complexo <span class="modelo-selo">Experimental</span><span class="modelo-check" aria-hidden="true">✓</span></span>
                   <span id="descricaoExperimental" class="opcao-modelo-descricao">Analisa as evidências em etapas e mostra sustentação (ESS) e qualidade da análise (ACS). Pode levar mais tempo.</span>
                   <span id="riscoExperimental" class="opcao-modelo-risco">Pode gerar erros e respostas inconsistentes.</span>
                 </button>
@@ -154,10 +168,6 @@
         </div>
       </div>
 
-      <p id="avisoModoExperimental" class="aviso-modo-experimental" role="status" aria-live="polite" hidden>
-        O algoritmo experimental está em fase de desenvolvimento e pode gerar erros e respostas inconsistentes.
-      </p>
-
       <p class="aviso">
         Aviso: a Aleteia pode cometer erros.<br>
         Considere verificar informações importantes
@@ -171,7 +181,7 @@
 <div class="popup-overlay" id="popupOverlay"></div>
 
 <!-- Popup conta -->
-<div class="popup-card" id="popupConta">
+<div class="popup-card" id="popupConta" role="dialog" aria-modal="true" aria-label="Opções da conta">
   <button class="btn-voltar" id="btnVoltar">&#8592; Voltar</button>
   <div class="d-flex flex-column align-items-center mb-3">
     <span class="account-avatar popup-avatar" data-account-avatar role="img" aria-label="Usu?rio deslogado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span>

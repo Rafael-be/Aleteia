@@ -1,5 +1,6 @@
 import { atualizarAvatares } from "./account-avatar.js";
 import { auth, chamarApi, sincronizarComBackend } from "./firebase-init.js";
+import { definirProcessamento, lerErroDaResposta, mensagemDeErro, mostrarFeedback } from "./feedback.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 let verificacaoEmAndamento = null;
@@ -30,8 +31,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const corrigirEmail = document.getElementById("btnCorrigirEmailVerificacao");
   const feedbackReenvio = document.getElementById("feedbackReenvioVerificacao");
   const emailPendente = document.getElementById("emailVerificacaoPendente");
-  const abrir = () => { overlay?.classList.add("active"); popup?.classList.add("active"); };
-  const fechar = () => { overlay?.classList.remove("active"); popup?.classList.remove("active"); };
+  let focoAntesDoPopup = null;
+  const abrir = () => {
+    focoAntesDoPopup = document.activeElement;
+    overlay?.classList.add("active"); popup?.classList.add("active");
+    document.getElementById("btnVoltar")?.focus({ preventScroll: true });
+  };
+  const fechar = (restaurarFoco = false) => {
+    overlay?.classList.remove("active"); popup?.classList.remove("active");
+    if (restaurarFoco) focoAntesDoPopup?.focus?.({ preventScroll: true });
+  };
 
   const chaveAvisoExtensao = "aleteiaExtensionPromoDismissed";
   const ancorasAvisoExtensao = [...document.querySelectorAll("[data-extension-promo-anchor]")];
@@ -95,8 +104,11 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   inicializarAvisoExtensao();
 
-  overlay?.addEventListener("click", fechar);
-  document.getElementById("btnVoltar")?.addEventListener("click", fechar);
+  overlay?.addEventListener("click", () => fechar(true));
+  document.getElementById("btnVoltar")?.addEventListener("click", () => fechar(true));
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape" && popup?.classList.contains("active")) fechar(true);
+  });
   document.getElementById("btnSair")?.addEventListener("click", async () => {
     await signOut(auth);
     window.location.href = "/";
@@ -104,14 +116,15 @@ document.addEventListener("DOMContentLoaded", () => {
   reenviar?.addEventListener("click", async () => {
     const usuario = auth.currentUser;
     if (!usuario) return;
-    reenviar.disabled = true;
+    definirProcessamento(reenviar, true, "Reenviando e-mail de confirmação");
     try {
       await sendEmailVerification(usuario);
       if (feedbackReenvio) feedbackReenvio.textContent = "E-mail de confirmação reenviado.";
+      mostrarFeedback("E-mail de confirmação reenviado.", "success");
     } catch {
       if (feedbackReenvio) feedbackReenvio.textContent = "Não foi possível reenviar agora. Tente novamente mais tarde.";
     } finally {
-      reenviar.disabled = false;
+      definirProcessamento(reenviar, false);
     }
   });
   corrigirEmail?.addEventListener("click", () => {
@@ -137,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nome) nome.textContent = usuario ? `Olá, ${usuario.email || "usuário"}` : "Minha conta";
   });
 
-  window.adicionarItemNoAside = (chat) => {
+  window.adicionarItemNoAside = (chat, { animar = false, indice = 0, inserirNoTopo = true } = {}) => {
     const lista = document.getElementById("listaConversas");
     if (!lista) return;
     const item = document.createElement("li");
@@ -159,6 +172,10 @@ document.addEventListener("DOMContentLoaded", () => {
       </svg>`;
 
     item.dataset.id = chat._id;
+    if (animar && indice < 10) {
+      item.classList.add("historico-entrada");
+      item.style.setProperty("--historico-atraso", `${indice * 30}ms`);
+    }
     item.style.cursor = "pointer";
     item.addEventListener("click", () => {
       if (window.carregarConversa) {
@@ -169,22 +186,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     botaoExcluir.addEventListener("click", async (event) => {
       event.stopPropagation();
-      botaoExcluir.disabled = true;
+      definirProcessamento(botaoExcluir, true, "Excluindo conversa");
       try {
         const resposta = await chamarApi(`/api/chat/conversas/${chat._id}`, { method: "DELETE" });
-        if (!resposta?.ok) return;
+        if (!resposta?.ok) throw await lerErroDaResposta(resposta);
         item.remove();
         // Remove também do cache local, para não reaparecer ao limpar a busca.
         conversasCompletas = conversasCompletas.filter((c) => c._id !== chat._id);
         window.dispatchEvent(new CustomEvent("conversaApagada", { detail: chat._id }));
+        mostrarFeedback("Conversa excluída.", "success");
       } catch (erro) {
         console.error("Não foi possível excluir a conversa:", erro);
+        mostrarFeedback(mensagemDeErro(erro, "Não foi possível excluir a conversa. Tente novamente."));
       } finally {
-        if (item.isConnected) botaoExcluir.disabled = false;
+        if (item.isConnected) definirProcessamento(botaoExcluir, false);
       }
     });
     item.append(texto, botaoExcluir);
-    lista.prepend(item);
+    if (inserirNoTopo) lista.prepend(item);
+    else lista.append(item);
 
     // Mantém o cache local atualizado (evita duplicar quem já está nele).
     if (!conversasCompletas.some((c) => c._id === chat._id)) {
@@ -192,11 +212,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  const renderizarConversas = (conversas) => {
+  const renderizarConversas = (conversas, animar = false) => {
     const lista = document.getElementById("listaConversas");
     if (!lista) return;
     lista.replaceChildren();
-    conversas.forEach(window.adicionarItemNoAside);
+    conversas.forEach((chat, indice) => window.adicionarItemNoAside(chat, { animar, indice, inserirNoTopo: false }));
   };
 
   const inputPesquisarConversas = document.getElementById("inputPesquisarConversas");
@@ -232,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const resposta = await chamarApi("/api/chat/conversas");
       if (resposta?.ok) {
         conversasCompletas = (await resposta.json()).prompts || [];
-        renderizarConversas(conversasCompletas);
+        renderizarConversas(conversasCompletas, true);
       }
     } catch (erro) {
       console.error("Não foi possível preparar os dados da conta:", erro);

@@ -1,5 +1,6 @@
 import { chamarApi } from "./firebase-init.js";
 import { consumirEventos } from "./chat-stream.js";
+import { mostrarFeedback } from "./feedback.js";
 
 /* =====================================================
    chat.js — Lógica exclusiva do chat
@@ -27,25 +28,129 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!textarea || !btnEnviar) return;
   let modeloSelecionado = 'standard';
+  const avisoExperimental = {
+    temporizador: null,
+    esconder: null,
+    inicio: 0,
+    restante: 15000,
+    versao: 0,
+    pausado: false,
+  };
+  const barraAvisoExperimental = avisoModoExperimental?.querySelector(".aviso-modo-experimental-progresso");
+
+  function cancelarTemporizadorAvisoExperimental() {
+    if (avisoExperimental.temporizador) clearTimeout(avisoExperimental.temporizador);
+    avisoExperimental.temporizador = null;
+  }
+
+  function encerrarAvisoExperimental() {
+    const versao = ++avisoExperimental.versao;
+    cancelarTemporizadorAvisoExperimental();
+    if (!avisoModoExperimental) return;
+    avisoModoExperimental.classList.remove("visivel");
+    clearTimeout(avisoExperimental.esconder);
+    avisoExperimental.esconder = setTimeout(() => {
+      if (avisoExperimental.versao === versao && !avisoModoExperimental.classList.contains("visivel")) {
+        avisoModoExperimental.hidden = true;
+      }
+    }, 160);
+    avisoExperimental.esconder?.unref?.();
+  }
+
+  function iniciarContagemAvisoExperimental() {
+    if (!avisoModoExperimental || avisoExperimental.pausado) return;
+    cancelarTemporizadorAvisoExperimental();
+    avisoExperimental.inicio = Date.now();
+    if (barraAvisoExperimental) {
+      barraAvisoExperimental.style.animation = "none";
+      void barraAvisoExperimental.offsetWidth;
+      barraAvisoExperimental.style.animation = `aviso-experimental-progresso 15000ms linear -${15000 - avisoExperimental.restante}ms forwards`;
+      barraAvisoExperimental.style.animationPlayState = "running";
+    }
+    const versao = avisoExperimental.versao;
+    avisoExperimental.temporizador = setTimeout(() => {
+      if (avisoExperimental.versao === versao) encerrarAvisoExperimental();
+    }, avisoExperimental.restante);
+    avisoExperimental.temporizador?.unref?.();
+  }
+
+  function pausarAvisoExperimental() {
+    if (!avisoModoExperimental || avisoModoExperimental.hidden || avisoExperimental.pausado) return;
+    avisoExperimental.pausado = true;
+    avisoExperimental.restante = Math.max(0, avisoExperimental.restante - (Date.now() - avisoExperimental.inicio));
+    cancelarTemporizadorAvisoExperimental();
+    if (barraAvisoExperimental) barraAvisoExperimental.style.animationPlayState = "paused";
+  }
+
+  function retomarAvisoExperimental() {
+    if (!avisoExperimental.pausado || avisoModoExperimental?.hidden) return;
+    avisoExperimental.pausado = false;
+    iniciarContagemAvisoExperimental();
+  }
+
+  function mostrarAvisoExperimental() {
+    if (!avisoModoExperimental) return;
+    avisoExperimental.versao += 1;
+    clearTimeout(avisoExperimental.esconder);
+    avisoExperimental.restante = 15000;
+    avisoExperimental.pausado = false;
+    avisoModoExperimental.hidden = false;
+    avisoModoExperimental.classList.add("visivel");
+    iniciarContagemAvisoExperimental();
+  }
 
   function fecharModelos(devolverFoco = false) {
+    limparReposicionamentoModelos();
     if (menuModelos) menuModelos.hidden = true;
+    menuModelos?.classList.remove("menu-modelos--down");
+    menuModelos?.style.removeProperty?.("max-height");
     botaoModelo?.setAttribute('aria-expanded', 'false');
     if (devolverFoco) botaoModelo?.focus();
   }
 
-  function selecionarModelo(mode) {
+  let limparReposicionamentoModelos = () => {};
+
+  function posicionarModelos() {
+    if (!botaoModelo || !menuModelos || typeof botaoModelo.getBoundingClientRect !== "function") return;
+    const viewport = window.visualViewport;
+    const topoViewport = viewport?.offsetTop ?? 0;
+    const baseViewport = topoViewport + (viewport?.height ?? window.innerHeight);
+    const margem = 8;
+    const gatilho = botaoModelo.getBoundingClientRect();
+    const acima = Math.max(0, gatilho.top - topoViewport - margem);
+    const abaixo = Math.max(0, baseViewport - gatilho.bottom - margem);
+    const alturaMenu = menuModelos.scrollHeight || menuModelos.offsetHeight || 0;
+    const abreAbaixo = alturaMenu > acima && abaixo > acima;
+    const espacoDisponivel = abreAbaixo ? abaixo : acima;
+    menuModelos.classList.toggle("menu-modelos--down", abreAbaixo);
+    menuModelos.style.maxHeight = `${Math.floor(espacoDisponivel)}px`;
+  }
+
+  function selecionarModelo(mode, anunciarMudanca = true) {
+    const modoAnterior = modeloSelecionado;
     modeloSelecionado = mode;
     const experimental = mode === 'experimental';
-    if (nomeModelo) nomeModelo.textContent = experimental ? 'Experimental' : 'Básico';
-    botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Experimental' : 'Básico'}. Escolher modelo.`);
+    if (nomeModelo) nomeModelo.textContent = experimental ? 'Complexo' : 'Rápido';
+    botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Complexo' : 'Rápido'}. Escolher modelo.`);
     opcoesModelo.forEach((opcao, index) => opcao?.setAttribute('aria-checked', String(experimental === (index === 1))));
-    if (avisoModoExperimental) avisoModoExperimental.hidden = !experimental;
+    if (experimental && modoAnterior !== 'experimental' && anunciarMudanca) mostrarAvisoExperimental();
+    if (!experimental && modoAnterior === 'experimental') encerrarAvisoExperimental();
   }
 
   function abrirModelos() {
     if (!botaoModelo || botaoModelo.disabled || !menuModelos) return;
     menuModelos.hidden = false;
+    posicionarModelos();
+    const reposicionar = () => posicionarModelos();
+    window.addEventListener("resize", reposicionar);
+    window.visualViewport?.addEventListener("resize", reposicionar);
+    window.visualViewport?.addEventListener("scroll", reposicionar);
+    limparReposicionamentoModelos = () => {
+      window.removeEventListener?.("resize", reposicionar);
+      window.visualViewport?.removeEventListener("resize", reposicionar);
+      window.visualViewport?.removeEventListener("scroll", reposicionar);
+      limparReposicionamentoModelos = () => {};
+    };
     botaoModelo.setAttribute('aria-expanded', 'true');
     opcoesModelo[modeloSelecionado === 'experimental' ? 1 : 0]?.focus();
   }
@@ -56,7 +161,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (bloqueado) fecharModelos();
   }
 
-  selecionarModelo('standard');
+  selecionarModelo('standard', false);
+  if (avisoModoExperimental) avisoModoExperimental.hidden = true;
+  avisoModoExperimental?.querySelector(".aviso-modo-experimental-fechar")?.addEventListener("click", encerrarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("mouseenter", pausarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("mouseleave", retomarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("focusin", pausarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("focusout", (event) => {
+    if (!avisoModoExperimental.contains(event.relatedTarget)) retomarAvisoExperimental();
+  });
   fecharModelos();
   botaoModelo?.addEventListener('click', () => menuModelos?.hidden ? abrirModelos() : fecharModelos());
   botaoModelo?.addEventListener('keydown', (event) => {
@@ -355,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bloco.appendChild(corpo);
     if (veredito?.mode === 'experimental' || veredito?.version === 2) {
       const modo = document.createElement('small'); modo.className = 'resposta-modo';
-      modo.textContent = 'Modo experimental'; bloco.appendChild(modo);
+      modo.textContent = 'Modo complexo'; bloco.appendChild(modo);
     }
 
     if (dados.fontes && typeof respostaFormatada?.corpo_html !== "string") {
@@ -452,12 +565,18 @@ document.addEventListener("DOMContentLoaded", () => {
     bloco.appendChild(acoes);
 
     // Ações: copiar / regenerar / falar
-    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", () => {
+    acoes.querySelector('[data-acao="copiar"]').addEventListener("click", async () => {
       const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
         `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}%` :
           m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}% (limite superior)` : "indisponível"}`).join("\n") +
         "\nESS: sustentação da afirmação avaliada. ACS: qualidade da análise. Não são probabilidades." : "";
-      navigator.clipboard?.writeText((textoCru || "") + indicadores);
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard indisponível");
+        await navigator.clipboard.writeText((textoCru || "") + indicadores);
+        mostrarFeedback("Resposta copiada.", "success");
+      } catch {
+        mostrarFeedback("Não foi possível copiar a resposta. Verifique a permissão do navegador e tente novamente.");
+      }
     });
 
     acoes.querySelector('[data-acao="falar"]').addEventListener("click", () => {
