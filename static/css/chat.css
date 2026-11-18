@@ -334,6 +334,9 @@
 .btn-send.active { background-color: var(--btn-green); color: #fff; }
 .btn-send.active:hover { background-color: var(--btn-green-dark); transform: scale(1.07); }
 .btn-send svg { width: 18px; height: 18px; }
+.btn-send .icone-cancelar,
+.btn-send.cancelando .icone-enviar { display: none; }
+.btn-send.cancelando .icone-cancelar { display: initial; }
 
 /* ── Aviso ── */
 .aviso {

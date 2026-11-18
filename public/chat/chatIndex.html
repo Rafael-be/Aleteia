@@ -144,10 +144,13 @@
                 <line x1="12" y1="19" x2="12" y2="22"/>
               </svg>
             </button>
-            <button class="btn-send" id="btnEnviar" title="Enviar" disabled>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5"/>
-                <polyline points="5 12 12 5 19 12"/>
+            <button type="button" class="btn-send" id="btnEnviar" title="Enviar" aria-label="Enviar" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                <g class="icone-enviar" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
+                </g>
+                <rect class="icone-cancelar" x="5" y="5" width="14" height="14" fill="currentColor"/>
               </svg>
             </button>
           </div>
@@ -192,9 +195,9 @@
 <script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
 <script>window.ALETEIA_EXTENSION_IDS = {{ chrome_extension_ids | tojson }};</script>
 <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js', v=chat_assets_version) }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/chat.js', v=chat_assets_version) }}"></script>
 <script src="{{ url_for('static', filename='js/sidebar.js') }}" defer></script>
-<script type="module" src="{{ url_for('static', filename='js/extension-selection.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/extension-selection.js', v=chat_assets_version) }}"></script>
 </body>
 </html>

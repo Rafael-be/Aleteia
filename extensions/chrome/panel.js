@@ -41,7 +41,7 @@ function refreshPending() {
       return;
     }
     lastError = "";
-    showStatus("Texto aguardando envio: entre na conta, confirme o e-mail e aguarde o chat ficar livre. Se houver um rascunho, envie ou apague-o.");
+    showStatus("Trecho aguardando para colar. Entre na conta, confirme o e-mail e deixe o campo de mensagem livre.");
     frame.contentWindow.postMessage({ type: "aleteia:selection-ping" }, site.origin);
   }).catch(() => showStatus("Não foi possível preparar o texto. Selecione-o novamente."));
 }
@@ -49,7 +49,7 @@ window.addEventListener("message", async (event) => {
   if (event.origin !== site.origin || event.source !== frame.contentWindow || !pending || pending.error) return;
   if (Date.now() - pending.createdAt > 10 * 60 * 1000) { refreshPending(); return; }
   if (event.data?.type === "aleteia:selection-ready") {
-    frame.contentWindow.postMessage({ type: "aleteia:selection", id: pending.id, text: pending.text }, site.origin);
+    frame.contentWindow.postMessage({ type: "aleteia:selection-draft", id: pending.id, text: pending.text }, site.origin);
   }
   if (event.data?.type === "aleteia:selection-accepted" && event.data.id === pending.id) {
     const key = pending.key;

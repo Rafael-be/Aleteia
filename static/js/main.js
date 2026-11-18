@@ -128,8 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
     aviso?.classList.toggle("visivel", Boolean(usuario && !emailVerificado));
     if (emailPendente) emailPendente.textContent = usuario?.email || "";
     const chatBloqueado = Boolean(usuario && !emailVerificado);
-    [document.getElementById("promptInput"), document.getElementById("btnEnviar")]
-      .forEach((controle) => { if (controle) controle.disabled = chatBloqueado; });
+    document.dispatchEvent(new CustomEvent("aleteia:chat-bloqueado", { detail: chatBloqueado }));
     const acaoConta = () => usuario ? abrir() : (window.location.href = "/cadastro");
     if (conta) conta.onclick = acaoConta;
     if (contaMobile) contaMobile.onclick = acaoConta;

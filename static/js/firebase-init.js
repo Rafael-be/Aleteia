@@ -6,10 +6,13 @@ const firebaseConfig = window.FIREBASE_CONFIG;
 if (new URLSearchParams(window.location.search).get("extension") === "1" && window.self !== window.top) {
   sessionStorage.setItem("aleteiaExtension", "1");
 }
-export const destinoAposLogin = sessionStorage.getItem("aleteiaExtension") === "1" ? "/chat" : "/";
+export const chaveRascunhoLogin = "aleteiaRascunhoLogin";
+export const destinoAposLogin = (
+  sessionStorage.getItem("aleteiaExtension") === "1" || sessionStorage.getItem(chaveRascunhoLogin)
+) ? "/chat" : "/";
 if (!firebaseConfig?.apiKey || !firebaseConfig?.authDomain) throw new Error("FIREBASE_WEB_CONFIG_JSON não foi configurada.");
 export const auth = getAuth(initializeApp(firebaseConfig));
-const authPronta = new Promise((resolver) => onAuthStateChanged(auth, resolver));
+export const authPronta = new Promise((resolver) => onAuthStateChanged(auth, resolver));
 if (sessionStorage.getItem("aleteiaExtension") === "1" && window.location.pathname === "/chat") {
   authPronta.then((usuario) => { if (!usuario) redirecionarParaLogin(); });
 }
@@ -18,10 +21,15 @@ function redirecionarParaLogin() {
   if (window.location.pathname !== "/login") window.location.replace("/login");
 }
 
-export async function chamarApi(url, opcoes = {}) {
+export async function chamarApi(url, opcoes = {}, antesDoLogin) {
   const usuarioInicializado = await authPronta;
   const usuario = auth.currentUser || usuarioInicializado;
-  if (!usuario) { redirecionarParaLogin(); return undefined; }
+  if (!usuario) {
+    if (opcoes.signal?.aborted) return undefined;
+    antesDoLogin?.();
+    redirecionarParaLogin();
+    return undefined;
+  }
   const token = await usuario.getIdToken();
   return fetch(url, { ...opcoes, headers: { ...opcoes.headers, Authorization: `Bearer ${token}` } });
 }

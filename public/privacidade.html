@@ -32,19 +32,19 @@
 
   <h2>2. Dados tratados e finalidades</h2>
   <ul>
-    <li><strong>Conteúdo enviado:</strong> mensagens digitadas no chat e trechos de páginas que você escolhe enviar pela opção “Enviar texto à AleteIA”. Esses dados são utilizados para analisar informações, pesquisar fontes e gerar respostas.</li>
+    <li><strong>Conteúdo enviado:</strong> mensagens digitadas no chat e trechos de páginas colados pela extensão e enviados por você no chat. Esses dados são utilizados para analisar informações, pesquisar fontes e gerar respostas.</li>
     <li><strong>Histórico de conversas:</strong> mensagens, respostas, resultados das análises, identificadores de conversa e datas, associados à sua conta, para permitir a consulta e a continuidade das conversas.</li>
     <li><strong>Dados da conta:</strong> e-mail, identificador de usuário e informações de autenticação e verificação de e-mail, necessários para criar e acessar a conta. Provedores de login social também podem disponibilizar informações básicas de perfil, conforme a opção escolhida.</li>
     <li><strong>Dados de utilização:</strong> plano, quantidade de perguntas, consumo de tokens e registros de controle de acesso, usados para administrar limites e prevenir abuso.</li>
     <li><strong>Dados técnicos de conexão:</strong> os servidores e fornecedores envolvidos podem processar endereço IP, informações do navegador, horários, identificadores de requisição e registros de funcionamento para entregar, proteger e manter o serviço.</li>
   </ul>
-  <p>A extensão não coleta o histórico de navegação, não acessa a área de transferência e não realiza leitura automática do conteúdo completo das páginas visitadas. Ela recebe o trecho selecionado quando você aciona a opção de envio no menu de contexto.</p>
+  <p>A extensão não coleta o histórico de navegação, não acessa a área de transferência e não realiza leitura automática do conteúdo completo das páginas visitadas. Ela recebe o trecho selecionado quando você aciona a opção de colar no chat no menu de contexto.</p>
 
-  <h2>3. Envio de textos selecionados e permissões</h2>
-  <p>Ao clicar em “Enviar texto à AleteIA”, você solicita que o trecho selecionado seja enviado à conversa com a inteligência artificial. O envio ocorre quando o chat está disponível e a autenticação e a verificação de e-mail exigidas pelo serviço foram concluídas. O trecho pode aguardar enquanto existe um rascunho ou uma resposta em andamento.</p>
+  <h2>3. Textos selecionados e permissões</h2>
+  <p>Ao clicar em “Colar texto no chat da AleteIA”, o trecho aparece no campo de mensagem quando o chat está disponível e a conta está autenticada com e-mail verificado. O trecho aguarda enquanto existe um rascunho ou uma resposta em andamento. A análise começa quando você envia a mensagem pelo chat.</p>
   <ul>
     <li><strong>sidePanel:</strong> disponibiliza o chat no painel lateral do Chrome.</li>
-    <li><strong>contextMenus:</strong> adiciona a opção de enviar um texto selecionado em páginas HTTP ou HTTPS.</li>
+    <li><strong>contextMenus:</strong> adiciona a opção de colar no chat um texto selecionado em páginas HTTP ou HTTPS.</li>
     <li><strong>storage:</strong> mantém temporariamente uma fila de seleções na memória da sessão do navegador, por meio de <code>chrome.storage.session</code>.</li>
   </ul>
   <p>Cada seleção aceita até 12.000 caracteres. Você pode cancelar os envios pendentes pelo painel; isso não cancela mensagens já recebidas pelo serviço.</p>

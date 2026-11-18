@@ -12,8 +12,13 @@ class Element {
     this.classList = { add() {}, remove() {}, toggle() {}, contains() { return false; } };
   }
   appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+  insertBefore(child, reference) {
+    child.parentNode = this;
+    this.children.splice(this.children.indexOf(reference), 0, child);
+  }
   append(child) { this.appendChild(typeof child === "string" ? { textContent: child } : child); }
   addEventListener(type, fn) { this.listeners[type] = fn; }
+  dispatchEvent(event) { this.listeners[event.type]?.(event); }
   setAttribute(name, value) { (this.attributes ??= {})[name] = value; }
   querySelector() { return new Element(); }
   focus() { this.focused = true; }
@@ -23,6 +28,7 @@ class Element {
 const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental"]
   .map((id) => [id, new Element()]));
 let initialize;
+const window = { location: { search: "" }, addEventListener() {}, dispatchEvent() {} };
 const documentListeners = {};
 let finish;
 const gate = new Promise((resolve) => { finish = resolve; });
@@ -31,7 +37,37 @@ const streaming = new Promise((resolve) => { started = resolve; });
 let ended;
 const complete = new Promise((resolve) => { ended = resolve; });
 let scenario = "success";
+let sinalDaRequisicao;
 const requests = [];
+const chaveRascunhoLogin = "aleteiaRascunhoLogin";
+const dadosDaSessao = new Map();
+const sessionStorage = {
+  getItem: (chave) => dadosDaSessao.get(chave) ?? null,
+  setItem: (chave, valor) => dadosDaSessao.set(chave, valor),
+  removeItem: (chave) => dadosDaSessao.delete(chave),
+};
+const firebaseSource = (await readFile(new URL("../static/js/firebase-init.js", import.meta.url), "utf8"))
+  .replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
+function carregarModuloFirebase(pathname) {
+  return vm.runInNewContext(`${firebaseSource}\n({ chamarApi, destinoAposLogin })`, {
+    window: {
+      FIREBASE_CONFIG: { apiKey: "teste", authDomain: "teste" },
+      location: { pathname, search: "", replace(destino) {
+        assert.equal(destino, "/login");
+        assert.equal(sessionStorage.getItem(chaveRascunhoLogin), "Verifique isto");
+      } },
+    },
+    URLSearchParams, sessionStorage,
+    initializeApp() {},
+    getAuth: () => ({ currentUser: null }),
+    onAuthStateChanged: (_, callback) => callback(null),
+    fetch: () => assert.fail("A mensagem deve ser guardada antes de chamar a API"),
+  });
+}
+await carregarModuloFirebase("/chat").chamarApi("/api/chat/mensagem", {}, () => {
+  sessionStorage.setItem(chaveRascunhoLogin, "Verifique isto");
+});
+assert.equal(carregarModuloFirebase("/login").destinoAposLogin, "/chat");
 const html = "<p><strong>Termo inicial</strong></p>\n<p><strong>Análise:</strong> Outro <strong>termo importante</strong>.</p>\n";
 const source = (await readFile(new URL("../static/js/chat.js", import.meta.url), "utf8"))
   .replace(/^import .*;\r?\n/gm, "");
@@ -42,12 +78,22 @@ vm.runInNewContext(source, {
     createElement() { return new Element(); },
     createTextNode(text) { return { textContent: text }; },
   },
-  window: { location: { search: "" }, addEventListener() {} },
-  sessionStorage: { getItem() {}, setItem() {} },
+  window,
+  sessionStorage, chaveRascunhoLogin, authPronta: Promise.resolve({}),
   crypto: { randomUUID() { return "conversa"; } },
-  URL, URLSearchParams, AbortController, console,
-  chamarApi: async (_, options) => { if (options?.body) requests.push(JSON.parse(options.body)); return { ok: true }; },
+  URL, URLSearchParams, AbortController, Event, console,
+  chamarApi: async (_, options) => {
+    if (options?.body) requests.push(JSON.parse(options.body));
+    sinalDaRequisicao = options?.signal;
+    return { ok: true };
+  },
   consumirEventos: async (_, receber) => {
+    if (scenario === 'cancelamento') {
+      receber({ type: 'delta', text: 'Resposta parcial' });
+      await aguardarRespostaCancelada;
+      receber({ type: 'done', resposta: 'Resposta tardia' });
+      return;
+    }
     if (scenario === 'standard') {
       receber({ type: 'done', resposta: 'Texto simples.\n\n**Veredicto:** FALSO',
         resposta_formatada: { corpo_html: '<p>Texto simples.</p>' },
@@ -113,14 +159,23 @@ vm.runInNewContext(source, {
   },
 });
 initialize();
+await Promise.resolve();
 assert.equal(ids.nomeModelo.textContent, 'Básico', 'O seletor deve iniciar no modelo básico');
 assert.equal(ids.modeloBasico.attributes['aria-checked'], 'true');
 assert.equal(ids.menuModelos.hidden, true);
 assert.equal(ids.avisoModoExperimental.hidden, true);
-ids.promptInput.value = "Verifique isto";
-ids.btnEnviar.disabled = false;
+assert.equal(ids.promptInput.value, "Verifique isto");
+assert.equal(ids.btnEnviar.disabled, false);
+assert.equal(window.aleteiaColarSelecao("Outro trecho"), false);
+assert.equal(ids.promptInput.value, "Verifique isto");
+assert.equal(requests.length, 0, "Restaurar o rascunho não deve chamar a API");
+ids.promptInput.value = "Verifique isto com fontes";
+ids.promptInput.dispatchEvent(new Event("input"));
+assert.equal(sessionStorage.getItem(chaveRascunhoLogin), "Verifique isto com fontes");
 ids.btnEnviar.listeners.click();
 await streaming;
+assert.equal(requests[0].prompt, "Verifique isto com fontes");
+assert.equal(sessionStorage.getItem(chaveRascunhoLogin), null);
 assert.equal(requests[0].mode, 'standard');
 const area = ids.conversationArea;
 const parcial = area.children.find((c) => c.className === "resposta-ia resposta-stream");
@@ -249,3 +304,30 @@ const standardNodes = descendants(area.children.filter((c) => c.className === 'r
 assert.ok(!standardNodes.some((n) => n.className === 'painel-indicadores'));
 assert.ok(!standardNodes.some((n) => n.textContent === 'ESS e ACS não foram calculados nesta versão da resposta.'));
 assert.ok(!standardNodes.some((n) => n.className === 'resposta-modo'));
+
+let liberarRespostaCancelada;
+const aguardarRespostaCancelada = new Promise((resolve) => { liberarRespostaCancelada = resolve; });
+scenario = 'cancelamento';
+assert.equal(window.aleteiaColarSelecao('Prompt a cancelar'), true);
+ids.btnEnviar.listeners.click();
+await new Promise(setImmediate);
+const sinalCancelado = sinalDaRequisicao;
+assert.equal(ids.btnEnviar.attributes['aria-label'], 'Cancelar resposta');
+assert.equal(ids.btnEnviar.disabled, false);
+ids.btnEnviar.listeners.click();
+assert.equal(sinalCancelado.aborted, true);
+assert.equal(ids.btnEnviar.attributes['aria-label'], 'Enviar');
+assert.equal(ids.promptInput.disabled, false);
+const respostaCancelada = area.children.find((c) => c.children[0]?.textContent === 'Resposta cancelada.');
+assert.equal(respostaCancelada.children[1].textContent, 'Resposta parcial');
+
+scenario = 'standard';
+assert.equal(window.aleteiaColarSelecao('Novo prompt'), true);
+ids.btnEnviar.listeners.click();
+await new Promise(setImmediate);
+liberarRespostaCancelada();
+await new Promise(setImmediate);
+assert.equal(requests.at(-1).prompt, 'Novo prompt');
+assert.equal(ids.btnEnviar.attributes['aria-label'], 'Enviar');
+assert.equal(sinalDaRequisicao.aborted, false);
+assert.ok(!descendants(area.children).some((n) => n.textContent === 'Resposta tardia'));

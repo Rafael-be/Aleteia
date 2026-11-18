@@ -88,19 +88,17 @@ e `storage` (fila temporária na memória do navegador). Não há acesso permane
 sites, leitura do restante da página, nem leitura da área de transferência. O botão
 de nova aba usa `tabs.create`, que não exige a permissão `tabs`.
 
-## Enviar um trecho selecionado
+## Colar um trecho selecionado no chat
 
 1. Em uma página HTTP/HTTPS, selecione um texto e clique com o botão direito.
-2. Escolha **Enviar texto à AleteIA**. Essa ação autoriza enviar o trecho à IA,
-   consumindo o limite normal da conta e salvando-o no histórico como uma mensagem.
-3. O painel abre e envia o texto na conversa atual. Se necessário, entre na conta
-   e confirme o e-mail primeiro. Uma resposta em andamento ou um rascunho existente
-   fazem o trecho aguardar; o rascunho não é sobrescrito.
+2. Escolha **Colar texto no chat da AleteIA**. O painel abre e preenche o campo
+   de mensagem. Se necessário, entre na conta e confirme o e-mail primeiro.
+   O trecho aguarda enquanto há uma resposta em andamento ou um rascunho.
+3. Revise ou edite o trecho e envie a mensagem quando quiser.
 
-É possível cancelar textos ainda pendentes pelo botão exibido no painel. Isso não
-cancela mensagens já enviadas. Cada seleção aceita até 12.000 caracteres; trechos
+É possível cancelar textos ainda pendentes pelo botão exibido no painel. Cada seleção aceita até 12.000 caracteres; trechos
 maiores são recusados, sem corte silencioso. Vários trechos aguardam em ordem por
-janela. Seleções pendentes expiram para envio após dez minutos. A fila usa
+janela. Seleções pendentes expiram após dez minutos. A fila usa
 `storage.session`, sem sincronização nem persistência em disco, e é removida ao
 entregar o texto, fechar a janela ou encerrar a sessão do navegador.
 

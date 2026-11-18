@@ -3,7 +3,7 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: "aleteia-selection", title: "Enviar texto à AleteIA",
+  chrome.contextMenus.create({ id: "aleteia-selection", title: "Colar texto no chat da AleteIA",
     contexts: ["selection"], documentUrlPatterns: ["http://*/*", "https://*/*"] });
 });
 chrome.contextMenus.onClicked.addListener((info, tab) => {

@@ -1,4 +1,4 @@
-import { chamarApi } from "./firebase-init.js";
+import { authPronta, chamarApi, chaveRascunhoLogin } from "./firebase-init.js";
 import { consumirEventos } from "./chat-stream.js";
 
 /* =====================================================
@@ -98,13 +98,32 @@ document.addEventListener("DOMContentLoaded", () => {
   let conversaJaNaSidebar = false;
   let ultimoPromptEnviado = "";
   let requisicaoAtiva = null;
+  let chatBloqueado = false;
+  let editandoRascunhoLogin = false;
+
+  function atualizarCompositor() {
+    const gerando = Boolean(requisicaoAtiva);
+    const rotulo = gerando ? "Cancelar resposta" : "Enviar";
+    textarea.disabled = gerando || chatBloqueado;
+    btnEnviar.disabled = !gerando && (chatBloqueado || !textarea.value.trim());
+    btnEnviar.classList.toggle("active", !btnEnviar.disabled);
+    btnEnviar.classList.toggle("cancelando", gerando);
+    btnEnviar.title = rotulo;
+    btnEnviar.setAttribute("aria-label", rotulo);
+  }
+
+  document.addEventListener("aleteia:chat-bloqueado", ({ detail }) => {
+    chatBloqueado = detail;
+    atualizarCompositor();
+    if (!chatBloqueado && !requisicaoAtiva) window.dispatchEvent(new Event("aleteia:chat-idle"));
+  });
 
   function cancelarGeracao() {
-    requisicaoAtiva?.abort();
+    if (!requisicaoAtiva) return;
+    requisicaoAtiva.abort();
     requisicaoAtiva = null;
-    textarea.disabled = false;
-    btnEnviar.disabled = !textarea.value.trim();
     bloquearModelo(false);
+    atualizarCompositor();
   }
 
   /* =====================================================
@@ -483,9 +502,15 @@ document.addEventListener("DOMContentLoaded", () => {
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
 
-    const hasText = textarea.value.trim().length > 0;
-    btnEnviar.disabled = !hasText;
-    btnEnviar.classList.toggle("active", hasText);
+    if (editandoRascunhoLogin) {
+      if (textarea.value.trim()) sessionStorage.setItem(chaveRascunhoLogin, textarea.value);
+      else {
+        sessionStorage.removeItem(chaveRascunhoLogin);
+        editandoRascunhoLogin = false;
+      }
+    }
+    atualizarCompositor();
+    window.dispatchEvent(new Event("aleteia:chat-idle"));
   });
 
   /* ── Enter envia (Shift+Enter = nova linha) ── */
@@ -497,20 +522,22 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   btnEnviar.addEventListener("click", () => {
-    if (!btnEnviar.disabled) enviarMensagem();
+    if (requisicaoAtiva) {
+      cancelarGeracao();
+      textarea.focus();
+      window.dispatchEvent(new Event("aleteia:chat-idle"));
+    } else if (!btnEnviar.disabled) enviarMensagem();
   });
 
   /* ── Envia um prompt específico à API e renderiza a resposta ── */
   async function chamarApiEExibir(prompt) {
-    if (requisicaoAtiva) return;
+    if (requisicaoAtiva || chatBloqueado) return;
     const controle = new AbortController();
     requisicaoAtiva = controle;
     const mode = modeloSelecionado;
     bloquearModelo(true);
     const idDaConversa = conversaId;
-    textarea.disabled = true;
-    btnEnviar.disabled = true;
-    btnEnviar.classList.remove("active");
+    atualizarCompositor();
     // mostra feedback temporário enquanto a IA responde
     const loadingBubble = adicionarBolha("Preparando a consulta...", "sistema");
     loadingBubble.setAttribute("role", "status");
@@ -526,6 +553,18 @@ document.addEventListener("DOMContentLoaded", () => {
     let veredito = null;
     let htmlParcial = null;
 
+    controle.signal.addEventListener("abort", () => {
+      loadingBubble.remove();
+      if (!texto.trim()) {
+        parcial.remove();
+      } else if (!concluida) {
+        parcial.className = "resposta-ia resposta-incompleta";
+        const aviso = document.createElement("p");
+        aviso.textContent = "Resposta cancelada.";
+        parcial.insertBefore(aviso, corpoParcial);
+      }
+    }, { once: true });
+
     try {
       const res = await chamarApi("/api/chat/mensagem", {
         method: "POST",
@@ -535,8 +574,9 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: JSON.stringify({ conversa_id: idDaConversa, prompt, mode }),
         signal: controle.signal
-      });
+      }, () => sessionStorage.setItem(chaveRascunhoLogin, prompt));
 
+      if (controle.signal.aborted) return;
       if (!res) throw new Error("Faça login para continuar.");
       if (!res.ok) {
         const data = await res.json();
@@ -567,6 +607,7 @@ document.addEventListener("DOMContentLoaded", () => {
           adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito);
         }
       });
+      if (controle.signal.aborted) return;
       if (!concluida) throw new Error("A conexão foi interrompida antes de concluir a resposta.");
 
       if (!conversaJaNaSidebar && window.adicionarItemNoAside) {
@@ -599,13 +640,11 @@ document.addEventListener("DOMContentLoaded", () => {
       loadingBubble.remove();
       if (requisicaoAtiva === controle) {
         requisicaoAtiva = null;
-        textarea.disabled = false;
         bloquearModelo(false);
-        btnEnviar.disabled = !textarea.value.trim();
-        btnEnviar.classList.toggle("active", !btnEnviar.disabled);
+        atualizarCompositor();
         textarea.focus();
+        window.dispatchEvent(new Event("aleteia:chat-idle"));
       }
-      window.dispatchEvent?.(new Event("aleteia:chat-idle"));
     }
   }
 
@@ -616,9 +655,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ── Enviar prompt digitado pelo usuário ── */
   async function enviarMensagem() {
+    if (requisicaoAtiva || chatBloqueado) return;
     const prompt = textarea.value.trim();
     if (!prompt) return;
 
+    if (editandoRascunhoLogin) {
+      sessionStorage.removeItem(chaveRascunhoLogin);
+      editandoRascunhoLogin = false;
+    }
     ativarLayoutDeConversa();
     adicionarBolha(prompt, "usuario");
     ultimoPromptEnviado = prompt;
@@ -671,6 +715,11 @@ document.addEventListener("DOMContentLoaded", () => {
     resetarLayoutInicial();
     textarea.value = "";
     textarea.style.height = "auto";
+    if (editandoRascunhoLogin) {
+      sessionStorage.removeItem(chaveRascunhoLogin);
+      editandoRascunhoLogin = false;
+    }
+    atualizarCompositor();
     textarea.focus();
   };
 
@@ -680,13 +729,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   carregarConversaDaUrl();
 
-  window.aleteiaEnviarSelecao = (text) => {
-    if (requisicaoAtiva || textarea.value.trim()) return false;
+  authPronta.then((usuario) => {
+    const rascunho = sessionStorage.getItem(chaveRascunhoLogin);
+    if (!usuario || !rascunho || textarea.value.trim() || requisicaoAtiva) return;
+    editandoRascunhoLogin = true;
+    textarea.value = rascunho;
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  window.aleteiaColarSelecao = (text) => {
+    if (requisicaoAtiva || chatBloqueado || textarea.value.trim()) return false;
     textarea.value = text;
-    enviarMensagem();
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.focus();
     return true;
   };
-  textarea.addEventListener("input", () => window.dispatchEvent(new Event("aleteia:chat-idle")));
 
   /* ── Nova conversa ── */
   if (btnNovaConversa) {

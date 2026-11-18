@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 const code = (await readFile('static/js/extension-selection.js', 'utf8')).replace(/^import .*;\r?\n/gm, '');
 const origin = `chrome-extension://${'a'.repeat(32)}`;
 const parent = { postMessage: (...args) => messages.push(args) };
-const messages = [], listeners = {}, sent = [];
+const messages = [], listeners = {}, drafts = [];
 const auth = { currentUser: { emailVerified: true } };
 let busy = false;
 const window = {
   ALETEIA_EXTENSION_IDS: ['a'.repeat(32)], parent,
   addEventListener: (type, fn) => { listeners[type] = fn; },
-  aleteiaEnviarSelecao: (text) => { if (busy) return false; sent.push(text); return true; }
+  aleteiaColarSelecao: (text) => { if (busy) return false; drafts.push(text); return true; }
 };
 vm.runInNewContext(code, { window, auth, Set, JSON,
   sessionStorage: { getItem: () => null, setItem() {} },
@@ -19,7 +19,7 @@ vm.runInNewContext(code, { window, auth, Set, JSON,
 });
 const id = '12345678-1234-1234-1234-123456789abc';
 const deliver = (data, overrides = {}) => listeners.message({ origin, source: parent, data, ...overrides });
-const selection = { type: 'aleteia:selection', id, text: '<script>texto não confiável</script>' };
+const selection = { type: 'aleteia:selection-draft', id, text: '<script>texto não confiável</script>' };
 deliver(selection, { origin: 'https://evil.example' });
 deliver(selection, { source: {} });
 deliver({ ...selection, text: 'x'.repeat(12001) });
@@ -27,7 +27,7 @@ auth.currentUser = null;
 deliver(selection);
 auth.currentUser = { emailVerified: false };
 deliver(selection);
-assert.equal(sent.length, 0, 'recusa origem, janela, tamanho e autenticação inválidos');
+assert.equal(drafts.length, 0, 'recusa origem, janela, tamanho e autenticação inválidos');
 auth.currentUser = { emailVerified: true };
 busy = true;
 deliver(selection);
@@ -37,7 +37,7 @@ deliver({ type: 'aleteia:selection-ping' });
 assert.equal(messages.at(-1)[0].type, 'aleteia:selection-ready');
 deliver(selection);
 deliver(selection);
-assert.deepEqual(sent, [selection.text], 'texto é passado sem interpretar HTML, sem duplicar envio');
+assert.deepEqual(drafts, [selection.text], 'texto é passado sem interpretar HTML, sem duplicar o rascunho');
 assert.equal(messages.at(-1)[0].type, 'aleteia:selection-accepted');
 assert.equal(messages.at(-1)[1], origin, 'respostas usam origem exata');
 
