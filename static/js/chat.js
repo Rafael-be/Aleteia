@@ -94,9 +94,30 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function fecharModelos(devolverFoco = false) {
+    limparReposicionamentoModelos();
     if (menuModelos) menuModelos.hidden = true;
+    menuModelos?.classList.remove("menu-modelos--down");
+    menuModelos?.style.removeProperty?.("max-height");
     botaoModelo?.setAttribute('aria-expanded', 'false');
     if (devolverFoco) botaoModelo?.focus();
+  }
+
+  let limparReposicionamentoModelos = () => {};
+
+  function posicionarModelos() {
+    if (!botaoModelo || !menuModelos || typeof botaoModelo.getBoundingClientRect !== "function") return;
+    const viewport = window.visualViewport;
+    const topoViewport = viewport?.offsetTop ?? 0;
+    const baseViewport = topoViewport + (viewport?.height ?? window.innerHeight);
+    const margem = 8;
+    const gatilho = botaoModelo.getBoundingClientRect();
+    const acima = Math.max(0, gatilho.top - topoViewport - margem);
+    const abaixo = Math.max(0, baseViewport - gatilho.bottom - margem);
+    const alturaMenu = menuModelos.scrollHeight || menuModelos.offsetHeight || 0;
+    const abreAbaixo = alturaMenu > acima && abaixo > acima;
+    const espacoDisponivel = abreAbaixo ? abaixo : acima;
+    menuModelos.classList.toggle("menu-modelos--down", abreAbaixo);
+    menuModelos.style.maxHeight = `${Math.floor(espacoDisponivel)}px`;
   }
 
   function selecionarModelo(mode, anunciarMudanca = true) {
@@ -113,6 +134,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function abrirModelos() {
     if (!botaoModelo || botaoModelo.disabled || !menuModelos) return;
     menuModelos.hidden = false;
+    posicionarModelos();
+    const reposicionar = () => posicionarModelos();
+    window.addEventListener("resize", reposicionar);
+    window.visualViewport?.addEventListener("resize", reposicionar);
+    window.visualViewport?.addEventListener("scroll", reposicionar);
+    limparReposicionamentoModelos = () => {
+      window.removeEventListener?.("resize", reposicionar);
+      window.visualViewport?.removeEventListener("resize", reposicionar);
+      window.visualViewport?.removeEventListener("scroll", reposicionar);
+      limparReposicionamentoModelos = () => {};
+    };
     botaoModelo.setAttribute('aria-expanded', 'true');
     opcoesModelo[modeloSelecionado === 'experimental' ? 1 : 0]?.focus();
   }

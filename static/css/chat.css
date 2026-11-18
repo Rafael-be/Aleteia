@@ -210,6 +210,7 @@
 .modelo-prefixo { color: #d1d5db; font-size: .72rem; }
 .botao-modelo[aria-expanded="true"] svg { transform: rotate(180deg); }
 .menu-modelos { position: absolute; left: 0; bottom: calc(100% + .65rem); z-index: 50; width: min(350px, calc(100vw - 6rem)); max-height: min(400px, 65vh); overflow-y: auto; padding: .55rem; background: #252c2a; color: #f1f5f3; border: 1px solid #53635c; border-radius: var(--radius-lg); box-shadow: 0 12px 35px rgba(0,0,0,.4); transform-origin: bottom left; animation: menu-modelos-entrada .2s ease-out both; }
+.menu-modelos.menu-modelos--down { top: calc(100% + .65rem); bottom: auto; transform-origin: top left; }
 .menu-modelos[hidden] { display: none; }
 @keyframes menu-modelos-entrada { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .menu-modelos-titulo { margin: .25rem .45rem .55rem; font-size: .75rem; color: #b8c8c0; }
@@ -395,6 +396,7 @@
 @media (max-width: 767px) {
   #mainContent:not(.chat-ativo) .chat-header { width: 100%; }
   #mainContent:not(.chat-ativo) .chat-header > .d-flex { width: 100%; justify-content: center !important; }
+  #mainContent:not(.chat-ativo) .chat-header-subtitle { text-align: left; }
   .chat-header-title { font-size: clamp(1.6rem, 8vw, 3rem); }
   .chat-header-logo { width: clamp(36px, 12vw, 60px); margin-right: .5rem; }
   .chat-header-subtitle { font-size: 1.25rem; }
