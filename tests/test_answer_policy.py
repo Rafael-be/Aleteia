@@ -221,7 +221,7 @@ class AnswerPolicyTests(unittest.TestCase):
         self.assertEqual(result['audit']['research_budget']['rounds'], 1)
         calls = client.responses.create.call_args_list
         self.assertTrue(all(c.kwargs['max_output_tokens'] <= 900 for c in calls if c.kwargs.get('tools')))
-        self.assertTrue(all(c.kwargs['max_output_tokens'] <= 6000 for c in calls
+        self.assertTrue(all(c.kwargs['max_output_tokens'] <= 7000 for c in calls
                             if c.kwargs.get('text', {}).get('format', {}).get('name') == 'qualification'))
 
     def test_unknown_search_objective_never_reaches_provider(self):

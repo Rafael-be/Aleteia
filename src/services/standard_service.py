@@ -25,14 +25,14 @@ def standard_answer(client, model, message, history, ledger):
         inputs = [{'role': 'system', 'content': SYSTEM_PROMPT}, *context,
                   {'role': 'user', 'content': message}]
         extras = ({'reasoning': {'effort': os.getenv('OPENAI_REASONING_EFFORT', 'medium')}}
-                  if model.startswith(('gpt-5', 'o1', 'o3', 'o4')) else
+                  if model.startswith(('gpt-5', 'gpt-6', 'o1', 'o3', 'o4')) else
                   {'temperature': float(os.getenv('OPENAI_TEMPERATURE', '.1'))})
         filter_ = FiltroVeredito()
         started = monotonic()
         yield etapa('analyzing', 'Analisando a informação...')
         ledger.start('standard')
         with client.responses.create(model=model, input=inputs, tools=[{'type': 'web_search'}],
-                tool_choice='auto', stream=True, max_output_tokens=4096, max_tool_calls=3,
+                tool_choice='auto', stream=True, max_output_tokens=5500, max_tool_calls=3,
                 store=False, timeout=60, **extras) as stream:
             for event in stream:
                 if monotonic()-started > 110:

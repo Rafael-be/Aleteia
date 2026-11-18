@@ -94,7 +94,7 @@ class ClaimReview(StrictModel):
     search_finding: Literal['no_support_found', 'unclear_mentions', 'not_assessed'] = 'not_assessed'
     entity_resolved: bool = False
     absence_weakens_claim: bool = False
-    assessment: str = Field(default='', max_length=1200)
+    assessment: str = Field(default='', max_length=2000)
     resolved_claim: str | None = Field(default=None, max_length=1500)
     resolution_source_ids: list[str] = Field(default_factory=list, max_length=12)
 

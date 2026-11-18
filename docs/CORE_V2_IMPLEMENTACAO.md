@@ -124,7 +124,7 @@ Na verificação com documentos reais do Enem, os escopos 2019 e 2026 produziram
 
 O chat usa o pipeline em `src/services/analysis_service.py`, com cálculo puro em `src/core/scoring.py`. O prompt de sistema anterior foi substituído por extração e qualificação com contratos estruturados e rubricas limitadas. A explicação combina uma síntese fundamentada produzida na própria qualificação com trechos, citações clicáveis e a decisão calculada em Python. Não há chamada extra de redação nem números escolhidos livremente pelo modelo.
 
-O código mantém a Responses API e o modelo definido por `OPENAI_MODEL` (padrão `gpt-5-mini`). São necessárias as permissões de busca web e saída estruturada nesse modelo/projeto. O backend só utiliza URLs expostas nos eventos de busca do provedor, e busca seus documentos com um cliente de rede restrito. A presença de links no texto do modelo não comprova busca.
+O código mantém a Responses API e o modelo definido por `OPENAI_MODEL` (padrão `gpt-6-luna`). São necessárias as permissões de busca web e saída estruturada nesse modelo/projeto. O backend só utiliza URLs expostas nos eventos de busca do provedor, e busca seus documentos com um cliente de rede restrito. A presença de links no texto do modelo não comprova busca.
 
 O adaptador segue os contratos oficiais de [eventos e fontes da busca web](https://developers.openai.com/api/docs/guides/tools-web-search) e [saída estruturada](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses). A biblioteca OpenAI continua fixada em `requirements.txt`; a conversão de schema usa o helper dessa versão.
 

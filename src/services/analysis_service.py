@@ -114,7 +114,11 @@ sem números de confiança e sem fatos além dos trechos recebidos. Avalie todos
 Não invente observações ausentes nem preencha desconhecidos."""
 QUALIFY_PROMPT += "\ncausal_overreach aplica-se a alegações de causalidade, não a títulos/temas que contenham palavras como manipulação ou controle.\n"
 QUALIFY_PROMPT += """
-Priorize RESPONDER: abra assessment com a conclusão mais sustentada, depois indique contexto e limites.
+Priorize RESPONDER: abra assessment com a conclusão mais sustentada. Em seguida, cubra
+cada ponto material da alegação, explicando o que as evidências sustentam, contradizem
+ou deixam em aberto. Inclua números, datas e recortes quando afetarem a interpretação.
+Explique divergências relevantes entre fontes e os limites da pesquisa. Use parágrafos
+curtos e proporcionais à complexidade, sem repetir achados equivalentes.
 Quando o contexto não foi dado, priorize o sentido de maior relevância atual, declare esse recorte
 e depois explique contextos alternativos. Ordene resolved_scopes nessa ordem de relevância; uma
 data explicitada pelo usuário tem precedência sobre a mais recente.
@@ -242,7 +246,7 @@ class CompleteAnswer(tuple):
 
 
 def _extras(model):
-    return {'reasoning': {'effort': 'low'}} if model.startswith(('gpt-5', 'o1', 'o3', 'o4')) else {'temperature': 0}
+    return {'reasoning': {'effort': 'low'}} if model.startswith(('gpt-5', 'gpt-6', 'o1', 'o3', 'o4')) else {'temperature': 0}
 
 
 def _call(client, model, ledger, deadline, stage, accept_partial=False, **kwargs):
@@ -279,7 +283,7 @@ def _structured(client, model, ledger, deadline, stage, contract, instructions, 
             for value in node:
                 remove_defaults(value)
     remove_defaults(schema)
-    output_limit = (min(12000, 4000+2000*len(payload.get('claims', []))) if stage == 'qualification'
+    output_limit = (min(14000, 5000+2000*len(payload.get('claims', []))) if stage == 'qualification'
                     else 6000 if stage == 'semantic_alignment' and len(payload.get('targets', [])) > 1 else 3000)
     response = _call(client, model, ledger, deadline, stage,
         instructions=instructions, input=json.dumps(payload, ensure_ascii=False),

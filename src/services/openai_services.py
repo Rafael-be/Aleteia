@@ -11,7 +11,7 @@ from src.services.standard_service import standard_answer
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or 'not-configured',
                 timeout=30.0, max_retries=0)
-MODEL_NAME = os.getenv('OPENAI_MODEL', 'gpt-5-mini')
+MODEL_NAME = os.getenv('OPENAI_MODEL', 'gpt-6-luna')
 
 
 def transmitir_resposta(mensagem, historico=None, ledger=None, *, mode='standard'):
