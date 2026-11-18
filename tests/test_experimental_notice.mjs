@@ -73,7 +73,7 @@ assert.equal(timers.size, 1, "Sair do hover retoma uma única contagem");
 
 fechar.listeners.click();
 assert.equal(aviso.classList.contains("visivel"), false, "O botão inicia o fechamento imediatamente sem mudar o modo");
-assert.equal(ids.nomeModelo.textContent, "Experimental");
+assert.equal(ids.nomeModelo.textContent, "Complexo");
 const fechamento = [...timers.values()].find(({ delay }) => delay === 160);
 fechamento.fn();
 assert.equal(aviso.hidden, true, "O aviso é removido do layout após a saída");

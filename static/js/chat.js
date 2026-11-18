@@ -103,8 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const modoAnterior = modeloSelecionado;
     modeloSelecionado = mode;
     const experimental = mode === 'experimental';
-    if (nomeModelo) nomeModelo.textContent = experimental ? 'Experimental' : 'Básico';
-    botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Experimental' : 'Básico'}. Escolher modelo.`);
+    if (nomeModelo) nomeModelo.textContent = experimental ? 'Complexo' : 'Rápido';
+    botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Complexo' : 'Rápido'}. Escolher modelo.`);
     opcoesModelo.forEach((opcao, index) => opcao?.setAttribute('aria-checked', String(experimental === (index === 1))));
     if (experimental && modoAnterior !== 'experimental' && anunciarMudanca) mostrarAvisoExperimental();
     if (!experimental && modoAnterior === 'experimental') encerrarAvisoExperimental();
@@ -430,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bloco.appendChild(corpo);
     if (veredito?.mode === 'experimental' || veredito?.version === 2) {
       const modo = document.createElement('small'); modo.className = 'resposta-modo';
-      modo.textContent = 'Modo experimental'; bloco.appendChild(modo);
+      modo.textContent = 'Modo complexo'; bloco.appendChild(modo);
     }
 
     if (dados.fontes && typeof respostaFormatada?.corpo_html !== "string") {
