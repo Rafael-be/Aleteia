@@ -44,14 +44,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function encerrarAvisoExperimental() {
-    avisoExperimental.versao += 1;
+    const versao = ++avisoExperimental.versao;
     cancelarTemporizadorAvisoExperimental();
     if (!avisoModoExperimental) return;
     avisoModoExperimental.classList.remove("visivel");
     clearTimeout(avisoExperimental.esconder);
-    avisoExperimental.esconder = setTimeout(() => { avisoModoExperimental.hidden = true; }, 160);
+    avisoExperimental.esconder = setTimeout(() => {
+      if (avisoExperimental.versao === versao && !avisoModoExperimental.classList.contains("visivel")) {
+        avisoModoExperimental.hidden = true;
+      }
+    }, 160);
     avisoExperimental.esconder?.unref?.();
-    avisoModoExperimental.hidden = true;
   }
 
   function iniciarContagemAvisoExperimental() {
@@ -64,7 +67,10 @@ document.addEventListener("DOMContentLoaded", () => {
       barraAvisoExperimental.style.animation = `aviso-experimental-progresso 15000ms linear -${15000 - avisoExperimental.restante}ms forwards`;
       barraAvisoExperimental.style.animationPlayState = "running";
     }
-    avisoExperimental.temporizador = setTimeout(() => encerrarAvisoExperimental(), avisoExperimental.restante);
+    const versao = avisoExperimental.versao;
+    avisoExperimental.temporizador = setTimeout(() => {
+      if (avisoExperimental.versao === versao) encerrarAvisoExperimental();
+    }, avisoExperimental.restante);
     avisoExperimental.temporizador?.unref?.();
   }
 
