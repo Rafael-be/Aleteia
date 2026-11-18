@@ -28,6 +28,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!textarea || !btnEnviar) return;
   let modeloSelecionado = 'standard';
+  const avisoExperimental = {
+    temporizador: null,
+    esconder: null,
+    inicio: 0,
+    restante: 15000,
+    versao: 0,
+    pausado: false,
+  };
+  const barraAvisoExperimental = avisoModoExperimental?.querySelector(".aviso-modo-experimental-progresso");
+
+  function cancelarTemporizadorAvisoExperimental() {
+    if (avisoExperimental.temporizador) clearTimeout(avisoExperimental.temporizador);
+    avisoExperimental.temporizador = null;
+  }
+
+  function encerrarAvisoExperimental() {
+    avisoExperimental.versao += 1;
+    cancelarTemporizadorAvisoExperimental();
+    if (!avisoModoExperimental) return;
+    avisoModoExperimental.classList.remove("visivel");
+    clearTimeout(avisoExperimental.esconder);
+    avisoExperimental.esconder = setTimeout(() => { avisoModoExperimental.hidden = true; }, 160);
+    avisoExperimental.esconder?.unref?.();
+    avisoModoExperimental.hidden = true;
+  }
+
+  function iniciarContagemAvisoExperimental() {
+    if (!avisoModoExperimental || avisoExperimental.pausado) return;
+    cancelarTemporizadorAvisoExperimental();
+    avisoExperimental.inicio = Date.now();
+    if (barraAvisoExperimental) {
+      barraAvisoExperimental.style.animation = "none";
+      void barraAvisoExperimental.offsetWidth;
+      barraAvisoExperimental.style.animation = `aviso-experimental-progresso 15000ms linear -${15000 - avisoExperimental.restante}ms forwards`;
+      barraAvisoExperimental.style.animationPlayState = "running";
+    }
+    avisoExperimental.temporizador = setTimeout(() => encerrarAvisoExperimental(), avisoExperimental.restante);
+    avisoExperimental.temporizador?.unref?.();
+  }
+
+  function pausarAvisoExperimental() {
+    if (!avisoModoExperimental || avisoModoExperimental.hidden || avisoExperimental.pausado) return;
+    avisoExperimental.pausado = true;
+    avisoExperimental.restante = Math.max(0, avisoExperimental.restante - (Date.now() - avisoExperimental.inicio));
+    cancelarTemporizadorAvisoExperimental();
+    if (barraAvisoExperimental) barraAvisoExperimental.style.animationPlayState = "paused";
+  }
+
+  function retomarAvisoExperimental() {
+    if (!avisoExperimental.pausado || avisoModoExperimental?.hidden) return;
+    avisoExperimental.pausado = false;
+    iniciarContagemAvisoExperimental();
+  }
+
+  function mostrarAvisoExperimental() {
+    if (!avisoModoExperimental) return;
+    avisoExperimental.versao += 1;
+    clearTimeout(avisoExperimental.esconder);
+    avisoExperimental.restante = 15000;
+    avisoExperimental.pausado = false;
+    avisoModoExperimental.hidden = false;
+    avisoModoExperimental.classList.add("visivel");
+    iniciarContagemAvisoExperimental();
+  }
 
   function fecharModelos(devolverFoco = false) {
     if (menuModelos) menuModelos.hidden = true;
@@ -35,13 +99,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (devolverFoco) botaoModelo?.focus();
   }
 
-  function selecionarModelo(mode) {
+  function selecionarModelo(mode, anunciarMudanca = true) {
+    const modoAnterior = modeloSelecionado;
     modeloSelecionado = mode;
     const experimental = mode === 'experimental';
     if (nomeModelo) nomeModelo.textContent = experimental ? 'Experimental' : 'Básico';
     botaoModelo?.setAttribute('aria-label', `Modelo selecionado: ${experimental ? 'Experimental' : 'Básico'}. Escolher modelo.`);
     opcoesModelo.forEach((opcao, index) => opcao?.setAttribute('aria-checked', String(experimental === (index === 1))));
-    if (avisoModoExperimental) avisoModoExperimental.hidden = !experimental;
+    if (experimental && modoAnterior !== 'experimental' && anunciarMudanca) mostrarAvisoExperimental();
+    if (!experimental && modoAnterior === 'experimental') encerrarAvisoExperimental();
   }
 
   function abrirModelos() {
@@ -57,7 +123,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (bloqueado) fecharModelos();
   }
 
-  selecionarModelo('standard');
+  selecionarModelo('standard', false);
+  if (avisoModoExperimental) avisoModoExperimental.hidden = true;
+  avisoModoExperimental?.querySelector(".aviso-modo-experimental-fechar")?.addEventListener("click", encerrarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("mouseenter", pausarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("mouseleave", retomarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("focusin", pausarAvisoExperimental);
+  avisoModoExperimental?.addEventListener("focusout", (event) => {
+    if (!avisoModoExperimental.contains(event.relatedTarget)) retomarAvisoExperimental();
+  });
   fecharModelos();
   botaoModelo?.addEventListener('click', () => menuModelos?.hidden ? abrirModelos() : fecharModelos());
   botaoModelo?.addEventListener('keydown', (event) => {

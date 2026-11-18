@@ -45,7 +45,7 @@ vm.runInNewContext(source, {
   window: { location: { search: "" }, addEventListener() {} },
   sessionStorage: { getItem() {}, setItem() {} },
   crypto: { randomUUID() { return "conversa"; } },
-  URL, URLSearchParams, AbortController, console,
+  URL, URLSearchParams, AbortController, console, setTimeout, clearTimeout,
   chamarApi: async (_, options) => { if (options?.body) requests.push(JSON.parse(options.body)); return { ok: true }; },
   consumirEventos: async (_, receber) => {
     if (scenario === 'standard') {
@@ -240,7 +240,7 @@ assert.equal(ids.menuModelos.hidden, true, 'Clique fora deve fechar o seletor');
 ids.botaoModelo.listeners.click();
 ids.modeloBasico.listeners.click();
 assert.equal(ids.nomeModelo.textContent, 'Básico');
-assert.equal(ids.avisoModoExperimental.hidden, true);
+assert.equal(ids.avisoModoExperimental.classList.contains('visivel'), false);
 scenario = 'standard';
 ids.promptInput.value = 'Voltar ao modo padrão'; ids.btnEnviar.disabled = false;
 ids.btnEnviar.listeners.click(); await new Promise(setImmediate);

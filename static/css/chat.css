@@ -224,8 +224,19 @@
 .opcao-modelo-descricao { color: #c5d1ca; font-size: .77rem; line-height: 1.5; }
 .opcao-modelo-risco { color: #edcc85; font-size: .74rem; line-height: 1.45; }
 @media (max-width: 380px) { .modelo-prefixo { display: none; } .botao-modelo { gap: .3rem; padding: .4rem; } }
-.aviso-modo-experimental { margin: .5rem 0 0; padding: .6rem .8rem; border-left: 3px solid #d1a54a; border-radius: .3rem; background: rgba(209,165,74,.1); line-height: 1.45; }
+.aviso-modo-experimental { position: relative; margin: 0 0 .6rem; overflow: hidden; border: 1px solid rgba(209,165,74,.55); border-radius: var(--radius-md); background: rgba(209,165,74,.1); color: var(--text-light); opacity: 0; transform: translateY(4px); transition: opacity .16s ease-in, transform .16s ease-in; }
+.aviso-modo-experimental.visivel { opacity: 1; transform: translateY(0); transition-duration: .2s; transition-timing-function: ease-out; }
 .aviso-modo-experimental[hidden] { display: none; }
+.aviso-modo-experimental-conteudo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .65rem; align-items: start; padding: .7rem .75rem .8rem; }
+.aviso-modo-experimental-icone { display: inline-flex; align-items: center; justify-content: center; width: 1.2rem; height: 1.2rem; border: 1px solid currentColor; border-radius: 50%; color: #edcc85; font-family: Georgia, serif; font-size: .78rem; font-weight: 700; }
+.aviso-modo-experimental-titulo { display: block; color: #f1d58f; font-size: .82rem; }
+.aviso-modo-experimental p { margin: .2rem 0 0; font-size: .78rem; line-height: 1.45; }
+.aviso-modo-experimental-fechar { width: 1.7rem; height: 1.7rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font: inherit; font-size: 1.25rem; line-height: 1; cursor: pointer; }
+.aviso-modo-experimental-fechar:hover { color: var(--text-light); background: rgba(255,255,255,.08); }
+.aviso-modo-experimental-fechar:focus-visible { outline: 2px solid #edcc85; outline-offset: 2px; }
+.aviso-modo-experimental-progresso { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: #d1a54a; transform: scaleX(1); transform-origin: left; }
+@keyframes aviso-experimental-progresso { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .aviso-modo-experimental { transition: none; } .aviso-modo-experimental-progresso { animation: none !important; } }
 .resposta-modo { display: block; margin: .3rem 0; color: #d1b570; font-size: .75rem; }
 
 .resposta-corpo a.citacao-fonte { font-size: .8rem; line-height: 1.5; opacity: .85; }

@@ -114,6 +114,17 @@
 
     <!-- Input: sempre fixo na parte inferior da área principal -->
     <div class="chat-input-wrap">
+      <section id="avisoModoExperimental" class="aviso-modo-experimental" role="status" aria-live="polite" hidden>
+        <div class="aviso-modo-experimental-conteudo">
+          <span class="aviso-modo-experimental-icone" aria-hidden="true">i</span>
+          <div>
+            <strong class="aviso-modo-experimental-titulo">Modo experimental</strong>
+            <p>O algoritmo experimental está em fase de desenvolvimento e pode gerar erros e respostas inconsistentes.</p>
+          </div>
+          <button type="button" class="aviso-modo-experimental-fechar" aria-label="Fechar aviso do modo experimental">×</button>
+        </div>
+        <span class="aviso-modo-experimental-progresso" aria-hidden="true"></span>
+      </section>
       <div class="input-box">
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
         <div class="input-actions">
@@ -156,10 +167,6 @@
           </div>
         </div>
       </div>
-
-      <p id="avisoModoExperimental" class="aviso-modo-experimental" role="status" aria-live="polite" hidden>
-        O algoritmo experimental está em fase de desenvolvimento e pode gerar erros e respostas inconsistentes.
-      </p>
 
       <p class="aviso">
         Aviso: a Aleteia pode cometer erros.<br>
