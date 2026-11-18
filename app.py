@@ -22,13 +22,13 @@ def url_publica(caminho: str) -> str:
     return f"{PUBLIC_BASE_URL}{caminho}"
 
 
-def dados_seo(titulo: str, descricao: str, indexavel: bool = False) -> dict:
+def dados_seo(_titulo: str, descricao: str, indexavel: bool = False) -> dict:
     return {
-        "title": titulo,
+        "title": "AleteIA",
         "description": descricao,
         "indexable": indexavel,
         "canonical": url_publica(request.path) if indexavel else None,
-        "share_image": url_publica(url_for("static", filename="images/aleteia-share.png")),
+        "share_image": url_publica(url_for("static", filename="images/logo_Aleteia.png")),
     }
 
 

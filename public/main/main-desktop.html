@@ -7,7 +7,7 @@
   <meta name="description" content="{{ seo.description }}">
   <meta name="robots" content="{% if seo.indexable %}index,follow{% else %}noindex,nofollow{% endif %}">
   {% if seo.canonical %}<link rel="canonical" href="{{ seo.canonical }}">{% endif %}
-  <link rel="icon" type="image/png" sizes="1254x1254" href="{{ asset_url('images/aleteia-favicon.png') }}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{{ asset_url('images/logo-favicon.png') }}">
   {% if seo.indexable %}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="AleteIA">
@@ -15,8 +15,8 @@
   <meta property="og:description" content="{{ seo.description }}">
   <meta property="og:url" content="{{ seo.canonical }}">
   <meta property="og:image" content="{{ seo.share_image }}">
-  <meta property="og:image:width" content="1734">
-  <meta property="og:image:height" content="907">
+  <meta property="og:image:width" content="500">
+  <meta property="og:image:height" content="500">
   <meta property="og:image:alt" content="AleteIA — Análise de notícias com inteligência artificial">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ seo.title }}">
