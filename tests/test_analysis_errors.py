@@ -6,6 +6,7 @@ import httpx
 from openai import AuthenticationError
 from src.services.analysis_errors import operational_error
 import test_streaming
+from test_streaming import json_response
 
 
 class OperationalErrorTests(unittest.TestCase):
@@ -24,8 +25,9 @@ class OperationalErrorTests(unittest.TestCase):
         with patch('src.services.openai_services.client.responses.create', side_effect=self.auth_error()):
             result = client.post('/mensagem', json={'prompt': 'A água ferve a 100 graus ao nível do mar.', 'conversa_id': 'c'})
         self.assertEqual(result.status_code, 502)
-        self.assertEqual(result.json['code'], 'provider_authentication_failed')
-        self.assertNotIn('veredito', result.json)
+        data = json_response(result)
+        self.assertEqual(data['code'], 'provider_authentication_failed')
+        self.assertNotIn('veredito', data)
         self.assertNotIn('secret', result.text)
 
     def test_stream_reports_failure_without_inventing_legacy_analysis(self):

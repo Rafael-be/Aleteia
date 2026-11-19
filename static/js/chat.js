@@ -213,12 +213,144 @@ document.addEventListener("DOMContentLoaded", () => {
   let requisicaoAtiva = null;
   let chatBloqueado = false;
   let editandoRascunhoLogin = false;
+  const botaoAnexos = document.getElementById("botaoAnexos");
+  const opcoesAnexos = document.getElementById("opcoesAnexos");
+  const selecionarImagens = document.getElementById("selecionarImagens");
+  const arquivosImagens = document.getElementById("arquivosImagens");
+  const imagensPrompt = document.getElementById("imagensPrompt");
+  const avisoImagens = document.getElementById("avisoImagens");
+  const anexosPrompt = document.getElementById("anexosPrompt");
+  const formatosImagens = new Set(["image/png", "image/jpeg", "image/webp"]);
+  const limiteImagens = 3;
+  const imagens = [];
+
+  function mostrarAvisoImagens(mensagem = "") {
+    avisoImagens.textContent = mensagem;
+    avisoImagens.hidden = !mensagem;
+  }
+
+  function abrirOpcoesAnexos(aberto) {
+    opcoesAnexos.hidden = !aberto;
+    botaoAnexos.setAttribute("aria-expanded", String(aberto));
+  }
+
+  function miniaturaImagem(anexo, remover) {
+    const miniatura = document.createElement("div");
+    miniatura.className = "miniatura-prompt";
+    if (anexo.url) {
+      const imagem = document.createElement("img");
+      imagem.src = anexo.url;
+      imagem.alt = anexo.nome;
+      miniatura.appendChild(imagem);
+    } else {
+      miniatura.setAttribute("aria-label", "Carregando imagem");
+    }
+    if (remover) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.textContent = "×";
+      botao.setAttribute("aria-label", `Remover ${anexo.nome}`);
+      botao.addEventListener("click", remover);
+      miniatura.appendChild(botao);
+    }
+    return miniatura;
+  }
+
+  function atualizarImagensPrompt() {
+    imagensPrompt.replaceChildren(...imagens.map(anexo => miniaturaImagem(anexo, () => {
+      imagens.splice(imagens.indexOf(anexo), 1);
+      mostrarAvisoImagens();
+      atualizarImagensPrompt();
+      textarea.focus();
+    })));
+    imagensPrompt.hidden = imagens.length === 0;
+    atualizarCompositor();
+  }
+
+  function limparImagensPrompt() {
+    imagens.length = 0;
+    mostrarAvisoImagens();
+    abrirOpcoesAnexos(false);
+    atualizarImagensPrompt();
+  }
+
+  function anexarImagens(arquivos) {
+    if (requisicaoAtiva || chatBloqueado) return;
+    mostrarAvisoImagens();
+    for (const arquivo of arquivos) {
+      if (imagens.length >= limiteImagens) {
+        mostrarAvisoImagens("Você pode anexar até 3 imagens por mensagem.");
+        break;
+      }
+      if (!formatosImagens.has(arquivo.type)) {
+        mostrarAvisoImagens("Use imagens PNG, JPEG ou WebP.");
+        continue;
+      }
+      if (arquivo.size > 4 * 1024 * 1024) {
+        mostrarAvisoImagens("Envie imagens de até 4 MB cada.");
+        continue;
+      }
+      const anexo = { nome: arquivo.name || "Imagem anexada", url: null };
+      imagens.push(anexo);
+      const leitor = new FileReader();
+      leitor.addEventListener("load", () => {
+        if (!imagens.includes(anexo)) return;
+        anexo.url = leitor.result;
+        atualizarImagensPrompt();
+      });
+      leitor.addEventListener("error", () => {
+        const indice = imagens.indexOf(anexo);
+        if (indice < 0) return;
+        imagens.splice(indice, 1);
+        mostrarAvisoImagens("Não foi possível abrir a imagem.");
+        atualizarImagensPrompt();
+      });
+      leitor.readAsDataURL(arquivo);
+    }
+    atualizarImagensPrompt();
+  }
+
+  botaoAnexos.addEventListener("click", () => {
+    const abrir = opcoesAnexos.hidden;
+    abrirOpcoesAnexos(abrir);
+    if (abrir) selecionarImagens.focus();
+  });
+  selecionarImagens.addEventListener("click", () => {
+    abrirOpcoesAnexos(false);
+    arquivosImagens.click();
+    botaoAnexos.focus();
+  });
+  anexosPrompt.addEventListener("keydown", e => {
+    if (e.key !== "Escape" || opcoesAnexos.hidden) return;
+    abrirOpcoesAnexos(false);
+    botaoAnexos.focus();
+  });
+  document.addEventListener("click", e => {
+    if (!anexosPrompt.contains(e.target)) abrirOpcoesAnexos(false);
+  });
+  arquivosImagens.addEventListener("change", () => {
+    anexarImagens(arquivosImagens.files);
+    arquivosImagens.value = "";
+    textarea.focus();
+  });
+  document.addEventListener("paste", e => {
+    if (requisicaoAtiva || chatBloqueado || e.defaultPrevented) return;
+    if (e.target !== textarea && e.target.closest?.("input, textarea, [contenteditable]")) return;
+    const arquivos = Array.from(e.clipboardData?.files || []).filter(arquivo => arquivo.type.startsWith("image/"));
+    if (!arquivos.length) return;
+    e.preventDefault();
+    anexarImagens(arquivos);
+    textarea.focus();
+  });
 
   function atualizarCompositor() {
     const gerando = Boolean(requisicaoAtiva);
     const rotulo = gerando ? "Cancelar resposta" : "Enviar";
     textarea.disabled = gerando || chatBloqueado;
-    btnEnviar.disabled = !gerando && (chatBloqueado || !textarea.value.trim());
+    botaoAnexos.disabled = gerando || chatBloqueado;
+    if (botaoAnexos.disabled) abrirOpcoesAnexos(false);
+    btnEnviar.disabled = !gerando && (chatBloqueado || imagens.some(anexo => !anexo.url)
+      || (!textarea.value.trim() && !imagens.length));
     btnEnviar.classList.toggle("active", !btnEnviar.disabled);
     btnEnviar.classList.toggle("cancelando", gerando);
     btnEnviar.title = rotulo;
@@ -265,7 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const MOTIVOS = {
     SEARCH_WITHOUT_SUPPORT: "nenhuma confirmação localizada; isso não prova que o fato nunca ocorreu",
-    DIRECTION_UNDETERMINED: "o ESS está no ponto neutro; o material não permite determinar uma direção",
+    DIRECTION_UNDETERMINED: "as fontes não permitem determinar se há apoio ou contradição",
     PROVISIONAL_DIRECTION: "direção provisória das evidências; atributos incompletos reduzem a qualidade da avaliação",
     INSUFFICIENT_EVIDENCE: "evidências insuficientes",
     MATERIAL_COVERAGE_INCOMPLETE: "faltam elementos materiais",
@@ -276,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     RETRIEVAL_INCOMPLETE: "busca incompleta",
     REQUIREMENTS_NOT_MET: "requisitos não atendidos",
     DIMENSIONS_MISSING: "dimensões não medidas",
-    MULTIPLE_CLAIMS: "consulte cada alegação",
+    MULTIPLE_CLAIMS: "os pontos avaliados não permitem uma medida conjunta",
     NOT_VERIFIABLE: "alegação não verificável",
     LOW_ACS: "qualidade limitada nos aspectos medidos",
     HUMAN_REVIEW_REQUIRED: "revisão humana necessária",
@@ -284,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     PROVIDER_EXCERPT_ONLY: "apenas sínteses citadas da busca; páginas não inspecionadas",
     PARTIAL_PROVIDER_EXCERPTS: "parte do material é síntese citada da busca",
     LIMITED_INDEPENDENT_SOURCES: "poucas fontes independentes",
-    QUESTION_NOT_RESOLVED: "a pesquisa ainda não delimitou uma proposição única para calcular o ESS",
+    QUESTION_NOT_RESOLVED: "a pesquisa ainda não delimitou o fato a medir",
     PARTIAL_COVERAGE: "resposta baseada nos elementos verificados; há detalhes adicionais não cobertos",
     ANSWER_OVERREACH: "a formulação da resposta exige cautela adicional",
     UNVERIFIED_COUNTEREVIDENCE: "há contraponto em síntese cuja página não pôde ser verificada",
@@ -292,10 +424,26 @@ document.addEventListener("DOMContentLoaded", () => {
     CONCLUSION_ALIGNMENT: "a conclusão e a direção das evidências precisam de revisão",
   };
 
+  const INDICADORES = {
+    ESS: {
+      nome: "Suporte das evidências",
+      explicacao: "Mostra quanto as fontes apoiam os fatos avaliados. Levamos em conta o que cada fonte confirma ou contradiz, sua qualidade, relevância e compatibilidade com o caso. Quando há vários pontos comparáveis, os mais importantes pesam mais.",
+    },
+    ACS: {
+      nome: "Qualidade da análise",
+      explicacao: "Mostra quão bem a análise respondeu ao pedido. Considera a cobertura da pesquisa, a qualidade e a origem das fontes, a adequação ao contexto e a estabilidade da conclusão. Os pontos mais importantes da resposta pesam mais.",
+    },
+  };
+
+  function metricasDaResposta(metricas) {
+    return Object.keys(INDICADORES).map(id =>
+      (Array.isArray(metricas) && metricas.find(m => m?.id === id)) || { id });
+  }
+
   function adicionarMetricas(container, metricas, alvo = "") {
     const grupo = document.createElement("div"); grupo.className = "metricas-circulares";
-    for (const m of (Array.isArray(metricas) ? metricas : []).slice(0, 2)) {
-      if (!["ESS", "ACS"].includes(m.id)) continue;
+    for (const m of metricasDaResposta(metricas)) {
+      const indicador = INDICADORES[m.id];
       const valido = m.valid === true && typeof m.value === "number" && Number.isFinite(m.value) && m.value >= 0 && m.value <= 100;
       const limite = !valido && m.id === "ACS" && m.measurement === "upper_bound" && typeof m.upper_bound === "number" && Number.isFinite(m.upper_bound) && m.upper_bound >= 0 && m.upper_bound <= 100;
       const n = limite ? m.upper_bound : valido ? m.value : null;
@@ -309,8 +457,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const observado = m.id === "ESS" && m.measurement === "observed_support";
       const indeterminado = m.id === "ESS" && m.measurement === "undetermined_support";
       const provisorio = m.id === "ESS" && m.measurement === "provisional_direction";
-      const significado = observado ? "sustentação encontrada nas fontes consultadas; não é probabilidade de falsidade" : m.id === "ESS" ? `sustentação da afirmação${alvo ? `: ${alvo}` : " avaliada"}` : "qualidade da análise";
-      circulo.setAttribute("aria-label", `${m.id}, ${significado}: ${n === null ? "indisponível" : `${limite ? "no máximo " : ""}${n} de 100`}`);
+      const alvoAvaliado = m.id === "ESS" && alvo ? ` para ${alvo}` : "";
+      circulo.setAttribute("aria-label", `${indicador.nome}${alvoAvaliado}. ${n === null ? "Indisponível" : `${limite ? "No máximo " : ""}${n} de 100`}`);
       if (n !== null) {
         circulo.setAttribute("aria-valuemin", "0"); circulo.setAttribute("aria-valuemax", "100"); circulo.setAttribute("aria-valuenow", String(n));
       }
@@ -320,10 +468,27 @@ document.addEventListener("DOMContentLoaded", () => {
       centro.appendChild(valor);
       const escala = document.createElement("small"); escala.textContent = n === null ? "Indisponível" : "%";
       centro.appendChild(escala); circulo.appendChild(centro); item.appendChild(circulo);
-      const rotulo = document.createElement("strong"); rotulo.textContent = m.id; item.appendChild(rotulo);
+      const rotulo = document.createElement("div"); rotulo.className = "metrica-titulo";
+      const nome = document.createElement("strong"); nome.textContent = indicador.nome;
+      rotulo.appendChild(nome);
+      const informacao = document.createElement("details"); informacao.className = "metrica-informacao";
+      const icone = document.createElement("summary"); icone.textContent = "i";
+      icone.setAttribute("aria-label", `Como é medido: ${indicador.nome}`);
+      const explicacao = document.createElement("p");
+      explicacao.textContent = indicador.explicacao + " A escala vai de 0 a 100 e expressa um índice da análise.";
+      informacao.appendChild(icone); informacao.appendChild(explicacao);
+      rotulo.appendChild(informacao); item.appendChild(rotulo);
       const ajuda = document.createElement("small");
-      ajuda.textContent = n === null ? (MOTIVOS[m.reason] || "medição não disponível") : indeterminado ? "Ponto neutro da escala; sustentação indeterminada" : provisorio ? "Direção provisória; atributos incompletos" : observado ? "Nenhuma sustentação localizada; não significa falsidade comprovada" : limite ? "Limite superior; dimensões não medidas" : m.id === "ACS" ? "Qualidade da análise" : n < 40 ? "Evidências contrárias à afirmação" : n < 60 ? "Suporte intermediário à afirmação" : "Evidências favoráveis à afirmação";
-      item.appendChild(ajuda); grupo.appendChild(item);
+      ajuda.textContent = n === null ? (MOTIVOS[m.reason] || "medição não disponível")
+        : indeterminado ? "As fontes não permitem determinar a direção"
+        : provisorio ? "Medição provisória"
+        : observado ? "Nenhuma confirmação localizada; o fato ainda pode ter ocorrido"
+        : limite ? "Limite superior; a qualidade completa ainda não pôde ser medida"
+        : m.measurement === "combined_direction" ? "Resumo dos pontos verificados"
+        : m.id === "ACS" ? "" : n < 40 ? "Evidências contrárias à afirmação"
+        : n < 60 ? "Suporte intermediário à afirmação" : "Evidências favoráveis à afirmação";
+      if (ajuda.textContent) item.appendChild(ajuda);
+      grupo.appendChild(item);
     }
     container.appendChild(grupo);
   }
@@ -432,11 +597,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ── Bolha simples (usuário ou mensagem de sistema/erro) ── */
-  function adicionarBolha(texto, tipo) {
+  function adicionarBolha(texto, tipo, anexos = []) {
     if (!areaConversa) return null;
 
     const bolha = document.createElement("div");
     bolha.className = `bolha bolha-${tipo}`;
+    if (anexos.length) {
+      const miniaturas = document.createElement("div");
+      miniaturas.className = "imagens-prompt imagens-prompt-enviadas";
+      miniaturas.append(...anexos.map(anexo => miniaturaImagem(anexo)));
+      bolha.appendChild(miniaturas);
+    }
     preencherTexto(bolha, texto);
 
     areaConversa.appendChild(bolha);
@@ -463,7 +634,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </svg>`;
 
   /* ── Resposta estruturada da IA: veredicto colorido + análise + fontes + ações ── */
-  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null, veredito = null) {
+  function adicionarRespostaIA(textoCru, promptOrigem, respostaFormatada = null, veredito = null, anexos = []) {
     if (!areaConversa) return null;
 
     const dados = parseRespostaIA(textoCru);
@@ -525,17 +696,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pesquisa.textContent = `Pesquisa realizada: ${numero(r.queries_executed)} consultas · ${numero(r.sources_found)} fontes localizadas · ${numero(r.documents_available)} materiais avaliados`;
         painel.appendChild(pesquisa);
       }
-      if (veredito.scoped_metrics && veredito.claim_details?.length > 1) {
-        for (const claim of veredito.claim_details.slice(0, 8)) {
-          const escopo = document.createElement('div'); escopo.className = 'metricas-escopo';
-          const titulo = document.createElement('p'); titulo.textContent = claim.text;
-          escopo.appendChild(titulo); adicionarMetricas(escopo, claim.metrics, claim.text); painel.appendChild(escopo);
-        }
-      } else adicionarMetricas(painel, veredito.metrics, veredito.claim_details?.length === 1 ? veredito.claim_details[0].text : promptOrigem);
-      const nota = document.createElement("p");
-      nota.className = "metrica-nota";
-      nota.textContent = "ESS mede a sustentação da afirmação avaliada; ACS, a qualidade da análise. Não são probabilidades calibradas.";
-      painel.appendChild(nota);
+      adicionarMetricas(painel, veredito.metrics, veredito.claim_details?.length === 1 ? veredito.claim_details[0].text : "");
       adicionarFontes(painel, veredito);
       adicionarCatalogo(painel, veredito.source_catalog);
       if (veredito.claim_details?.length) {
@@ -556,7 +717,6 @@ document.addEventListener("DOMContentLoaded", () => {
             prova.textContent = 'Uma condição necessária da alegação foi diretamente contraditada. Não é preciso comprovar todos os detalhes históricos para refutá-la.';
             item.appendChild(prova);
           }
-          if (!veredito.scoped_metrics && veredito.claim_details.length > 1) adicionarMetricas(item, claim.metrics, claim.text);
           if (claim.reasons?.length) {
             const motivos = document.createElement("p"); motivos.className = "metrica-nota";
             motivos.textContent = claim.reasons.map((r) => MOTIVOS[r] || "requisito pendente").join("; ");
@@ -570,7 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (veredito?.mode !== 'standard') {
       const nota = document.createElement("small");
       nota.className = "metrica-nota";
-      nota.textContent = "ESS e ACS não foram calculados nesta versão da resposta.";
+      nota.textContent = "Os indicadores não foram calculados nesta versão da resposta.";
       bloco.appendChild(nota);
     }
 
@@ -585,10 +745,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ações: copiar / regenerar / falar
     acoes.querySelector('[data-acao="copiar"]').addEventListener("click", async () => {
-      const indicadores = veredito?.version === 2 ? "\n\n" + (veredito.metrics || []).map((m) =>
-        `${m.id}: ${m.valid && typeof m.value === "number" ? `${m.value}%` :
-          m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}% (limite superior)` : "indisponível"}`).join("\n") +
-        "\nESS: sustentação da afirmação avaliada. ACS: qualidade da análise. Não são probabilidades." : "";
+      const indicadores = veredito?.version === 2 ? "\n\n" + metricasDaResposta(veredito.metrics).map((m) =>
+        `${INDICADORES[m.id].nome}: ${m.valid && typeof m.value === "number" ? `${m.value}%` :
+          m.measurement === "upper_bound" && typeof m.upper_bound === "number" ? `≤ ${m.upper_bound}% (limite superior)` : "indisponível"}`).join("\n") : "";
       try {
         if (!navigator.clipboard?.writeText) throw new Error("Clipboard indisponível");
         await navigator.clipboard.writeText((textoCru || "") + indicadores);
@@ -608,7 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     acoes.querySelector('[data-acao="regenerar"]').addEventListener("click", () => {
       if (!promptOrigem) return;
-      reenviarPrompt(promptOrigem);
+      reenviarPrompt(promptOrigem, anexos);
     });
 
     areaConversa.appendChild(bloco);
@@ -649,7 +808,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* ── Envia um prompt específico à API e renderiza a resposta ── */
-  async function chamarApiEExibir(prompt) {
+  async function chamarApiEExibir(prompt, anexos = []) {
     if (requisicaoAtiva || chatBloqueado) return;
     const controle = new AbortController();
     requisicaoAtiva = controle;
@@ -691,7 +850,10 @@ document.addEventListener("DOMContentLoaded", () => {
           "Content-Type": "application/json",
           "Accept": "text/event-stream"
         },
-        body: JSON.stringify({ conversa_id: idDaConversa, prompt, mode }),
+        body: JSON.stringify({
+          conversa_id: idDaConversa, prompt, mode,
+          ...(anexos.length ? { images: anexos.map(anexo => anexo.url) } : {})
+        }),
         signal: controle.signal
       }, () => sessionStorage.setItem(chaveRascunhoLogin, prompt));
 
@@ -723,7 +885,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (evento.type === "done") {
           concluida = true;
           parcial.remove();
-          adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito);
+          adicionarRespostaIA(evento.resposta, prompt, evento.resposta_formatada, evento.veredito, anexos);
         }
       });
       if (controle.signal.aborted) return;
@@ -768,28 +930,29 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ── Reenvia um prompt já existente (usado pelo botão "Gerar novamente") ── */
-  function reenviarPrompt(prompt) {
-    chamarApiEExibir(prompt);
+  function reenviarPrompt(prompt, anexos) {
+    chamarApiEExibir(prompt, anexos);
   }
 
   /* ── Enviar prompt digitado pelo usuário ── */
   async function enviarMensagem() {
-    if (requisicaoAtiva || chatBloqueado) return;
-    const prompt = textarea.value.trim();
-    if (!prompt) return;
+    if (requisicaoAtiva || chatBloqueado || btnEnviar.disabled) return;
+    const anexos = imagens.slice();
+    const prompt = textarea.value.trim() || "Verifique as notícias ou alegações visíveis nas imagens.";
 
     if (editandoRascunhoLogin) {
       sessionStorage.removeItem(chaveRascunhoLogin);
       editandoRascunhoLogin = false;
     }
     ativarLayoutDeConversa();
-    adicionarBolha(prompt, "usuario");
+    adicionarBolha(prompt, "usuario", anexos);
     ultimoPromptEnviado = prompt;
 
     textarea.value = "";
     textarea.style.height = "auto";
+    limparImagensPrompt();
 
-    await chamarApiEExibir(prompt);
+    await chamarApiEExibir(prompt, anexos);
   }
 
   /* ── Reabrir uma conversa antiga (chamado pelo main.js ao clicar na sidebar) ── */
@@ -803,6 +966,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await res.json();
 
+      if (conversaId !== idConversa) limparImagensPrompt();
       areaConversa.innerHTML = "";
       ativarLayoutDeConversa();
 
@@ -834,6 +998,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resetarLayoutInicial();
     textarea.value = "";
     textarea.style.height = "auto";
+    limparImagensPrompt();
     if (editandoRascunhoLogin) {
       sessionStorage.removeItem(chaveRascunhoLogin);
       editandoRascunhoLogin = false;

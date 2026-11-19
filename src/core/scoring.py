@@ -3,13 +3,13 @@ from dataclasses import asdict, dataclass
 from collections import Counter
 import math
 
-METHOD_VERSION = 'core-v5.0-candidate'
+METHOD_VERSION = 'core-v5.1-candidate'
 
 
 @dataclass(frozen=True)
 class Parameters:
     # Engineering baseline, deliberately not claimed to be empirically calibrated.
-    version: str = 'contextual-decision-2026-11-v9'
+    version: str = 'contextual-editorial-2026-11-v10'
     alpha: float = 1/3
     beta: float = 1/3
     delta: float = 1/3
@@ -58,6 +58,12 @@ def unit(value):
 def geometric(values, weights=None):
     if not values or any(v is None for v in values):
         return None
+    return geometric_measured([v for v in values if v is not None], weights)
+
+
+def geometric_measured(values, weights=None) -> float:
+    if not values:
+        raise ValueError('Expected at least one measured value')
     values = [unit(v) for v in values]
     weights = [1/len(values)] * len(values) if weights is None else weights
     if len(weights) != len(values) or any(unit(w) < 0 for w in weights) or not math.isclose(sum(weights), 1):
@@ -174,7 +180,7 @@ def score_claim(claim, evidence, searches, review, decomposition_complete, p=DEF
         'D': float(decomposition) if review else None,
         'R': sum(bool(s.get('executed')) for s in searches)/4,
         'E': min(1, procedural_mass/p.minimum_mass)*process_coverage if known else None,
-        'C': (geometric([e['context_fit'] for e in process_qualified]) *
+        'C': (geometric_measured([e['context_fit'] for e in process_qualified]) *
               (0 if causal_failure else 1 if review.context_complete or refutation_sufficient else .5)) if process_qualified and review else None,
         'Rob': robustness(process_qualified, p) if known else None,
     }
@@ -192,7 +198,7 @@ def score_claim(claim, evidence, searches, review, decomposition_complete, p=DEF
     if acs is None and evidence and claim.verifiable:
         # Missing dimensions remain unknown. Compute an UPPER BOUND on the
         # geometric model, not a guessed point score: every unknown is ≤1.
-        acs_upper_bound = 100*geometric([1.0 if z is None else z for z in dimensions.values()])
+        acs_upper_bound = 100*geometric_measured([1.0 if z is None else z for z in dimensions.values()])
         caps = [p.incomplete_process_cap] if not complete_search or process_coverage < 1 else []
         if not decisive_document and len({e['group'] for e in process_qualified if e['stance']}) < 2:
             caps.append(p.single_group_cap)
@@ -245,7 +251,7 @@ def score_claim(claim, evidence, searches, review, decomposition_complete, p=DEF
 
 
 def metric(identifier, value, reason=None, upper_bound=None, measurement=None):
-    result = {'id': identifier, 'label': 'Sustentação das evidências' if identifier == 'ESS' else 'Qualidade da análise',
+    result = {'id': identifier, 'label': 'Suporte das evidências' if identifier == 'ESS' else 'Qualidade da análise',
             'unit': '%',
             'value': round(value, 1) if value is not None else None, 'min': 0, 'max': 100,
             'valid': value is not None, 'reason': reason if value is None else None}
@@ -258,22 +264,43 @@ def metric(identifier, value, reason=None, upper_bound=None, measurement=None):
         result.update(measurement=measurement, label='Sustentação indeterminada · ponto neutro da escala')
     if measurement == 'provisional_direction' and identifier == 'ESS':
         result.update(measurement=measurement, label='Sustentação provisória · atributos incompletos')
+    if measurement == 'combined_direction' and identifier == 'ESS':
+        result['measurement'] = measurement
     return result
 
 
-def verdict(claims, results, incomplete=False, p=DEFAULTS):
-    """Conservative multiclaim summary: no missing material claim is averaged away."""
-    ess = acs = None
+def _weighted_metric(pairs, key):
+    if not pairs or any(r[key] is None for _, r in pairs):
+        return None
+    weights = [c.materiality * (2 if c.critical else 1) for c, _ in pairs]
+    return sum(w*r[key] for w, (_, r) in zip(weights, pairs))/sum(weights)
+
+
+def verdict(claims, results, incomplete=False, p=DEFAULTS, *, analysis_scope=None):
+    """Summarize the factual targets and measure quality across the answer."""
+    targets = list(zip(claims, results))
+    quality_scope = [(c, r) for c, r in (targets if analysis_scope is None else analysis_scope) if c.verifiable]
+    ess = acs = upper_bound = measurement = None
     state = 'INCONCLUSIVE'
     if results and not incomplete:
+        if len(results) == 1:
+            ess, measurement = results[0]['ess'], results[0].get('ess_measurement')
+        elif all(r.get('ess_measurement') not in {'observed_support', 'undetermined_support'}
+                 for r in results):
+            ess = _weighted_metric(targets, 'ess')
+            if ess is not None:
+                measurement = ('provisional_direction' if any(r.get('ess_measurement') == 'provisional_direction'
+                               for r in results) else 'combined_direction')
+        acs = _weighted_metric(quality_scope, 'acs')
+        if len(quality_scope) == 1:
+            upper_bound = quality_scope[0][1].get('acs_upper_bound')
         if all(r['state'] == 'NOT_VERIFIABLE' for r in results):
             state = 'NOT_VERIFIABLE'
         elif len(results) == 1:
-            state, ess, acs = results[0]['state'], results[0]['ess'], results[0]['acs']
+            state = results[0]['state']
         elif any(r['state'] == 'HUMAN_REVIEW_REQUIRED' for r in results):
             state = 'HUMAN_REVIEW_REQUIRED'
         else:
-            # Averages across dependent/heterogeneous propositions are intentionally withheld.
             states = {r['state'] for r in results}
             if len(states) == 1:
                 state = next(iter(states))
@@ -296,8 +323,7 @@ def verdict(claims, results, incomplete=False, p=DEFAULTS):
     return {'version': 2, 'code': state, 'method_version': METHOD_VERSION,
             'assessment_level': 'preliminary' if any(r.get('preliminary') for r in results) else 'standard',
             'parameter_version': p.version, 'calibrated': False,
-            'scope': 'claim' if len(results) == 1 else 'analysis',
-            'metrics': [metric('ESS', ess, reason, measurement=results[0].get('ess_measurement')
-                               if len(results) == 1 else None), metric('ACS', acs, reason,
-                        upper_bound=results[0].get('acs_upper_bound') if len(results) == 1 and not incomplete else None)],
+            'scope': 'claim' if len(results) == len(quality_scope) == 1 else 'analysis',
+            'metrics': [metric('ESS', ess, reason, measurement=measurement),
+                        metric('ACS', acs, reason, upper_bound=upper_bound)],
             'claims': [{k: r[k] for k in ('claim_id', 'state', 'ess', 'acs', 'reasons')} for r in results]}

@@ -88,7 +88,7 @@ class SearchSupportTests(unittest.TestCase):
         self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
         self.assertIn('Não encontrei confirmação', result['text'])
         self.assertTrue(result['veredito']['source_details'])
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 6)
 
 
 if __name__ == '__main__':

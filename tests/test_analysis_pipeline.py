@@ -7,13 +7,16 @@ from types import SimpleNamespace as Obj
 import unittest
 from unittest.mock import MagicMock, patch
 from time import monotonic
+from typing import cast
 
 from src.core.contracts import Qualification
 from src.services.analysis_service import (UsageLedger, analyze, validate_annotations,
                                           _search, CompleteAnswer)
+from src.services.chat_events import ResultEvent
 from src.services.evidence_fetch import public_url, resolve_public, TextHTML, fetch_document, PinnedHTTP
 from test_core import claim
 import test_streaming
+from test_streaming import json_response
 
 
 TEXT = 'O indicador foi 20 em 2025. Este relatório apresenta os dados originais e sua metodologia pública.'
@@ -74,6 +77,80 @@ def cited_search_response(text=TEXT):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_image_question_keeps_attachment_and_intent_through_editorial_answer(self):
+        question = 'essa imagem é verdade? por que ele escreveu isso na mão?'
+        image = 'data:image/webp;base64,test-fixture'
+        observation = 'Um homem mostra a palma com a inscrição “corruPTo” em um cenário de debate.'
+        passage = ('Flávio Bolsonaro exibiu a expressão corruPTo na palma durante o debate com Lula, '
+                   'usando as letras PT para aludir ao partido do adversário.')
+        client = self.setup_provider()
+        original = client.responses.create.side_effect
+        received = {}
+
+        def create(**kwargs):
+            stage = kwargs.get('text', {}).get('format', {}).get('name')
+            if isinstance(kwargs['input'], list):
+                self.assertEqual(kwargs['input'][0]['content'][1]['image_url'], image)
+                return response(observation)
+            payload = json.loads(kwargs['input'])
+            received[stage] = payload
+            if stage == 'extraction':
+                task = claim(text=question, original_span=question, queries=[
+                    'registro da inscrição corruPTo na mão debate', 'corruPTo na palma imagem editada',
+                    'corruPTo na mão durante debate', 'gravação original debate corruPTo mão',
+                ])
+                return response(json.dumps({'kind': 'FACTUAL', 'claims': [task.model_dump()],
+                    'omitted_material': False, 'decomposition_complete': True}))
+            if stage == 'qualification':
+                data = qualification()
+                data['evidence'][0].update(quote=passage, origin_quote=passage)
+                data['reviews'][0].update(evaluated_target=question, assessment=passage)
+                client.fixture_qualification = data
+                return response(json.dumps(data))
+            if stage == 'answer_synthesis':
+                return response(json.dumps({'paragraphs': [{
+                    'text': 'A cena é compatível com o registro de Flávio Bolsonaro no debate. '
+                            'Ele destacou as letras PT em corruPTo para atacar Lula e seu partido. '
+                            'O registro confirma o gesto, mas não permite verificar o arquivo exato.',
+                    'source_ids': ['s1'],
+                }]}))
+            return original(**kwargs)
+
+        client.responses.create.side_effect = create
+        with patch('src.services.analysis_service.fetch_document',
+                   return_value={**document(), 'text': passage}):
+            result = list(analyze(client, 'gpt-5-mini', question, images=[image]))[-1]
+
+        self.assertEqual(received['extraction']['image_observations'], observation)
+        for stage in ('qualification', 'semantic_alignment', 'answer_synthesis'):
+            self.assertEqual(received[stage]['user_question'], question)
+            self.assertEqual(received[stage]['image_observations'], observation)
+            self.assertEqual(received[stage]['image_count'], 1)
+        self.assertEqual(received['answer_synthesis']['sources'][0]['excerpts'][0]['quote'], passage)
+        self.assertIn('Flávio Bolsonaro', result['text'])
+        self.assertIn('destacou as letras PT', result['text'])
+        self.assertIn(f']({URL} "aleteia-source")', result['text'])
+        self.assertNotIn('Jair', result['text'])
+        self.assertNotIn('Resposta à pergunta', result['text'])
+        self.assertEqual(len(result['veredito']['metrics']), 2)
+
+    def test_synthesis_with_unknown_source_uses_reviewed_fallback(self):
+        client = self.setup_provider()
+        original = client.responses.create.side_effect
+
+        def create(**kwargs):
+            if kwargs.get('text', {}).get('format', {}).get('name') == 'answer_synthesis':
+                return response(json.dumps({'paragraphs': [{
+                    'text': 'Afirmação sem fonte.', 'source_ids': ['invented'],
+                }]}))
+            return original(**kwargs)
+
+        client.responses.create.side_effect = create
+        result = self.run_pipeline(client)[-1]
+        self.assertIn('synthesis_error', result['audit'])
+        self.assertIn('O relatório indica o valor 20', result['text'])
+        self.assertNotIn('Afirmação sem fonte', result['text'])
+
     def test_negative_official_fact_resolves_target_without_researching_all_background(self):
         question = 'O indicador foi 20 em 2025?'
         passage = 'O indicador oficial de 2025 foi 30, de acordo com a tabela original publicada.'
@@ -107,7 +184,7 @@ class PipelineTests(unittest.TestCase):
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': passage}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 6)
         self.assertEqual(result['veredito']['code'], 'STRONGLY_CONTRADICTED')
         self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
         self.assertEqual(result['audit']['scores'][0]['proof_basis'], 'necessary_element_refuted')
@@ -159,11 +236,13 @@ class PipelineTests(unittest.TestCase):
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': ' '.join(passages)}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 6 if parent_annotations else 5)
-        self.assertTrue(result['veredito']['scoped_metrics'])
+        self.assertEqual(client.responses.create.call_count, 7 if parent_annotations else 6)
+        self.assertEqual(len(result['veredito']['metrics']), 2)
+        self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
+        self.assertEqual(result['veredito']['metrics'][0]['measurement'], 'combined_direction')
         self.assertEqual(len(result['veredito']['claim_details']), 2)
         for detail in result['veredito']['claim_details']:
-            self.assertTrue(all(m['valid'] for m in detail['metrics']))
+            self.assertNotIn('metrics', detail)
             self.assertNotIn('CONTEXT_INCOMPLETE', detail['reasons'])
         self.assertNotIn('**Sustenta:**', result['text'])
         self.assertNotIn('Pesquisa realizada', result['text'])
@@ -191,7 +270,7 @@ class PipelineTests(unittest.TestCase):
         client.responses.create.side_effect = create
         with patch('src.services.analysis_service.fetch_document', return_value={**document(), 'text': passage}):
             result = list(analyze(client, 'gpt-5-mini', question))[-1]
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 6)
         self.assertEqual(result['veredito']['retrieval']['queries_executed'], 2)
         self.assertEqual({objective for search in result['audit']['searches']
                           for objective in search['objectives']},
@@ -219,6 +298,12 @@ class PipelineTests(unittest.TestCase):
             if stage == 'semantic_alignment':
                 return response(json.dumps(semantic_fixture(json.loads(kwargs['input']),
                                                            client.fixture_qualification)))
+            if stage == 'answer_synthesis':
+                payload = json.loads(kwargs['input'])
+                source_ids = [item['id'] for item in payload['sources']][:4]
+                paragraphs = [{'text': item['assessment'], 'source_ids': source_ids}
+                              for item in payload['findings'] if item['assessment']]
+                return response(json.dumps({'paragraphs': paragraphs}))
             client.fixture_qualification = qualification()
             return response(json.dumps(client.fixture_qualification))
         client.responses.create.side_effect = create
@@ -234,7 +319,8 @@ class PipelineTests(unittest.TestCase):
         events = self.run_pipeline(client, UsageLedger(usage.append))
         result = events[-1]
         self.assertEqual(result['type'], 'result')
-        self.assertEqual(client.responses.create.call_count, 5)  # extract + 2 balanced searches + qualify + independent reading
+        self.assertEqual(client.responses.create.call_count, 6)  # extraction, two searches, two readers and synthesis
+        self.assertNotIn('synthesis_error', result['audit'])
         self.assertEqual(result['tokens'], sum(usage))
         self.assertEqual(result['veredito']['version'], 2)
         self.assertFalse(result['veredito']['calibrated'])
@@ -263,7 +349,7 @@ class PipelineTests(unittest.TestCase):
     def test_fabricated_quote_cannot_unlock_scores(self):
         data = qualification()
         data['evidence'][0]['quote'] = 'Este trecho foi completamente inventado pelo modelo.'
-        evidence, rejected = validate_annotations(Qualification(**data), [claim()], [document()])
+        evidence, rejected = validate_annotations(Qualification.model_validate(data), [claim()], [document()])
         self.assertFalse(evidence)
         self.assertEqual(rejected[0]['reason'], 'INVALID_ANCHOR')
 
@@ -272,17 +358,17 @@ class PipelineTests(unittest.TestCase):
         data['evidence'][0].update(primary=False, origin_source_id='s2')
         origin = {**document(), 'id': 's2', 'url': 'https://primary.example/report',
                   'final_url': 'https://primary.example/report'}
-        result, _ = validate_annotations(Qualification(**data), [claim()], [document(), origin])
+        result, _ = validate_annotations(Qualification.model_validate(data), [claim()], [document(), origin])
         self.assertFalse(result[0]['origin_verified'])
         linked = {**document(), 'links': [origin['url']]}
-        result, _ = validate_annotations(Qualification(**data), [claim()], [linked, origin])
+        result, _ = validate_annotations(Qualification.model_validate(data), [claim()], [linked, origin])
         self.assertTrue(result[0]['origin_verified'])
 
     def test_unknown_source_or_out_of_range_elements_are_rejected(self):
         for changes in [{'source_id': 'invented'}, {'covered_elements': [99]}, {'claim_id': 'invented'}]:
             data = qualification()
             data['evidence'][0].update(changes)
-            result, rejected = validate_annotations(Qualification(**data), [claim()], [document()])
+            result, rejected = validate_annotations(Qualification.model_validate(data), [claim()], [document()])
             self.assertFalse(result)
             self.assertTrue(rejected)
 
@@ -290,7 +376,7 @@ class PipelineTests(unittest.TestCase):
         data = qualification()
         data['evidence'][0].update(stance=-1.0, covered_elements=[0], refutes_elements=[1],
                                     refutation_kind='explicit_contradiction')
-        result, rejected = validate_annotations(Qualification(**data), [claim()], [document()])
+        result, rejected = validate_annotations(Qualification.model_validate(data), [claim()], [document()])
         self.assertFalse(result)
         self.assertEqual(rejected[0]['reason'], 'INVALID_REFUTATION')
 
@@ -317,7 +403,7 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(result['audit']['qualification_recovered'])
         self.assertTrue(all(m['valid'] for m in result['veredito']['metrics']))
         self.assertLessEqual(result['veredito']['metrics'][1]['value'], 25)
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 6)
 
     def test_provider_link_text_is_not_source_authority(self):
         client = MagicMock()
@@ -406,7 +492,7 @@ class PipelineTests(unittest.TestCase):
             {'prompt': 'p', 'resposta': '**Veredicto:** FALSO',
              'veredito': {'version': 2, 'code': 'NOT_VERIFIABLE', 'metrics': []}}]
         client.application.add_url_rule('/historico/<conversa_id>', view_func=controller.get_mensagens_por_conversa)
-        result = client.get('/historico/c').json
+        result = json_response(client.get('/historico/c'))
         self.assertEqual(result['mensagens'][0]['veredito']['code'], 'NOT_VERIFIABLE')
 
     def test_audit_is_stored_but_never_returned_in_chat_payload(self):
@@ -432,6 +518,7 @@ class PipelineTests(unittest.TestCase):
     def test_disconnect_after_provider_use_keeps_quota_and_records_spent_tokens(self):
         client, controller = test_streaming.StreamingTests().criar_cliente()
         def events(*args, ledger=None, mode='experimental'):
+            assert ledger is not None
             ledger.start()
             ledger.record(response(), 'extraction')
             yield {'type': 'delta', 'text': 'Parcial'}
@@ -455,8 +542,8 @@ class PipelineTests(unittest.TestCase):
     def test_json_and_sse_persist_identical_structured_analysis(self):
         result = self.run_pipeline(self.setup_provider())[-1]
         client, controller = test_streaming.StreamingTests().criar_cliente()
-        with patch('src.controller.chatController.obter_resposta', return_value=CompleteAnswer(result)):
-            json_result = client.post('/mensagem', json={'prompt': claim().text, 'conversa_id': 'c'}).json
+        with patch('src.controller.chatController.obter_resposta', return_value=CompleteAnswer(cast(ResultEvent, result))):
+            json_result = json_response(client.post('/mensagem', json={'prompt': claim().text, 'conversa_id': 'c'}))
         json_save = controller.chat_model.save_mensagem.call_args
         with patch('src.controller.chatController.transmitir_resposta',
                    return_value=(e for e in [result])):

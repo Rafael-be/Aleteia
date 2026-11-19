@@ -60,6 +60,18 @@ class ResearchIntakeTests(unittest.TestCase):
         self.assertTrue(scopes[0].verification_target)
         self.assertEqual(len(scopes), 2)
 
+    def test_reason_question_stays_open_next_to_verification_question(self):
+        verification = 'essa imagem é verdade?'
+        reason = 'por que ele escreveu isso na mão?'
+        extraction = self.pending(kind='FACTUAL', claims=[
+            claim(original_span=verification, text=verification),
+            claim('reason', original_span=reason, text=reason),
+        ])
+        first, second = recover_research_task(extraction, f'{verification} {reason}', []).claims
+        self.assertTrue(first.verification_target)
+        self.assertTrue(second.investigative)
+        self.assertFalse(second.verification_target)
+
     def test_open_question_cannot_receive_ess_until_source_grounded_resolution(self):
         task = claim(text='Qual foi o indicador?', investigative=True)
         items = [evidence(), evidence('s2', 'g2')]

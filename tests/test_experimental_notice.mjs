@@ -24,7 +24,7 @@ class Element {
   contains(element) { return element === this || Object.values(this.parts || {}).includes(element); }
 }
 
-const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental"]
+const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental", "botaoAnexos", "opcoesAnexos", "selecionarImagens", "arquivosImagens", "imagensPrompt", "avisoImagens", "anexosPrompt"]
   .map((id) => [id, new Element()]));
 ids.avisoModoExperimental.parts = {
   ".aviso-modo-experimental-fechar": new Element(),
@@ -47,6 +47,7 @@ vm.runInNewContext(source, {
   },
   window: { location: { search: "" }, addEventListener() {} },
   sessionStorage: { getItem() {}, setItem() {} },
+  authPronta: Promise.resolve(null), chaveRascunhoLogin: "aleteiaRascunhoLogin",
   crypto: { randomUUID: () => "conversa" },
   URL, URLSearchParams, AbortController, console,
   Date: { now: () => 1000 }, setTimeout: setTimeoutFake, clearTimeout: clearTimeoutFake,

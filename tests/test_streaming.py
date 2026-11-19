@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
+from werkzeug.wrappers import Response
 
 from src.controller.chatController import ChatController
 from src.services.chat_events import FiltroVeredito, separar_veredito
@@ -14,6 +15,25 @@ from src.services.openai_services import transmitir_resposta
 
 
 TEXTO = "**Análise:** Uma análise.\n\n**Fontes consultadas:** [Fonte](https://example.org)\n\n**Veredicto:** FALSO"
+
+
+def json_response(response: Response) -> dict:
+    data = response.get_json()
+    assert isinstance(data, dict)
+    return data
+
+
+class MockChatController(ChatController):
+    def __init__(self):
+        self.chat_model = MagicMock()
+        self.user_model = MagicMock()
+        self.chat_model.get_mensagens_por_conversa.return_value = []
+        self.chat_model.save_mensagem.return_value = {"_id": "1"}
+        self.user_model.verificar_e_incrementar_uso.return_value = (True, {})
+
+    @staticmethod
+    def _usuario_autorizado():
+        return "uid", None
 
 
 class StreamingTests(unittest.TestCase):
@@ -27,7 +47,9 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(separar_veredito("Olá")[1]["code"], "INCONCLUSIVO")
         self.assertEqual(separar_veredito("**Veredicto:** inventado")[1]["code"], "INCONCLUSIVO")
         formatado = formatar_resposta_ia(TEXTO)
-        self.assertNotIn("Veredicto", formatado["fontes_html"])
+        fontes = formatado["fontes_html"]
+        assert fontes is not None
+        self.assertNotIn("Veredicto", fontes)
         self.assertNotIn("<script>", formatar_resposta_ia("<script>alert(1)</script>")["analise_html"])
 
     def test_variantes_de_veredito_e_fragmentacao(self):
@@ -76,9 +98,11 @@ class StreamingTests(unittest.TestCase):
             'kind': 'NEEDS_CONTEXT', 'claims': [], 'omitted_material': False,
             'decomposition_complete': False}), usage=Obj(total_tokens=42))
         resultado = list(transmitir_resposta("isso é verdade?", mode='experimental'))
-        self.assertEqual(resultado[-1]["tokens"], 42)
+        final = resultado[-1]
+        assert final["type"] == "result"
+        self.assertEqual(final["tokens"], 42)
         self.assertNotIn("Veredicto", "".join(e["text"] for e in resultado if e["type"] == "delta"))
-        self.assertEqual(resultado[-1]['veredito']['version'], 2)
+        self.assertEqual(final['veredito']['version'], 2)
         self.assertEqual(client.responses.create.call_args.kwargs['text']['format']['type'], 'json_schema')
         self.assertFalse(client.responses.create.call_args.kwargs['store'])
 
@@ -89,13 +113,7 @@ class StreamingTests(unittest.TestCase):
             list(transmitir_resposta("teste"))
 
     def criar_cliente(self):
-        controller = ChatController.__new__(ChatController)
-        controller.chat_model = MagicMock()
-        controller.user_model = MagicMock()
-        controller.chat_model.get_mensagens_por_conversa.return_value = []
-        controller.chat_model.save_mensagem.return_value = {"_id": "1"}
-        controller.user_model.verificar_e_incrementar_uso.return_value = (True, {})
-        controller._usuario_autorizado = lambda: ("uid", None)
+        controller = MockChatController()
         app = Flask(__name__)
         app.add_url_rule("/mensagem", view_func=controller.enviar_mensagem, methods=["POST"])
         return app.test_client(), controller
@@ -107,7 +125,7 @@ class StreamingTests(unittest.TestCase):
         with patch("src.controller.chatController.transmitir_resposta", return_value=(e for e in eventos)):
             res = client.post("/mensagem", json={"prompt": "teste", "conversa_id": "c"},
                               headers={"Accept": "text/event-stream"}, buffered=False)
-            partes = iter(res.response)
+            partes = res.iter_encoded()
             primeiro = next(partes).decode()
             self.assertIn('"delta"', primeiro)
             self.assertIn("<strong>análise</strong>", primeiro)
@@ -130,7 +148,7 @@ class StreamingTests(unittest.TestCase):
         with patch("src.controller.chatController.obter_resposta", return_value=(TEXTO, 42)):
             res = client.post("/mensagem", json={"prompt": "teste", "conversa_id": "c"})
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json["veredito"]["code"], "FALSO")
+        self.assertEqual(json_response(res)["veredito"]["code"], "FALSO")
 
     def test_veredito_simples_chega_ao_frontend_sem_duplicar(self):
         client, controller = self.criar_cliente()

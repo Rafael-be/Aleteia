@@ -5,7 +5,7 @@
   overflow-y: auto;
   scroll-padding-top: 24px;
 }
-.extension-main > .page-content { margin-inline: auto; min-width: 0; }
+.extension-main > .page-content { margin-inline: auto; min-width: 0; max-width: 880px; }
 .extension-main p { line-height: 1.8; }
 .extension-hero { margin-bottom: clamp(40px, 6vw, 72px); }
 .extension-brand { margin-bottom: 32px; }

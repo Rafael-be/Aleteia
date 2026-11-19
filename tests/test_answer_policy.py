@@ -143,7 +143,7 @@ class AnswerPolicyTests(unittest.TestCase):
         with patch('src.services.analysis_service.fetch_document', return_value=fixtures.document()):
             result = list(analyze(client, 'gpt-5-mini', claim().text))[-1]
         self.assertEqual(result['veredito']['retrieval']['queries_executed'], 2)
-        self.assertEqual(client.responses.create.call_count, 5)
+        self.assertEqual(client.responses.create.call_count, 6)
         self.assertEqual({objective for search in result['audit']['searches'] if search['executed']
                           for objective in search['objectives']}, set(i['intent'] for i in SEARCHES))
         self.assertTrue(result['veredito']['source_catalog'])
@@ -205,7 +205,10 @@ class AnswerPolicyTests(unittest.TestCase):
         self.assertEqual(result['veredito']['code'], 'INCONCLUSIVE')
         self.assertTrue(all(detail['state'] == 'INCONCLUSIVE'
                             for detail in result['veredito']['claim_details']))
-        self.assertIn('pesquisa necessária para uma conclusão definitiva', result['text'])
+        call = client.responses.create.call_args.kwargs
+        self.assertEqual(call['text']['format']['name'], 'answer_synthesis')
+        self.assertTrue(all('RETRIEVAL_INCOMPLETE' in finding['limitations']
+                            for finding in json.loads(call['input'])['findings']))
 
     def test_scarcity_does_not_trigger_more_paid_searches(self):
         client = fixtures.PipelineTests().setup_provider()

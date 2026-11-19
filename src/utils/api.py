@@ -4,12 +4,22 @@ import os
 import re
 from time import perf_counter
 from uuid import uuid4
-from flask import g, jsonify, request
+from flask import Request, g, jsonify, request
 from pymongo.errors import PyMongoError
 from werkzeug.exceptions import HTTPException
+from src.services.prompt_images import MAX_IMAGE_REQUEST
+
+
+class ApiRequest(Request):
+    @property
+    def max_content_length(self):
+        if self.method == 'POST' and self.path == '/api/chat/mensagem':
+            return MAX_IMAGE_REQUEST
+        return super().max_content_length
 
 
 def configure_api(app):
+    app.request_class = ApiRequest
     app.config['MAX_CONTENT_LENGTH'] = 64 * 1024
 
     @app.before_request
@@ -29,7 +39,7 @@ def configure_api(app):
     @app.errorhandler(HTTPException)
     def http_error(exc):
         if request.path.startswith('/api/'):
-            message = 'Requisição inválida.'
+            message = 'A requisição excede o tamanho permitido.' if exc.code == 413 else 'Requisição inválida.'
             return jsonify(code=f'http_{exc.code}', message=message, error=message), exc.code
         return exc
 

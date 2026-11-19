@@ -3,7 +3,7 @@
 MAX_SEARCH_CALLS = 4
 MAX_DOCUMENTS = 8
 MAX_DOCUMENT_CHARS = 20000
-MAX_MODEL_CALLS = 8  # extraction, four searches, qualification, audit, one scope repair
+MAX_MODEL_CALLS = 10  # vision, extraction, four searches, qualification, scope repair, audit, synthesis
 RETRIEVAL_TOKEN_LIMIT = 45000
 # Four in-flight searches for multiple claims can return ~54k tokens before
 # their use is observed. Preserve completion capacity for qualification/audit;

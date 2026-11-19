@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import { GoogleAuthProvider, OAuthProvider, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
-const firebaseConfig = window.FIREBASE_CONFIG;
+const firebaseConfig = window.FIREBASE_CONFIG ??
+  JSON.parse(document.getElementById("firebase-web-config")?.textContent || "{}");
 // O painel reutiliza as páginas do site, mantendo o retorno ao chat após login.
 if (new URLSearchParams(window.location.search).get("extension") === "1" && window.self !== window.top) {
   sessionStorage.setItem("aleteiaExtension", "1");

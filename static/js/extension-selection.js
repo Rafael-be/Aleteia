@@ -1,7 +1,9 @@
 import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
-const origins = new Set((window.ALETEIA_EXTENSION_IDS || [])
+const extensionIds = window.ALETEIA_EXTENSION_IDS ??
+  JSON.parse(document.getElementById("aleteia-extension-ids")?.textContent || "[]");
+const origins = new Set(extensionIds
   .map((id) => id.trim()).filter((id) => /^[a-p]{32}$/.test(id))
   .map((id) => `chrome-extension://${id}`));
 let parentOrigin = null;

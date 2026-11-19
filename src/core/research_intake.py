@@ -29,7 +29,7 @@ def has_topic(text):
 
 
 def open_question(message):
-    return bool(re.match(r'^(quem|qual|quais|quando|onde|como|quanto|quantos|por\s*qu[eê]|o\s+que)\b',
+    return bool(re.match(r'^(quem|qual|quais|quando|onde|como|quanto|quantos|por\s*qu[eê]|por\s+qual|o\s+que)\b',
                          message.strip().casefold()))
 
 
@@ -39,10 +39,11 @@ def verification_question(message):
 
 def recover_research_task(extraction, message, context):
     if extraction.kind == 'FACTUAL' and extraction.claims:
-        yes_no = verification_question(message)
         tasks = []
         for claim in extraction.claims:
-            assertion = (not claim.investigative and not open_question(message)
+            question = claim.original_span if len(extraction.claims) > 1 else message
+            yes_no = verification_question(question)
+            assertion = (not claim.investigative and not open_question(question)
                          and len(re.findall(r'\w+', claim.text)) > 2)
             target = yes_no or claim.verification_target or assertion
             # Extraction is not an evidence source. Do not promote a model's
@@ -54,7 +55,7 @@ def recover_research_task(extraction, message, context):
                 literal_context += '\nContexto anterior do usuário: '+prior_user
             updates = {'personal_advice': claim.personal_advice or extraction.personal_advice,
                        'context': literal_context[:1000]}
-            if '?' in message or '?' in claim.text or len(re.findall(r'\w+', claim.text)) <= 2:
+            if '?' in question or '?' in claim.text or len(re.findall(r'\w+', claim.text)) <= 2:
                 updates.update(investigative=True, verification_target=target,
                                critical=claim.critical or len(extraction.claims) == 1)
             if target:

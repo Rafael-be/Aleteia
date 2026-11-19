@@ -1,5 +1,6 @@
 """Evidence quality, direction and dependence in the economical publication policy."""
 import unittest
+from typing import Literal
 
 from src.core.answer_policy import score_answer
 from src.core.contracts import ClaimReview
@@ -8,15 +9,16 @@ from test_core import claim, evidence
 
 SEARCHES = [{'intent': intent, 'executed': True}
             for intent in ('support', 'contradiction', 'neutral', 'primary')]
+Conclusion = Literal['supports', 'refutes', 'mixed', 'insufficient']
 
 
-def reviewed(target, conclusion='supports'):
+def reviewed(target, conclusion: Conclusion = 'supports'):
     return ClaimReview(claim_id=target.id, context_complete=True,
         decomposition_faithful=True, causal_overreach=False,
         evaluated_target=target.text, conclusion=conclusion)
 
 
-def assessed(items, conclusion='supports'):
+def assessed(items, conclusion: Conclusion = 'supports'):
     target = claim()
     return score_answer(target, items, SEARCHES, reviewed(target, conclusion), True)
 
@@ -43,7 +45,8 @@ class EconomicalScoringTests(unittest.TestCase):
         self.assertIn('DECOMPOSITION_INCOMPLETE', result['reasons'])
 
     def test_one_fully_qualified_direct_source_can_have_high_process_confidence(self):
-        for stance, conclusion in ((1.0, 'supports'), (-1.0, 'refutes')):
+        cases: tuple[tuple[float, Conclusion], ...] = ((1.0, 'supports'), (-1.0, 'refutes'))
+        for stance, conclusion in cases:
             with self.subTest(stance=stance):
                 result = assessed([evidence(stance=stance, retrieval_kind='direct_document')], conclusion)
                 self.assertGreater(result['acs'], 85)
@@ -55,6 +58,15 @@ class EconomicalScoringTests(unittest.TestCase):
         result = assessed([evidence(source_quality=.25, retrieval_kind='direct_document')])
         self.assertLessEqual(result['acs'], 85)
         self.assertLess(result['acs'], assessed([evidence()])['acs'])
+
+    def test_source_limits_do_not_flatten_different_cases_to_the_same_quality(self):
+        for kind, old_cap in (('direct_document', 85), ('provider_excerpt', 35)):
+            with self.subTest(kind=kind):
+                better = assessed([evidence(source_quality=1.0, retrieval_kind=kind, origin_verified=False)])
+                weaker = assessed([evidence(source_quality=.75, context_fit=.5,
+                                            retrieval_kind=kind, origin_verified=False)])
+                self.assertLessEqual(better['acs'], old_cap)
+                self.assertGreater(better['acs'], weaker['acs'])
 
     def test_one_hundred_same_origin_copies_leave_both_indices_unchanged(self):
         baseline = assessed([evidence()])
@@ -101,7 +113,9 @@ class EconomicalScoringTests(unittest.TestCase):
     def test_absent_rubric_attributes_do_not_generate_factual_certainty(self):
         for attribute in ('source_quality', 'relevance', 'context_fit'):
             with self.subTest(attribute=attribute):
-                result = assessed([evidence(**{attribute: None})])
+                item = evidence()
+                item[attribute] = None
+                result = assessed([item])
                 self.assertGreater(result['ess'], 50)
                 self.assertEqual(result['ess_measurement'], 'provisional_direction')
                 self.assertEqual(result['state'], 'PREDOMINANTLY_SUPPORTED')

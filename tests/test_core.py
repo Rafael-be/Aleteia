@@ -208,6 +208,14 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(all(m['value'] is None for m in v['metrics']))
         self.assertTrue(all(m['value'] is None for m in verdict([c1], [a], incomplete=True)['metrics']))
 
+    def test_overall_quality_counts_context_without_changing_verification_direction(self):
+        target = claim()
+        context = claim('background', materiality=.5, critical=False)
+        main = {**score([evidence()]), 'ess': 10, 'acs': 80}
+        background = {**main, 'claim_id': context.id, 'ess': 95, 'acs': 30}
+        result = verdict([target], [main], analysis_scope=[(target, main), (context, background)])
+        self.assertEqual([m['value'] for m in result['metrics']], [10, 70])
+
     def test_invalid_numbers_rejected(self):
         for value in [True, math.nan, math.inf, -1, 1.1]:
             with self.subTest(value=value), self.assertRaises(ValueError):

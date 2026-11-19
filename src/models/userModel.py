@@ -122,7 +122,9 @@ class UserModel:
         if not reserva:
             return
         query = {'firebase_uid': firebase_uid, 'reservation_id': reserva['reservation_id']}
-        update = {'$unset': {'lease_until': '', 'reservation_id': '', 'reservation_day': ''}}
+        update: dict[str, dict[str, str | int]] = {
+            '$unset': {'lease_until': '', 'reservation_id': '', 'reservation_day': ''},
+        }
         if not sucesso:
             query['uso_diario.data'] = reserva['reservation_day']
             update['$inc'] = {'uso_diario.perguntas_feitas': -1}

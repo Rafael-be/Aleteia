@@ -1,12 +1,15 @@
 """OpenAI transport for the deterministic Aleteia evidence pipeline."""
 import os
 import logging
+from collections.abc import Generator
 from time import perf_counter
+from typing import cast
 from openai import OpenAI
 from flask import g, has_request_context
 from src import config
 from src.services.analysis_service import analyze, CompleteAnswer, UsageLedger
 from src.services.analysis_errors import log_failure
+from src.services.chat_events import AnalysisEvent
 from src.services.standard_service import standard_answer
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or 'not-configured',
@@ -14,17 +17,18 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or 'not-configured',
 MODEL_NAME = os.getenv('OPENAI_MODEL', 'gpt-6-luna')
 
 
-def transmitir_resposta(mensagem, historico=None, ledger=None, *, mode='standard'):
+def transmitir_resposta(mensagem, historico=None, ledger=None, *, mode='standard', images=()) -> Generator[AnalysisEvent, None, None]:
     inicio = perf_counter()
     ledger = ledger or UsageLedger()
+    options = {'images': images} if images else {}
     try:
         if mode == 'standard':
-            yield from standard_answer(client, MODEL_NAME, mensagem, historico, ledger)
+            yield from standard_answer(client, MODEL_NAME, mensagem, historico, ledger, **options)
         elif mode == 'experimental':
-            for event in analyze(client, MODEL_NAME, mensagem, historico, ledger):
+            for event in analyze(client, MODEL_NAME, mensagem, historico, ledger, **options):
                 if event['type'] == 'result':
                     event['veredito']['mode'] = 'experimental'
-                yield event
+                yield cast(AnalysisEvent, event)
         else:
             raise ValueError('Invalid response mode')
     except Exception as exc:
@@ -38,8 +42,9 @@ def transmitir_resposta(mensagem, historico=None, ledger=None, *, mode='standard
             max(0, ledger.calls-len(ledger.records)), ledger.failed_accounting)
 
 
-def obter_resposta(mensagem, historico=None, ledger=None, *, mode='standard'):
-    resposta = transmitir_resposta(mensagem, historico, ledger, mode=mode)
+def obter_resposta(mensagem, historico=None, ledger=None, *, mode='standard', images=()):
+    options = {'images': images} if images else {}
+    resposta = transmitir_resposta(mensagem, historico, ledger, mode=mode, **options)
     try:
         for evento in resposta:
             if evento['type'] == 'result':

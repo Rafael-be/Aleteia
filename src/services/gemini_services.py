@@ -98,26 +98,22 @@ gemini_sdk = _load_gemini_sdk()
 
 
 if gemini_sdk.__name__ == "google.generativeai":
-    import google.generativeai as genai
-
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if api_key:
-        genai.configure(api_key=api_key)
+        gemini_sdk.configure(api_key=api_key)
 
     def _model_factory() -> Any:
-        return genai.GenerativeModel(
+        return gemini_sdk.GenerativeModel(
             model_name=MODEL_NAME,
             system_instruction=SYSTEM_PROMPT,
-            generation_config=genai.GenerationConfig(**PARAMETROS),
+            generation_config=gemini_sdk.GenerationConfig(**PARAMETROS),
         )
 
     _MODEL_FACTORY = _model_factory
     _SEND_MESSAGE = lambda model, message: model.generate_content(message)
 else:
-    from google import genai as google_genai
-
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    client = google_genai.Client(api_key=api_key)
+    client = gemini_sdk.Client(api_key=api_key)
 
     def _send_message(model_name: str, message: str) -> Any:
         return client.models.generate_content(
@@ -159,4 +155,3 @@ def obter_resposta(mensagem: str, sessao_id: str) -> str:
     except Exception as exc:
         print("[Gemini] Falha no servico legado")
         raise RuntimeError("Não foi possível processar a resposta da IA.") from exc
-    

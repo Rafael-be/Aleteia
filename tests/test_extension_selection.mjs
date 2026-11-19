@@ -9,11 +9,13 @@ const messages = [], listeners = {}, drafts = [];
 const auth = { currentUser: { emailVerified: true } };
 let busy = false;
 const window = {
-  ALETEIA_EXTENSION_IDS: ['a'.repeat(32)], parent,
+  parent,
   addEventListener: (type, fn) => { listeners[type] = fn; },
   aleteiaColarSelecao: (text) => { if (busy) return false; drafts.push(text); return true; }
 };
 vm.runInNewContext(code, { window, auth, Set, JSON,
+  document: { getElementById: (id) => id === 'aleteia-extension-ids'
+    ? { textContent: JSON.stringify(['a'.repeat(32)]) } : null },
   sessionStorage: { getItem: () => null, setItem() {} },
   onAuthStateChanged: (_, fn) => fn()
 });

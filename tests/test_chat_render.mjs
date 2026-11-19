@@ -12,11 +12,12 @@ class Element {
     this.classList = { add() {}, remove() {}, toggle() {}, contains() { return false; } };
   }
   appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+  replaceChildren(...children) { this.children = []; children.forEach(child => this.appendChild(child)); }
   insertBefore(child, reference) {
     child.parentNode = this;
     this.children.splice(this.children.indexOf(reference), 0, child);
   }
-  append(child) { this.appendChild(typeof child === "string" ? { textContent: child } : child); }
+  append(...children) { children.forEach(child => this.appendChild(typeof child === "string" ? { textContent: child } : child)); }
   addEventListener(type, fn) { this.listeners[type] = fn; }
   dispatchEvent(event) { this.listeners[event.type]?.(event); }
   setAttribute(name, value) { (this.attributes ??= {})[name] = value; }
@@ -25,7 +26,7 @@ class Element {
   contains(node) { return this === node || this.children.some((c) => c.contains?.(node)); }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
 }
-const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental"]
+const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental", "botaoAnexos", "opcoesAnexos", "selecionarImagens", "arquivosImagens", "imagensPrompt", "avisoImagens", "anexosPrompt"]
   .map((id) => [id, new Element()]));
 let initialize;
 const window = { location: { search: "" }, addEventListener() {}, dispatchEvent() {} };
@@ -38,6 +39,7 @@ let ended;
 const complete = new Promise((resolve) => { ended = resolve; });
 let scenario = "success";
 let sinalDaRequisicao;
+const imagem = "data:image/png;base64,iVBORw0KGgo=";
 const requests = [];
 const chaveRascunhoLogin = "aleteiaRascunhoLogin";
 const dadosDaSessao = new Map();
@@ -51,12 +53,13 @@ const firebaseSource = (await readFile(new URL("../static/js/firebase-init.js", 
 function carregarModuloFirebase(pathname) {
   return vm.runInNewContext(`${firebaseSource}\n({ chamarApi, destinoAposLogin })`, {
     window: {
-      FIREBASE_CONFIG: { apiKey: "teste", authDomain: "teste" },
       location: { pathname, search: "", replace(destino) {
         assert.equal(destino, "/login");
         assert.equal(sessionStorage.getItem(chaveRascunhoLogin), "Verifique isto");
       } },
     },
+    document: { getElementById: (id) => id === "firebase-web-config"
+      ? { textContent: JSON.stringify({ apiKey: "teste", authDomain: "teste" }) } : null },
     URLSearchParams, sessionStorage,
     initializeApp() {},
     getAuth: () => ({ currentUser: null }),
@@ -73,7 +76,10 @@ const source = (await readFile(new URL("../static/js/chat.js", import.meta.url),
   .replace(/^import .*;\r?\n/gm, "");
 vm.runInNewContext(source, {
   document: {
-    addEventListener(type, fn) { if (type === 'DOMContentLoaded') initialize = fn; else documentListeners[type] = fn; },
+    addEventListener(type, fn) {
+      if (type === "DOMContentLoaded") initialize = fn;
+      else (documentListeners[type] ??= []).push(fn);
+    },
     getElementById(id) { return ids[id]; },
     createElement() { return new Element(); },
     createTextNode(text) { return { textContent: text }; },
@@ -82,6 +88,10 @@ vm.runInNewContext(source, {
   sessionStorage, chaveRascunhoLogin, authPronta: Promise.resolve({}),
   crypto: { randomUUID() { return "conversa"; } },
   URL, URLSearchParams, AbortController, Event, console, setTimeout, clearTimeout,
+  FileReader: class {
+    addEventListener(tipo, fn) { this[tipo] = fn; }
+    readAsDataURL() { this.result = imagem; queueMicrotask(() => this.load()); }
+  },
   chamarApi: async (_, options) => {
     if (options?.body) requests.push(JSON.parse(options.body));
     sinalDaRequisicao = options?.signal;
@@ -159,7 +169,8 @@ vm.runInNewContext(source, {
   },
 });
 initialize();
-assert.equal(ids.nomeModelo.textContent, 'Básico', 'O seletor deve iniciar no modelo básico');
+await Promise.resolve();
+assert.equal(ids.nomeModelo.textContent, 'Rápido', 'O seletor deve iniciar no modo Rápido');
 assert.equal(ids.modeloBasico.attributes['aria-checked'], 'true');
 assert.equal(ids.menuModelos.hidden, true);
 assert.equal(ids.avisoModoExperimental.hidden, true);
@@ -171,8 +182,32 @@ assert.equal(requests.length, 0, "Restaurar o rascunho não deve chamar a API");
 ids.promptInput.value = "Verifique isto com fontes";
 ids.promptInput.dispatchEvent(new Event("input"));
 assert.equal(sessionStorage.getItem(chaveRascunhoLogin), "Verifique isto com fontes");
+ids.opcoesAnexos.hidden = true;
+ids.botaoAnexos.listeners.click();
+assert.equal(ids.opcoesAnexos.hidden, false);
+assert.equal(ids.selecionarImagens.focused, true);
+const arquivo = { name: "noticia.png", type: "image/png", size: 100 };
+ids.arquivosImagens.files = [arquivo];
+ids.arquivosImagens.listeners.change();
+await Promise.resolve();
+assert.equal(ids.imagensPrompt.hidden, false);
+ids.imagensPrompt.children[0].children[1].listeners.click();
+assert.equal(ids.imagensPrompt.hidden, true);
+let colagemInterceptada = false;
+documentListeners.paste[0]({
+  target: ids.promptInput,
+  clipboardData: { files: [arquivo, arquivo, arquivo, arquivo] },
+  preventDefault() { colagemInterceptada = true; },
+});
+assert.equal(ids.btnEnviar.disabled, true);
+await Promise.resolve();
+assert.equal(colagemInterceptada, true);
+assert.equal(ids.imagensPrompt.children.length, 3);
+assert.match(ids.avisoImagens.textContent, /até 3/);
 ids.btnEnviar.listeners.click();
 await streaming;
+assert.deepEqual(requests[0].images, [imagem, imagem, imagem]);
+assert.equal(ids.imagensPrompt.hidden, true);
 assert.equal(requests[0].prompt, "Verifique isto com fontes");
 assert.equal(sessionStorage.getItem(chaveRascunhoLogin), null);
 assert.equal(requests[0].mode, 'standard');
@@ -193,11 +228,14 @@ assert.ok(indicators, "Indicadores precisam estar fora do corpo Markdown");
 const descendants = (node) => [node, ...(node.children || []).flatMap(descendants)];
 const nodes = descendants(indicators);
 assert.ok(nodes.some((n) => n.className === "metrica-circulo metrica-ess" && n.value === 68));
-assert.ok(nodes.some((n) => n.className === "metrica-circulo metrica-ess" && n.value === 0), "Zero válido não é ausência");
-assert.ok(nodes.some((n) => n.textContent === "Indisponível"));
 assert.ok(nodes.some((n) => n.textContent === "≤ 25"), "Um limite superior não pode ser exibido como score exato");
-assert.equal(nodes.filter((n) => n.className?.startsWith("metrica-circulo metrica-") && !n.className.includes("indisponivel")).length, 4,
-  "null e número em texto não podem preencher uma barra");
+assert.equal(nodes.filter((n) => n.className?.startsWith("metrica-circulo metrica-")).length, 2,
+  "As métricas por alegação ficam fora do painel");
+for (const nome of ["Suporte das evidências", "Qualidade da análise"]) {
+  assert.ok(nodes.some((n) => n.textContent === nome));
+  assert.ok(nodes.some((n) => n.textContent === "i" && n.attributes["aria-label"].includes(nome)));
+}
+assert.ok(!nodes.some((n) => /\b(ESS|ACS)\b/.test(n.textContent || "")));
 const sources = nodes.find((n) => n.className === "analise-fontes");
 assert.ok(sources && sources.open !== true, "As avaliações de fontes devem começar recolhidas");
 const catalog = nodes.find((n) => n.className === 'catalogo-fontes');
@@ -229,9 +267,9 @@ ids.promptInput.value = 'Pergunta com duas edições'; ids.btnEnviar.disabled = 
 ids.btnEnviar.listeners.click(); await new Promise(setImmediate);
 const scoped = area.children.filter((c) => c.className === 'resposta-ia').at(-1);
 const scopedNodes = descendants(scoped);
-assert.equal(scopedNodes.filter((n) => n.className === 'metricas-escopo').length, 2);
-assert.equal(scopedNodes.filter((n) => n.className?.startsWith('metrica-circulo metrica-')).length, 4,
-  'Cada escopo deve mostrar seus próprios círculos, sem média global ou duplicação nos detalhes');
+assert.equal(scopedNodes.filter((n) => n.className?.startsWith('metrica-circulo metrica-')).length, 2,
+  'Uma resposta antiga com vários escopos também mostra um único par');
+assert.deepEqual(scopedNodes.filter((n) => n.className?.includes('metrica-indisponivel')).map(n => n.value), [null, null]);
 assert.ok(scopedNodes.some((n) => n.textContent === '2019: cinema'));
 assert.ok(scopedNodes.some((n) => n.textContent === '2026: SUS'));
 
@@ -246,10 +284,9 @@ assert.equal(ess.value, 12.4, 'ESS baixo mede pouco apoio à hipótese causal or
 assert.equal(acs.value, 90.5, 'Uma resposta contrária à afirmação pode ter alta qualidade');
 assert.ok(ess.attributes['aria-label'].includes('Paracetamol na gestação causa autismo no bebê?'),
   'O indicador deve identificar a hipótese avaliada, sem substituir o alvo pela resposta corrigida');
-assert.ok(acs.attributes['aria-label'].includes('qualidade da análise'));
+assert.ok(acs.attributes['aria-label'].includes('Qualidade da análise'));
 assert.ok(contradictedNodes.some((n) => n.textContent === 'Evidências contrárias à afirmação'));
 assert.ok(contradictedNodes.some((n) => n.textContent === 'Predominantemente contraditada'));
-assert.ok(contradictedNodes.some((n) => n.textContent === 'ESS mede a sustentação da afirmação avaliada; ACS, a qualidade da análise. Não são probabilidades calibradas.'));
 assert.equal(contradictedNodes.filter((n) => n.className?.startsWith('metrica-circulo metrica-')).length, 2);
 for (const name of ['analise-fontes', 'catalogo-fontes']) {
   assert.ok(contradictedNodes.find((n) => n.className === name)?.open !== true,
@@ -261,7 +298,7 @@ ids.promptInput.value = 'O streamer foi preso?';
 ids.btnEnviar.disabled = false; ids.btnEnviar.listeners.click(); await new Promise(setImmediate);
 const absentNodes = descendants(area.children.filter((c) => c.className === 'resposta-ia').at(-1));
 assert.ok(absentNodes.some((n) => n.textContent === 'Sem sustentação nas fontes consultadas'));
-assert.ok(absentNodes.some((n) => n.textContent === 'Nenhuma sustentação localizada; não significa falsidade comprovada'));
+assert.ok(absentNodes.some((n) => n.textContent === 'Nenhuma confirmação localizada; o fato ainda pode ter ocorrido'));
 assert.ok(!absentNodes.some((n) => n.textContent === 'Evidências contrárias à afirmação'));
 assert.equal(absentNodes.find((n) => n.className === 'metrica-circulo metrica-ess').value, 0);
 assert.equal(absentNodes.find((n) => n.className === 'metrica-circulo metrica-acs').value, 60);
@@ -289,7 +326,7 @@ ids.menuModelos.listeners.keydown({ key: 'Escape', target: ids.modeloExperimenta
 assert.equal(ids.menuModelos.hidden, true);
 assert.equal(ids.nomeModelo.textContent, 'Complexo', 'Escape fecha sem alterar a escolha');
 ids.botaoModelo.listeners.click();
-documentListeners.click({ target: ids.promptInput });
+documentListeners.click.forEach(listener => listener({ target: ids.promptInput }));
 assert.equal(ids.menuModelos.hidden, true, 'Clique fora deve fechar o seletor');
 ids.botaoModelo.listeners.click();
 ids.modeloBasico.listeners.click();
@@ -301,7 +338,7 @@ ids.btnEnviar.listeners.click(); await new Promise(setImmediate);
 assert.equal(requests.at(-1).mode, 'standard');
 const standardNodes = descendants(area.children.filter((c) => c.className === 'resposta-ia').at(-1));
 assert.ok(!standardNodes.some((n) => n.className === 'painel-indicadores'));
-assert.ok(!standardNodes.some((n) => n.textContent === 'ESS e ACS não foram calculados nesta versão da resposta.'));
+assert.ok(!standardNodes.some((n) => n.textContent === 'Os indicadores não foram calculados nesta versão da resposta.'));
 assert.ok(!standardNodes.some((n) => n.className === 'resposta-modo'));
 
 let liberarRespostaCancelada;

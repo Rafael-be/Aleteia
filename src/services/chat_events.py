@@ -1,6 +1,29 @@
 """Contrato de eventos independente do provedor e das futuras fases da pesquisa."""
 
 import re
+from typing import Literal, TypedDict
+
+
+class StageEvent(TypedDict):
+    type: Literal["stage"]
+    stage: str
+    message: str
+
+
+class DeltaEvent(TypedDict):
+    type: Literal["delta"]
+    text: str
+
+
+class ResultEvent(TypedDict):
+    type: Literal["result"]
+    text: str
+    tokens: int
+    veredito: dict
+    audit: dict | None
+
+
+AnalysisEvent = StageEvent | DeltaEvent | ResultEvent
 
 VERDICT_MARKER = "**Veredicto:**"
 VERDICTS = ("PARCIALMENTE VERDADEIRO", "VERDADEIRO", "FALSO", "INCONCLUSIVO")
@@ -10,7 +33,7 @@ _LINHA_VEREDITO = re.compile(r"^" + _ROTULO + r"([^\r\n]*)(?:\r?\n[ \t]*((?:\*{1
 _VALOR = re.compile(r"^(PARCIALMENTE VERDADEIRO|VERDADEIRO|FALSO|INCONCLUSIVO)\b", re.I)
 
 
-def etapa(codigo: str, mensagem: str) -> dict:
+def etapa(codigo: str, mensagem: str) -> StageEvent:
     return {"type": "stage", "stage": codigo, "message": mensagem}
 
 

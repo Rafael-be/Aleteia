@@ -71,8 +71,14 @@ def injetar_firebase_config():
         versao = caminho.stat().st_mtime_ns if caminho.is_file() else None
         return url_for("static", filename=filename, v=versao)
 
+    try:
+        firebase_web_config = json.loads(os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"))
+    except json.JSONDecodeError:
+        app.logger.warning("FIREBASE_WEB_CONFIG_JSON contém JSON inválido.")
+        firebase_web_config = {}
+
     return {
-        "firebase_web_config_json": os.getenv("FIREBASE_WEB_CONFIG_JSON", "{}"),
+        "firebase_web_config": firebase_web_config,
         "chrome_extension_ids": os.getenv("CHROME_EXTENSION_IDS", "").split(","),
         "chat_assets_version": max(
             (BASE_DIR / arquivo).stat().st_mtime_ns

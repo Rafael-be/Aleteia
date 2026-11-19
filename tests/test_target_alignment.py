@@ -97,7 +97,7 @@ class TargetAlignmentTests(unittest.TestCase):
                 target = self.extracted(original, original)
                 data = self.annotated(target, stance, conclusion)
                 data['evidence'][0].update(quote=passage, origin_quote=passage)
-                accepted, rejected = validate_annotations(Qualification(**data), [target],
+                accepted, rejected = validate_annotations(Qualification.model_validate(data), [target],
                     [{**document(), 'text': passage}])
                 self.assertFalse(rejected)
                 self.assertEqual(accepted[0]['stance'], stance)
@@ -106,14 +106,14 @@ class TargetAlignmentTests(unittest.TestCase):
         target = self.extracted('Paracetamol causa autismo na gestação?', 'Não foi estabelecida causalidade.')
         data = self.annotated(target, 1.0, 'supports')
         data['reviews'][0]['evaluated_target'] = 'Não foi estabelecida causalidade.'
-        accepted, rejected = validate_annotations(Qualification(**data), [target], [document()])
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], [document()])
         self.assertFalse(accepted)
         self.assertIn('TARGET_ALIGNMENT', [r['reason'] for r in rejected])
 
     def test_correct_negative_conclusion_with_inverted_evidence_fails_closed(self):
         target = self.extracted('Paracetamol causa autismo na gestação?', 'Paracetamol causa autismo.')
         data = self.annotated(target, 1.0, 'refutes')
-        accepted, rejected = validate_annotations(Qualification(**data), [target], [document()])
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], [document()])
         self.assertFalse(accepted)
         self.assertIn('CONCLUSION_ALIGNMENT', [r['reason'] for r in rejected])
         # Validation does not guess whether to invert the evidence or the review.
@@ -123,7 +123,7 @@ class TargetAlignmentTests(unittest.TestCase):
         target = claim()
         data = self.annotated(target, 1.0, 'supports')
         del data['reviews'][0]['evaluated_target']
-        accepted, rejected = validate_annotations(Qualification(**data), [target], [document()])
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], [document()])
         self.assertFalse(accepted)
         self.assertIn('TARGET_ALIGNMENT', [r['reason'] for r in rejected])
 
@@ -139,7 +139,7 @@ class TargetAlignmentTests(unittest.TestCase):
             item.update(source_id=identifier, stance=stance, quote=passage,
                         origin_source_id=identifier, origin_quote=passage)
             data['evidence'].append(item)
-        accepted, rejected = validate_annotations(Qualification(**data), [target], docs)
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], docs)
         self.assertFalse(rejected)
         self.assertEqual(len(accepted), 3)
         self.assertTrue(any(item['stance'] < 0 for item in accepted))
@@ -157,7 +157,7 @@ class TargetAlignmentTests(unittest.TestCase):
             item.update(source_id=identifier, stance=-1.0, quote=passage,
                         origin_source_id=None, origin_quote=None, primary=False)
             data['evidence'].append(item)
-        accepted, rejected = validate_annotations(Qualification(**data), [target], docs)
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], docs)
         self.assertFalse(rejected)
         self.assertEqual(len(accepted), 3)
 
@@ -165,7 +165,7 @@ class TargetAlignmentTests(unittest.TestCase):
         target = self.extracted('O indicador foi 20 em 2025?', 'O indicador foi 20 em 2025.')
         data = self.annotated(target, 1.0, 'supports')
         data['reviews'][0].update(resolved_claim='O indicador foi 30 em 2025.', resolution_source_ids=['s1'])
-        accepted, rejected = validate_annotations(Qualification(**data), [target], [document()])
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], [document()])
         self.assertFalse(accepted)
         self.assertIn('TARGET_ALIGNMENT', [r['reason'] for r in rejected])
 
@@ -175,7 +175,7 @@ class TargetAlignmentTests(unittest.TestCase):
         data = self.annotated(target, 1.0, 'supports')
         data['reviews'][0].update(resolved_claim=proposition, evaluated_target=proposition,
                                  resolution_source_ids=['s1'])
-        accepted, rejected = validate_annotations(Qualification(**data), [target], [document()])
+        accepted, rejected = validate_annotations(Qualification.model_validate(data), [target], [document()])
         self.assertFalse(rejected)
         self.assertEqual(len(accepted), 1)
 
@@ -186,7 +186,7 @@ class TargetAlignmentTests(unittest.TestCase):
         data['resolved_scopes'] = [{'id': 'history', 'parent_claim_id': target.id,
             'text': 'A redação de 2019 foi sobre cinema.', 'context': '2019',
             'elements': ['tema de 2019'], 'source_ids': ['s1']}]
-        claims, lineage = apply_resolved_scopes(Qualification(**data), [target], [document()])
+        claims, lineage = apply_resolved_scopes(Qualification.model_validate(data), [target], [document()])
         self.assertEqual(claims[0].text, original)
         self.assertTrue(claims[0].verification_target)
         self.assertEqual(lineage, {'history': target.id})
@@ -240,7 +240,7 @@ class TargetAlignmentTests(unittest.TestCase):
                 self.assertIn(answer, result['text'])
                 self.assertNotIn('A primeira leitura confundiu', result['text'])
                 self.assertEqual(result['veredito']['retrieval']['queries_executed'], 2)
-                self.assertEqual(client.responses.create.call_count, 5)
+                self.assertEqual(client.responses.create.call_count, 6)
                 self.assertEqual({objective for search in result['audit']['searches']
                                   for objective in search['objectives']},
                                  {'support', 'contradiction', 'neutral', 'primary'})

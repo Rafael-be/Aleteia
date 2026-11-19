@@ -18,9 +18,10 @@ class MongoQuotaTests(unittest.TestCase):
         self.db = self.client[self.name]
         self.db.users.create_index('firebase_uid', unique=True)
         # Provider avoids PyMongo dynamic attribute lookup for get_database.
+        database = self.db
         class Provider:
-            def get_database(inner):
-                return self.db
+            def get_database(self):
+                return database
         self.model = UserModel(Provider())
         self.model.sincronizar_usuario_firebase('u', 'test@example.org')
 
@@ -37,7 +38,9 @@ class MongoQuotaTests(unittest.TestCase):
         self.assertEqual(len(winners), 1)
         self.model.finalizar_reserva('u', winners[0], False)
         self.model.finalizar_reserva('u', winners[0], False)
-        self.assertEqual(self.db.users.find_one({'firebase_uid':'u'})['uso_diario']['perguntas_feitas'], 0)
+        user = self.db.users.find_one({'firebase_uid':'u'})
+        assert user is not None
+        self.assertEqual(user['uso_diario']['perguntas_feitas'], 0)
 
     def test_short_rate_survives_refunds_and_success_consumes(self):
         for index in range(3):
@@ -46,5 +49,6 @@ class MongoQuotaTests(unittest.TestCase):
             self.model.finalizar_reserva('u', reservation, index == 0)
         ok, user = self.model.verificar_e_incrementar_uso('u')
         self.assertFalse(ok)
+        assert user is not None
         self.assertEqual(user['quota_reason'], 'rate_limited')
         self.assertEqual(user['uso_diario']['perguntas_feitas'], 1)

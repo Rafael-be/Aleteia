@@ -17,7 +17,7 @@ class Element {
   contains(node) { return node === this; }
   getBoundingClientRect() { return this.rect; }
 }
-const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental"].map((id) => [id, new Element()]));
+const ids = Object.fromEntries(["promptInput", "btnEnviar", "conversationArea", "btnNovaConversa", "mainContent", "chatSubtitle", "seletorModelo", "botaoModelo", "nomeModelo", "menuModelos", "modeloBasico", "modeloExperimental", "avisoModoExperimental", "botaoAnexos", "opcoesAnexos", "selecionarImagens", "arquivosImagens", "imagensPrompt", "avisoImagens", "anexosPrompt"].map((id) => [id, new Element()]));
 ids.botaoModelo.rect = { top: 500, bottom: 540 };
 ids.menuModelos.scrollHeight = 300;
 const viewportListeners = {};
@@ -30,6 +30,7 @@ vm.runInNewContext(source, {
     visualViewport: { offsetTop: 0, height: 568, addEventListener(type, listener) { viewportListeners[type] = listener; }, removeEventListener(type) { delete viewportListeners[type]; } },
   },
   sessionStorage: { getItem() {}, setItem() {} }, crypto: { randomUUID: () => "conversa" },
+  authPronta: Promise.resolve(null), chaveRascunhoLogin: "aleteiaRascunhoLogin",
   URL, URLSearchParams, AbortController, console, setTimeout: () => 1, clearTimeout() {},
   chamarApi: async () => ({ ok: true }), consumirEventos: async () => {},
 });

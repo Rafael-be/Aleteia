@@ -126,10 +126,18 @@
         <span class="aviso-modo-experimental-progresso" aria-hidden="true"></span>
       </section>
       <div class="input-box">
+        <div id="imagensPrompt" class="imagens-prompt" hidden></div>
+        <p id="avisoImagens" class="aviso-imagens" role="status" hidden></p>
         <textarea id="promptInput" placeholder="Digite o que você quer descobrir a veracidade..." rows="2"></textarea>
         <div class="input-actions">
           <div class="input-left-btns">
-            <button class="btn-attach" title="Anexar arquivo">+</button>
+            <div id="anexosPrompt" class="anexos-prompt">
+              <button type="button" id="botaoAnexos" class="btn-attach" title="Anexos" aria-label="Anexos" aria-expanded="false" aria-controls="opcoesAnexos">+</button>
+              <div id="opcoesAnexos" class="opcoes-anexos" hidden>
+                <button type="button" id="selecionarImagens">Anexar imagem</button>
+              </div>
+              <input type="file" id="arquivosImagens" accept="image/png,image/jpeg,image/webp" multiple hidden>
+            </div>
             <div class="seletor-modelo" id="seletorModelo">
               <button type="button" id="botaoModelo" class="botao-modelo" aria-haspopup="menu" aria-expanded="false" aria-controls="menuModelos">
                 <span class="modelo-prefixo">Modelo</span>
@@ -144,7 +152,7 @@
                 </button>
                 <button type="button" id="modeloExperimental" class="opcao-modelo" role="menuitemradio" aria-checked="false" aria-describedby="descricaoExperimental riscoExperimental">
                   <span class="opcao-modelo-titulo">Complexo <span class="modelo-selo">Experimental</span><span class="modelo-check" aria-hidden="true">✓</span></span>
-                  <span id="descricaoExperimental" class="opcao-modelo-descricao">Analisa as evidências em etapas e mostra sustentação (ESS) e qualidade da análise (ACS). Pode levar mais tempo.</span>
+                  <span id="descricaoExperimental" class="opcao-modelo-descricao">Analisa as evidências em etapas e mostra o suporte das evidências e a qualidade da análise. Pode levar mais tempo.</span>
                   <span id="riscoExperimental" class="opcao-modelo-risco">Pode gerar erros e respostas inconsistentes.</span>
                 </button>
               </div>
@@ -202,8 +210,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>window.FIREBASE_CONFIG = {{ firebase_web_config_json | safe }};</script>
-<script>window.ALETEIA_EXTENSION_IDS = {{ chrome_extension_ids | tojson }};</script>
+<script type="application/json" id="firebase-web-config">{{ firebase_web_config | tojson }}</script>
+<script type="application/json" id="aleteia-extension-ids">{{ chrome_extension_ids | tojson }}</script>
 <script type="module" src="{{ url_for('static', filename='js/firebase-init.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/main.js', v=chat_assets_version) }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/chat.js', v=chat_assets_version) }}"></script>

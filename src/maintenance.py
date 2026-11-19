@@ -28,9 +28,9 @@ def main():
         db.chats.create_index('audit_expires_at', sparse=True)
     result = {name: db[name].index_information() for name in ('users', 'chats')}
     if args.explain_uid:
-        result['explain'] = db.command('explain', {'find': 'chats',
+        result['explain'] = db.command({'explain': {'find': 'chats',
             'filter': {'firebase_uid': args.explain_uid, 'conversa_id': 'audit-test'},
-            'sort': {'created_at': 1, '_id': 1}, 'limit': 100}, verbosity='executionStats')
+            'sort': {'created_at': 1, '_id': 1}, 'limit': 100}, 'verbosity': 'executionStats'})
     print(json.dumps(result, default=str))
 
 

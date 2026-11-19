@@ -1,10 +1,18 @@
 """Renderização segura de markdown produzido exclusivamente pela IA."""
 
 import re
+from typing import TypedDict
 from urllib.parse import urlsplit
 
 from markdown_it import MarkdownIt
+from markdown_it.renderer import RendererHTML
 from src.services.chat_events import separar_veredito
+
+
+class RespostaFormatada(TypedDict):
+    corpo_html: str
+    analise_html: str
+    fontes_html: str | None
 
 
 _MARKDOWN = MarkdownIt(
@@ -28,17 +36,17 @@ def _link_seguro(url):
 _MARKDOWN.validateLink = _link_seguro
 
 
-def _source_link(tokens, idx, options, env):
+def _source_link(renderer: RendererHTML, tokens, idx, options, env):
     token = tokens[idx]
     if token.attrGet('title') == 'aleteia-source':
         token.attrs.pop('title', None)
         token.attrSet('class', 'citacao-fonte')
         token.attrSet('target', '_blank')
         token.attrSet('rel', 'noopener noreferrer')
-    return _MARKDOWN.renderer.renderToken(tokens, idx, options, env)
+    return renderer.renderToken(tokens, idx, options, env)
 
 
-_MARKDOWN.renderer.rules['link_open'] = _source_link
+_MARKDOWN.add_render_rule('link_open', _source_link)
 
 
 def renderizar_markdown(texto: str) -> str:
@@ -60,7 +68,7 @@ def renderizar_markdown(texto: str) -> str:
     return _MARKDOWN.render(texto)
 
 
-def formatar_resposta_ia(texto: str) -> dict[str, str | None]:
+def formatar_resposta_ia(texto: str) -> RespostaFormatada:
     """Separa as seções conhecidas e renderiza somente conteúdo da IA."""
     texto, _ = separar_veredito(str(texto or ""))
     match_analise = re.search(

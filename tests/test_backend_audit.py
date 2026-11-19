@@ -11,7 +11,7 @@ from src.services.markdown_service import renderizar_markdown
 from src.utils.api import configure_api
 from src.utils.auth import obter_uid_do_token_firebase
 import test_streaming
-from test_streaming import TEXTO
+from test_streaming import TEXTO, json_response
 
 
 class AuditTests(unittest.TestCase):
@@ -65,7 +65,8 @@ class AuditTests(unittest.TestCase):
         controller = AuthController(MagicMock())
         app.add_url_rule('/email', view_func=controller.validar_email, methods=['POST'])
         with app.test_client() as client:
-            self.assertFalse(client.post('/email', json={'email':'user@example.org'}).json['checagem_disponivel'])
+            response = client.post('/email', json={'email':'user@example.org'})
+            self.assertFalse(json_response(response)['checagem_disponivel'])
             for payload in [[], {'email':[]}, {'email':'bad'}, {'email':'a@b\n.c'}]:
                 self.assertEqual(client.post('/email', json=payload).status_code, 400)
 
@@ -85,7 +86,9 @@ class AuditTests(unittest.TestCase):
                 obter_uid_do_token_firebase()
                 verify.assert_called_once()
         with app.test_request_context():
-            self.assertEqual(ChatController._usuario_autorizado()[1][1], 401)
+            _, error = ChatController._usuario_autorizado()
+            assert error is not None
+            self.assertEqual(error[1], 401)
 
     def test_mongo_failure_is_json_and_secret_free(self):
         app = Flask(__name__)
@@ -96,7 +99,7 @@ class AuditTests(unittest.TestCase):
         response = app.test_client().get('/api/test')
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('secret', response.text)
-        self.assertIn('request_id', response.json)
+        self.assertIn('request_id', json_response(response))
         self.assertEqual(app.test_client().get('/api/test?limit=no').status_code, 400)
 
     def test_uid_isolation_in_history_and_delete(self):

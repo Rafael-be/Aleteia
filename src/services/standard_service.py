@@ -1,14 +1,16 @@
 """Original single-generation path, without experimental extraction/scoring."""
 import os
+from collections.abc import Generator
 from threading import BoundedSemaphore
 from time import monotonic
 from src.services.standard_prompt import SYSTEM_PROMPT
-from src.services.chat_events import FiltroVeredito, etapa, separar_veredito
+from src.services.chat_events import AnalysisEvent, FiltroVeredito, etapa, separar_veredito
+from src.services.prompt_images import IMAGE_GUIDANCE, image_content
 
 _SLOTS = BoundedSemaphore(4)
 
 
-def standard_answer(client, model, message, history, ledger):
+def standard_answer(client, model, message, history, ledger, *, images=()) -> Generator[AnalysisEvent, None, None]:
     if not _SLOTS.acquire(blocking=False):
         raise RuntimeError('Generation capacity reached')
     try:
@@ -22,8 +24,10 @@ def standard_answer(client, model, message, history, ledger):
                 break
             context[0:0] = [{'role': h['role'], 'content': h['content']} for h in clean]
             size += cost
-        inputs = [{'role': 'system', 'content': SYSTEM_PROMPT}, *context,
-                  {'role': 'user', 'content': message}]
+        system = f'{SYSTEM_PROMPT}\n\n{IMAGE_GUIDANCE}' if images else SYSTEM_PROMPT
+        content = image_content(message, images) if images else message
+        inputs = [{'role': 'system', 'content': system}, *context,
+                  {'role': 'user', 'content': content}]
         extras = ({'reasoning': {'effort': os.getenv('OPENAI_REASONING_EFFORT', 'medium')}}
                   if model.startswith(('gpt-5', 'gpt-6', 'o1', 'o3', 'o4')) else
                   {'temperature': float(os.getenv('OPENAI_TEMPERATURE', '.1'))})

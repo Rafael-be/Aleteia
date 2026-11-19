@@ -5,7 +5,7 @@ qualified relevant evidence and measured process completion, with uncertainty
 expressed in the indices and wording rather than automatic abstention.
 """
 from collections import Counter
-from src.core.scoring import DEFAULTS, geometric, masses, robustness, score_claim as strict_score
+from src.core.scoring import DEFAULTS, geometric_measured, masses, robustness, score_claim as strict_score
 
 
 REQUIRED_OBJECTIVES = frozenset({'support', 'contradiction', 'neutral', 'primary'})
@@ -99,9 +99,14 @@ def score_search_finding(claim, evidence, searches, review, complete, result, p=
         mass = positive+negative
         ess = 50*(1+(positive-negative)/(mass+p.rho))
         state = 'CONTESTED' if positive and negative else 'PREDOMINANTLY_SUPPORTED' if positive else 'PREDOMINANTLY_CONTRADICTED'
-        cap = 35 if complete and review.decomposition_faithful else 25
+        review_factor = 1.0 if complete and review.decomposition_faithful else 25/35
+        known = sum((e.get(k) or 0) for e in directional
+                    for k in ('source_quality', 'relevance', 'context_fit'))/(3*len(directional))
+        traceability = sum(p.provider_excerpt_weight if e.get('retrieval_kind') == 'provider_excerpt'
+                           else 1.0 for e in directional)/len(directional)
+        acs = 35 * review_factor * len(objectives)/4 * (known + traceability)/2
         result.update(state='HUMAN_REVIEW_REQUIRED' if claim.personal_advice else state,
-            ess=ess, acs=cap*len(objectives)/4, acs_upper_bound=None,
+            ess=ess, acs=acs, acs_upper_bound=None,
             ess_measurement='provisional_direction', positive=positive, negative=negative, mass=mass,
             reasons=['ATTRIBUTES_MISSING', 'PROVISIONAL_DIRECTION'], preliminary=True,
             scoring_source_ids=[e['source_id'] for e in directional], scoring_policy='provisional-direction-v1')
@@ -120,9 +125,8 @@ def score_search_finding(claim, evidence, searches, review, complete, result, p=
     context = 1.0 if review.entity_resolved else .5
     dimensions = {'D': float(complete and review.decomposition_faithful),
                   'R': len(objectives)/4, 'T': traceability, 'C': context}
-    acs = min(75 if direct else 60, 100*geometric(list(dimensions.values())))
-    if not absence:
-        acs = min(acs, 35)
+    reliability = (.75 if direct else .60) if absence else .35
+    acs = 100*geometric_measured(list(dimensions.values()))*reliability
     # Zero is exactly zero supporting observations in this inspected set. It
     # is NOT the directional ESS formula or an assertion of 0% factual truth.
     result.update(state='NO_SUPPORT_FOUND' if absence else 'HUMAN_REVIEW_REQUIRED'
@@ -171,8 +175,8 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
     m = masses(basis, p)
     if m['mass'] <= 0:
         return apply_research_gate(result, searches)
-    executed = {intent for s in searches if s.get('executed') for intent in search_objectives(s)}
-    retrieval = len(executed & {'support', 'contradiction', 'neutral', 'primary'})/4
+    completion = research_completion(searches)
+    retrieval = len(completion['required'] - completion['missing'])/len(REQUIRED_OBJECTIVES)
     covered = {i for e in basis for i in e['covered_elements']}
     coverage = len(covered)/len(claim.elements)
     if result['proof_basis'] == 'necessary_element_refuted':
@@ -184,23 +188,23 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
     # not become adequate merely by accumulating mass.
     counts = Counter(e['group'] for e in basis)
     group_weights = [1/(len(counts)*counts[e['group']]) for e in basis]
-    quality = geometric([e['source_quality'] for e in basis], group_weights)
+    quality = geometric_measured([e['source_quality'] for e in basis], group_weights)
     capacity = masses([{**e, 'stance': p.provider_excerpt_weight
                        if e.get('retrieval_kind') == 'provider_excerpt' else 1.0}
                        for e in basis], p)['mass']
     adequacy = min(1, capacity/p.minimum_mass)*coverage*quality
-    context = geometric([e['context_fit'] for e in basis], group_weights)
+    context = geometric_measured([e['context_fit'] for e in basis], group_weights)
     stability = attribute_stability(basis, p)
-    dimensions = {'D': decomposition, 'R': retrieval, 'E': adequacy, 'C': context, 'Rob': stability}
-    acs = 100*geometric(list(dimensions.values()))
     excerpt_share = sum(w for e, w in zip(basis, group_weights)
                         if e.get('retrieval_kind') == 'provider_excerpt')
-    if not direct_sufficient:
-        acs = min(acs, 100-65*excerpt_share)
-    # A directly read document is better than a search synthesis, but an
-    # unverified editorial origin is still an observed process limitation.
-    if not any(e.get('origin_verified') and e['source_quality'] >= .75 for e in basis):
-        acs = min(acs, 85 if direct else 35)
+    unverified_direct_share = sum(w for e, w in zip(basis, group_weights)
+        if e.get('retrieval_kind') != 'provider_excerpt' and not e.get('origin_verified'))
+    traceability = 1 - .65*excerpt_share - .15*unverified_direct_share
+    dimensions = {'D': decomposition, 'R': retrieval, 'E': adequacy, 'C': context,
+                  'Rob': stability, 'T': traceability}
+    # Multiplicative discounts retain differences in quality and coverage
+    # even among answers with the same kind of source limitation.
+    acs = 100*geometric_measured([decomposition, retrieval, adequacy, context, stability])*traceability
     if not review:
         acs = min(acs, 50)
     if not decomposition_complete or (review and not review.decomposition_faithful):
@@ -228,7 +232,7 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
     if direct_sufficient and any(e.get('retrieval_kind') == 'provider_excerpt' and
             e['stance']*(m['positive']-m['negative']) < 0 for e in weighted):
         warnings.append('UNVERIFIED_COUNTEREVIDENCE')
-        acs = min(acs, 85)
+        acs *= .85
     if acs < p.acceptance: warnings.append('LOW_ACS')
     if not decomposition_complete or (review and not review.decomposition_faithful):
         warnings.append('DECOMPOSITION_INCOMPLETE')
@@ -239,5 +243,5 @@ def score_answer(claim, evidence, searches, review, decomposition_complete, p=DE
                   source_removal_stability=robustness(basis, p),
                   scoring_source_ids=[e['source_id'] for e in basis],
                   evidential_capacity=capacity,
-                  scoring_policy='anchored-economical-v2')
+                  scoring_policy='anchored-economical-v3')
     return apply_research_gate(result, searches)

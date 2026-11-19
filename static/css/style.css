@@ -612,6 +612,7 @@ button.btn-excluir-conversa:active { transform: translateY(-50%) scale(.97); }
   font-weight: 500;
   line-height: 1.5;
 }
+.page-content { width: 100%; max-width: 650px; }
 .home-feature-list { margin-bottom: clamp(2rem, 4vw, 3rem); }
 .home-feature {
   align-items: flex-start;

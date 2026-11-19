@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import TypedDict
 
 from flask import Response, jsonify, request, stream_with_context, g
 from pymongo.errors import PyMongoError
@@ -14,8 +15,14 @@ from src.services.openai_services import obter_resposta, transmitir_resposta
 from src.services.chat_events import separar_veredito, etapa
 from src.services.analysis_service import UsageLedger
 from src.services.analysis_errors import operational_error
+from src.services.prompt_images import IMAGE_ONLY_PROMPT, validate_images
 from src.core.input_gate import is_noise
 from src.utils.auth import obter_uid_do_token_firebase
+
+
+class Paginacao(TypedDict):
+    limit: int
+    offset: int
 
 
 class ChatController:
@@ -34,7 +41,8 @@ class ChatController:
 
     def enviar_mensagem(self):
         uid, erro = self._usuario_autorizado()
-        if erro:
+        if uid is None:
+            assert erro is not None
             return erro
         data = request.get_json(silent=True)
         if not isinstance(data, dict) or any(not isinstance(data.get(k), str) for k in ('prompt', 'conversa_id')):
@@ -45,6 +53,13 @@ class ChatController:
             return jsonify(code='invalid_mode', message='Modo de resposta inválido.', error='Modo inválido.'), 400
         if len(prompt) > 12000 or len(conversa_id) > 128:
             return jsonify(code='invalid_payload', message='Texto ou ID excede o limite.', error='Entrada muito longa.'), 400
+        try:
+            images = validate_images(data.get('images', []))
+        except ValueError as exc:
+            return jsonify(code='invalid_images', message=str(exc), error=str(exc)), 400
+        if images and not prompt:
+            prompt = IMAGE_ONLY_PROMPT
+        attachment_options = {'images': images} if images else {}
         if not prompt:
             return jsonify({"error": "O prompt não pode estar vazio."}), 400
         if not conversa_id:
@@ -55,16 +70,16 @@ class ChatController:
             pode_usar, usuario = self.user_model.verificar_e_incrementar_uso(uid)
         except (RuntimeError, PyMongoError):
             return jsonify(code="database_unavailable", message="Banco de dados indisponível. Tente novamente.", error="Banco de dados indisponível."), 503
+        if usuario is None:
+            return jsonify(code='profile_unavailable', message='Perfil indisponível.', error='Perfil indisponível.'), 503
         if not pode_usar:
-            if usuario is None:
-                return jsonify(code='profile_unavailable', message='Perfil indisponível.', error='Perfil indisponível.'), 503
             if usuario.get('quota_reason') == 'rate_limited':
                 return jsonify(code='rate_limited', message='Aguarde antes de enviar outra pergunta.', error='Aguarde antes de enviar outra pergunta.'), 429
             limite = usuario.get("limite_diario_perguntas", 10) if usuario else 10
             return jsonify({"error": "limite_diario_excedido", "limite": limite}), 429
         # Noise still traverses authenticated, atomic traffic reservation. It is
         # refunded as an analysis, but its minute rate count is never refunded.
-        local = mode == 'experimental' and is_noise(prompt)
+        local = mode == 'experimental' and not images and is_noise(prompt)
         ledger = UsageLedger(lambda tokens: self.user_model.registrar_tokens_usados(
             uid, tokens, dia=usuario.get('reservation_day')))
         historico = [item for mensagem in mensagens_anteriores for item in (
@@ -72,9 +87,9 @@ class ChatController:
             {"role": "assistant", "content": mensagem["resposta"]},
         )]
         if request.accept_mimetypes.best == "text/event-stream":
-            return self._transmitir(uid, conversa_id, prompt, historico, usuario, ledger, local, mode)
+            return self._transmitir(uid, conversa_id, prompt, historico, usuario, ledger, local, mode, **attachment_options)
         try:
-            resultado = obter_resposta(prompt, historico, ledger=ledger, mode=mode)
+            resultado = obter_resposta(prompt, historico, ledger=ledger, mode=mode, **attachment_options)
             texto_resposta, tokens_gastos = resultado
         except RuntimeError as exc:
             self._finalizar(uid, usuario, ledger.attempted)
@@ -102,13 +117,13 @@ class ChatController:
         except (RuntimeError, PyMongoError):
             logging.getLogger(__name__).error('quota_finalize_failed success=%s', sucesso)
 
-    def _transmitir(self, uid, conversa_id, prompt, historico, reserva, ledger, local=False, mode='standard'):
+    def _transmitir(self, uid, conversa_id, prompt, historico, reserva, ledger, local=False, mode='standard', *, images=()):
         def serializar(evento):
             return f"data: {json.dumps(evento, ensure_ascii=False)}\n\n"
 
-        @stream_with_context
         def gerar():
-            resposta = transmitir_resposta(prompt, historico, ledger=ledger, mode=mode)
+            options = {'images': images} if images else {}
+            resposta = transmitir_resposta(prompt, historico, ledger=ledger, mode=mode, **options)
             texto_parcial = ""
             concluido = False
             inicio = perf_counter()
@@ -117,7 +132,8 @@ class ChatController:
                     if evento["type"] == "delta":
                         texto_parcial += evento["text"]
                         # Mesmo renderizador seguro durante e depois da geração.
-                        evento = {**evento, "html": renderizar_markdown(texto_parcial)}
+                        yield serializar({**evento, "html": renderizar_markdown(texto_parcial)})
+                        continue
                     if evento["type"] != "result":
                         yield serializar(evento)
                         continue
@@ -147,7 +163,7 @@ class ChatController:
                 self._finalizar(uid, reserva, not local and (concluido or ledger.attempted))
                 logging.getLogger(__name__).info('phase=stream duration_ms=%.1f request_id=%s', (perf_counter()-inicio)*1000, getattr(g, 'request_id', 'unknown'))
 
-        response = Response(gerar(), mimetype="text/event-stream", headers={
+        response = Response(stream_with_context(gerar()), mimetype="text/event-stream", headers={
             "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no",
         })
         # Covers a response closed before the generator starts. The reservation
@@ -156,12 +172,13 @@ class ChatController:
         return response
 
     @staticmethod
-    def _pagina():
+    def _pagina() -> Paginacao:
         return {'limit': int(request.args.get('limit', 100)), 'offset': int(request.args.get('offset', 0))}
 
     def get_conversas(self):
         uid, erro = self._usuario_autorizado()
-        if erro:
+        if uid is None:
+            assert erro is not None
             return erro
         try:
             conversas = self.chat_model.get_conversas_por_usuario(uid, **self._pagina())
@@ -171,7 +188,8 @@ class ChatController:
 
     def pesquisar_conversas(self):
         uid, erro = self._usuario_autorizado()
-        if erro:
+        if uid is None:
+            assert erro is not None
             return erro
         termo = request.args.get("q", "").strip()
         if not termo:
@@ -184,7 +202,8 @@ class ChatController:
 
     def apagar_conversa(self, conversa_id):
         uid, erro = self._usuario_autorizado()
-        if erro:
+        if uid is None:
+            assert erro is not None
             return erro
         try:
             apagadas = self.chat_model.apagar_conversa(uid, conversa_id)
@@ -196,7 +215,8 @@ class ChatController:
 
     def get_mensagens_por_conversa(self, conversa_id):
         uid, erro = self._usuario_autorizado()
-        if erro:
+        if uid is None:
+            assert erro is not None
             return erro
         try:
             mensagens = self.chat_model.get_mensagens_por_conversa(uid, conversa_id, **self._pagina())
