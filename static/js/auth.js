@@ -1,6 +1,12 @@
 import { cadastrarComEmail, loginComEmail, loginSocial, destinoAposLogin } from "./firebase-init.js";
 
-const feedback = (element, mensagem, cor = "#e05555") => { element.textContent = mensagem; element.style.color = cor; element.style.display = "block"; };
+const feedback = (element, mensagem, cor = "#e05555") => {
+  const destino = element || document.getElementById("cadastroFeedback");
+  if (!destino) return;
+  destino.textContent = mensagem;
+  destino.style.color = cor;
+  destino.style.display = "block";
+};
 document.addEventListener("DOMContentLoaded", () => {
   const entrar = document.getElementById("btnEntrar"), cadastrar = document.getElementById("btnCadastrar");
   const dialogoEmailIncerto = document.getElementById("dialogoEmailIncerto");

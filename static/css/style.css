@@ -321,13 +321,6 @@ body.drawer-open { overflow: hidden; }
   }
   .sidebar-collapsed .sidebar-rail { visibility: visible; }
   .rail-controls { position: relative; display: flex; justify-content: center; }
-  .rail-controls .sidebar-settings {
-    position: absolute;
-    left: calc(100% + 8px);
-    top: 0;
-    border-radius: 6px;
-    background: var(--sidebar-bg);
-  }
   .sidebar-open-desktop { display: flex; }
   .rail-nav { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
   .drawer-overlay.active { display: none; }
@@ -512,7 +505,6 @@ button.btn-excluir-conversa:active { transform: translateY(-50%) scale(.97); }
 
 /* Safe centering keeps the beginning of tall content reachable. */
 .app-layout main:not(#mainContent) { justify-content: safe center !important; }
-.sidebar-settings { flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) {
   .app-layout { transition: none; }
 }
