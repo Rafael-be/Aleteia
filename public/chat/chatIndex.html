@@ -132,9 +132,14 @@
         <div class="input-actions">
           <div class="input-left-btns">
             <div id="anexosPrompt" class="anexos-prompt">
-              <button type="button" id="botaoAnexos" class="btn-attach" title="Anexos" aria-label="Anexos" aria-expanded="false" aria-controls="opcoesAnexos">+</button>
-              <div id="opcoesAnexos" class="opcoes-anexos" hidden>
-                <button type="button" id="selecionarImagens">Anexar imagem</button>
+              <button type="button" id="botaoAnexos" class="btn-attach" title="Adicionar anexo" aria-label="Adicionar anexo" aria-haspopup="menu" aria-expanded="false" aria-controls="opcoesAnexos">
+                <svg class="btn-attach-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <div id="opcoesAnexos" class="opcoes-anexos" role="menu" aria-label="Opções de anexo" hidden>
+                <button type="button" id="selecionarImagens" role="menuitem">
+                  <span class="opcao-anexo-icone" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5.5 17 4.5-4 3 2.5 2.5-2 3 3.5"/></svg></span>
+                  <span class="opcao-anexo-texto"><strong>Anexar imagens</strong><small>PNG, JPEG ou WebP</small></span>
+                </button>
               </div>
               <input type="file" id="arquivosImagens" accept="image/png,image/jpeg,image/webp" multiple hidden>
             </div>

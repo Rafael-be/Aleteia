@@ -223,6 +223,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const formatosImagens = new Set(["image/png", "image/jpeg", "image/webp"]);
   const limiteImagens = 3;
   const imagens = [];
+  let anexosAbertos = false;
+  let temporizadorFecharAnexos = null;
 
   function mostrarAvisoImagens(mensagem = "") {
     avisoImagens.textContent = mensagem;
@@ -230,7 +232,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function abrirOpcoesAnexos(aberto) {
-    opcoesAnexos.hidden = !aberto;
+    clearTimeout(temporizadorFecharAnexos);
+    if (aberto) {
+      anexosAbertos = true;
+      opcoesAnexos.hidden = false;
+      opcoesAnexos.classList.remove("opcoes-anexos--fechando");
+    } else {
+      anexosAbertos = false;
+      opcoesAnexos.classList.add("opcoes-anexos--fechando");
+      const reduzirMovimento = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const finalizar = () => {
+        if (!anexosAbertos) {
+          opcoesAnexos.hidden = true;
+          opcoesAnexos.classList.remove("opcoes-anexos--fechando");
+        }
+      };
+      if (reduzirMovimento) finalizar();
+      else {
+        temporizadorFecharAnexos = setTimeout(finalizar, 160);
+        temporizadorFecharAnexos?.unref?.();
+      }
+    }
     botaoAnexos.setAttribute("aria-expanded", String(aberto));
   }
 
@@ -311,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   botaoAnexos.addEventListener("click", () => {
-    const abrir = opcoesAnexos.hidden;
+    const abrir = !anexosAbertos;
     abrirOpcoesAnexos(abrir);
     if (abrir) selecionarImagens.focus();
   });
@@ -321,9 +343,14 @@ document.addEventListener("DOMContentLoaded", () => {
     botaoAnexos.focus();
   });
   anexosPrompt.addEventListener("keydown", e => {
-    if (e.key !== "Escape" || opcoesAnexos.hidden) return;
-    abrirOpcoesAnexos(false);
-    botaoAnexos.focus();
+    if (!anexosAbertos) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      abrirOpcoesAnexos(false);
+      botaoAnexos.focus();
+    } else if (e.key === "Tab") {
+      abrirOpcoesAnexos(false);
+    }
   });
   document.addEventListener("click", e => {
     if (!anexosPrompt.contains(e.target)) abrirOpcoesAnexos(false);
