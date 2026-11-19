@@ -225,6 +225,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const imagens = [];
   let anexosAbertos = false;
   let temporizadorFecharAnexos = null;
+  let popoverInformacaoMetricaAberto = null;
+  let proximoIdInformacaoMetrica = 0;
+
+  function fecharPopoverInformacaoMetrica(devolverFoco = false) {
+    const aberto = popoverInformacaoMetricaAberto;
+    if (!aberto) return;
+    aberto.popover.hidden = true;
+    aberto.botao.setAttribute("aria-expanded", "false");
+    popoverInformacaoMetricaAberto = null;
+    if (devolverFoco) aberto.botao.focus();
+  }
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !popoverInformacaoMetricaAberto) return;
+    event.preventDefault();
+    fecharPopoverInformacaoMetrica(true);
+  });
+  document.addEventListener("click", event => {
+    if (popoverInformacaoMetricaAberto && !popoverInformacaoMetricaAberto.container.contains(event.target)) {
+      fecharPopoverInformacaoMetrica();
+    }
+  });
 
   function mostrarAvisoImagens(mensagem = "") {
     avisoImagens.textContent = mensagem;
@@ -498,12 +520,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const rotulo = document.createElement("div"); rotulo.className = "metrica-titulo";
       const nome = document.createElement("strong"); nome.textContent = indicador.nome;
       rotulo.appendChild(nome);
-      const informacao = document.createElement("details"); informacao.className = "metrica-informacao";
-      const icone = document.createElement("summary"); icone.textContent = "i";
+      const informacao = document.createElement("div"); informacao.className = "metrica-informacao";
+      const icone = document.createElement("button"); icone.type = "button"; icone.className = "metrica-informacao-botao"; icone.textContent = "i";
       icone.setAttribute("aria-label", `Como é medido: ${indicador.nome}`);
-      const explicacao = document.createElement("p");
+      const explicacao = document.createElement("div"); explicacao.className = "popover-informacao-metrica"; explicacao.hidden = true;
       explicacao.textContent = indicador.explicacao + " A escala vai de 0 a 100 e expressa um índice da análise.";
+      explicacao.id = `popover-informacao-metrica-${++proximoIdInformacaoMetrica}`;
+      explicacao.setAttribute("role", "tooltip");
+      icone.setAttribute("aria-expanded", "false");
+      icone.setAttribute("aria-controls", explicacao.id);
       informacao.appendChild(icone); informacao.appendChild(explicacao);
+      icone.addEventListener("click", () => {
+        const estavaAberto = popoverInformacaoMetricaAberto?.botao === icone;
+        fecharPopoverInformacaoMetrica();
+        if (!estavaAberto) {
+          explicacao.hidden = false;
+          icone.setAttribute("aria-expanded", "true");
+          popoverInformacaoMetricaAberto = { container: informacao, botao: icone, popover: explicacao };
+        }
+      });
       rotulo.appendChild(informacao); item.appendChild(rotulo);
       const ajuda = document.createElement("small");
       ajuda.textContent = n === null ? (MOTIVOS[m.reason] || "medição não disponível")

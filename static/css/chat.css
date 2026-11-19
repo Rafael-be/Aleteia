@@ -540,31 +540,14 @@
 .painel-indicadores summary { cursor: pointer; font-size: .85rem; padding: .35rem 0; }
 .metrica-titulo { position: relative; width: 100%; font-size: .83rem; }
 .metrica-titulo > strong { display: block; padding: 0 1.15rem; line-height: 1.3; }
-.painel-indicadores .metrica-informacao summary {
-  display: grid;
-  place-items: center;
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 1rem;
-  height: 1rem;
-  padding: 0;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font: 700 .7rem/1 system-ui, sans-serif;
-}
-.metrica-informacao summary::-webkit-details-marker { display: none; }
-.metrica-informacao p {
-  margin: .4rem 0 0;
-  padding: .45rem;
-  border: 1px solid rgba(148,163,184,.35);
-  border-radius: .4rem;
-  text-align: left;
-  font-size: .76rem;
-  line-height: 1.4;
-}
+.metrica-informacao { position: absolute; top: 0; right: 0; z-index: 2; }
+.metrica-informacao-botao { display: grid; place-items: center; width: 1rem; height: 1rem; padding: 0; border: 1px solid currentColor; border-radius: 50%; background: transparent; color: inherit; font: 700 .7rem/1 system-ui, sans-serif; cursor: pointer; }
+.metrica-informacao-botao:is(:hover, :focus-visible), .metrica-informacao-botao[aria-expanded="true"] { color: #d7f1e2; background: rgba(133,213,177,.16); }
+.metrica-informacao-botao:focus-visible { outline: 2px solid #85d5b1; outline-offset: 3px; }
+.popover-informacao-metrica { position: absolute; right: -.45rem; bottom: calc(100% + .6rem); width: min(272px, calc(100vw - 3rem)); padding: .7rem .75rem; box-sizing: border-box; border: 1px solid #53635c; border-radius: var(--radius-md); background: #252c2a; color: #c5d1ca; box-shadow: 0 12px 35px rgba(0,0,0,.4); font-size: .76rem; line-height: 1.5; text-align: left; transform-origin: bottom right; animation: menu-modelos-entrada .2s ease-out both; }
+.popover-informacao-metrica[hidden] { display: none; }
 .metrica-alegacao { border-top: 1px solid rgba(148, 163, 184, .3); margin-top: .6rem; padding-top: .4rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn-attach, .btn-attach-icon, .opcoes-anexos, .opcoes-anexos button { transition: none; animation: none; }
+  .btn-attach, .btn-attach-icon, .opcoes-anexos, .opcoes-anexos button, .popover-informacao-metrica { transition: none; animation: none; }
 }
